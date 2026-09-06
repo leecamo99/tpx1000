@@ -10,14 +10,14 @@ window.BOOKS = [
     file: 'books/kin1000.js',
     audioBase: 'audio/kin1000/CLIPS/',
     count: 1817
+  },
+  {
+    // 測試用假書，確認切換功能正常後可整筆刪除。
+    id: 'test001',
+    title: '測試書籍',
+    subtitle: '確認選書切換用，可隨時刪除',
+    file: 'books/test001.js',
+    audioBase: 'audio/test001/CLIPS/',
+    count: 5
   }
-  // 之後加書範例：
-  // {
-  //   id: 'gin1000',
-  //   title: '銀のフレーズ',
-  //   subtitle: 'TOEIC L&R TEST 出る単特急',
-  //   file: 'books/gin1000.js',
-  //   audioBase: 'audio/gin1000/CLIPS/',
-  //   count: 1000
-  // }
 ];
