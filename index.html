@@ -590,7 +590,19 @@ body.mode-study #paneBrowse{display:none !important}
   font-size:12px;font-weight:700;color:#333;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-#screen-list > .topbar .book-switch{font-size:15px}
+#screen-list > .topbar .book-switch{font-size:14px}
+/* 主畫面外觀切換：自動 ◐ ／深黑 ● ／淺色 ○ */
+#screen-list > .topbar #themeBtn{
+  flex:0 0 auto;width:32px;height:32px;border-radius:50%;padding:0;
+  border:1.5px solid #ddd;background:#fff;color:#888;
+  font-size:16px;font-weight:700;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;transition:border-color .15s,color .15s;
+}
+#screen-list > .topbar #themeBtn:active{transform:scale(.92)}
+#screen-list > .topbar #themeBtn.is-dark{border-color:#c45c1a;color:#c45c1a}
+body.theme-dark #screen-list > .topbar #themeBtn{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
+body.theme-dark #screen-list > .topbar #themeBtn.is-dark{border-color:#ff9142;color:#ff9142}
 
 
 /* CRITICAL pane toggle */
@@ -931,6 +943,7 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="topbar">
     <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
     <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
+    <button type="button" id="themeBtn" onclick="apCycleTheme()" title="外觀模式" aria-label="外觀模式">◐</button>
     <button type="button" id="userChip" onclick="usOpen()" title="使用者專區"><span class="av">P</span><span class="nm">Paul</span></button>
     <button class="icon-btn" onclick="openFilter()" title="篩選">☰</button>
   </div>
@@ -3606,6 +3619,7 @@ function srsBadge(){
     clearTimeout(el._t);
     el._t = setTimeout(function(){ el.className = ''; }, 800);
   }
+  window.__kinToast = toast;   // 供外觀切換等其他模組共用
 
   function detailActive(){
     var s = $('screen-detail');
@@ -3921,13 +3935,55 @@ function srsBadge(){
     var v = pref();
     return v === 'dark' || (v === null && systemDark());
   }
+  var guard = false;   // 避免自我修正時觸發遞迴
+
   function paint(){
     var dark = isDark();
+    guard = true;
     document.body.classList.toggle('theme-dark', dark);
+    guard = false;
     var m = document.querySelector('meta[name="theme-color"]');
     if(!m){ m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
     m.content = dark ? '#000000' : '#ffffff';
+    paintBtn();
   }
+
+  function paintBtn(){
+    var b = document.getElementById('themeBtn');
+    if(!b) return;
+    var auto = (pref() === null), dark = isDark();
+    b.textContent = auto ? '◐' : (dark ? '●' : '○');
+    b.classList.toggle('is-dark', !auto && dark);
+    b.title = auto
+      ? ('外觀：跟隨系統（目前' + (systemDark() ? '深色' : '淺色') + '）　點擊切換')
+      : ('外觀：' + (dark ? '深黑模式' : '淺色模式') + '　點擊切換');
+  }
+
+  // 有些流程會整批重設 body class，這裡確保主題不會被清掉。
+  if(window.MutationObserver){
+    new MutationObserver(function(){
+      if(guard) return;
+      var want = isDark();
+      if(document.body.classList.contains('theme-dark') !== want) paint();
+    }).observe(document.body, {attributes:true, attributeFilter:['class']});
+  }
+
+  // 三段循環：跟隨系統 → 深黑 → 淺色 → 跟隨系統
+  window.apCycleTheme = function(){
+    var v = pref(), next;
+    if(v === null) next = 'dark';
+    else if(v === 'dark') next = 'light';
+    else next = null;
+    try{
+      if(next === null) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, next);
+    }catch(e){}
+    paint(); render();
+    var label = (next === null)
+      ? ('跟隨系統（' + (systemDark() ? '深色' : '淺色') + '）')
+      : (next === 'dark' ? '深黑模式' : '淺色模式');
+    if(typeof window.__kinToast === 'function') window.__kinToast(label);
+  };
   function render(){
     var d = document.getElementById('apDark');
     var a = document.getElementById('apAuto');
@@ -3940,6 +3996,7 @@ function srsBadge(){
         ? ('目前跟隨系統，系統為' + (systemDark() ? '深色' : '淺色') + '。取消跟隨即可手動切換。')
         : ('已手動設定為' + (isDark() ? '深黑' : '淺色') + '模式，此裝置獨立記憶。');
     }
+    paintBtn();
   }
 
   window.apToggleDark = function(){
