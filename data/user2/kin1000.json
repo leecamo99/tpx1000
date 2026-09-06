@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "userId": "user2",
+  "userName": "黃詩涵",
+  "updatedAt": "2026-09-06T15:05:57.208Z",
+  "deviceId": "dev-so1dyi",
+  "keys": {
+    "book:kin1000:user2:status": "{\"001\":\"ok\",\"002\":\"ok\",\"003\":\"ok\"}",
+    "book:kin1000:user2:srs": "{\"cards\":{\"001\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"002\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"003\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"}},\"log\":{\"2026-09-06\":3},\"v\":1}",
+    "kinLevels": "[\"all\"]",
+    "kinPlayMode": "once",
+    "kinSpeed": "1.75",
+    "kinReturnContext": "{\"id\":\"070\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788691555747}"
+  }
+}
