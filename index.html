@@ -593,19 +593,8 @@ body.mode-study #paneBrowse{display:none !important}
   font-size:12px;font-weight:700;color:#333;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-#screen-list > .topbar .book-switch{font-size:14px}
-/* 主畫面外觀切換：自動 ◐ ／深黑 ● ／淺色 ○ */
-#screen-list > .topbar #themeBtn{
-  flex:0 0 auto;width:32px;height:32px;border-radius:50%;padding:0;
-  border:1.5px solid #ddd;background:#fff;color:#888;
-  font-size:16px;font-weight:700;line-height:1;
-  display:flex;align-items:center;justify-content:center;
-  touch-action:manipulation;transition:border-color .15s,color .15s;
-}
-#screen-list > .topbar #themeBtn:active{transform:scale(.92)}
-#screen-list > .topbar #themeBtn.is-dark{border-color:#c45c1a;color:#c45c1a}
-body.theme-dark #screen-list > .topbar #themeBtn{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
-body.theme-dark #screen-list > .topbar #themeBtn.is-dark{border-color:#ff9142;color:#ff9142}
+/* 主畫面移除主題按鈕後，書名可用的寬度變多 */
+#screen-list > .topbar .book-switch{font-size:15px}
 
 
 /* CRITICAL pane toggle */
@@ -946,7 +935,6 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="topbar">
     <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
     <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
-    <button type="button" id="themeBtn" onclick="apCycleTheme()" title="外觀模式" aria-label="外觀模式">◐</button>
     <button type="button" id="userChip" onclick="usOpen()" title="使用者專區"><span class="av">P</span><span class="nm">Paul</span></button>
     <button class="icon-btn" onclick="openFilter()" title="篩選">☰</button>
   </div>
@@ -988,17 +976,17 @@ body.theme-dark .ap-note{color:#6a6661}
     <!-- keep hidden select for logic -->
     <select id="levelSelect" onchange="applyFilter()" style="display:none">
       <option value="all">全部</option>
-      <option value="600">600分級　助跑的400語</option>
-      <option value="730">730分級　加速的300語</option>
-      <option value="860">860分級　飛躍的200語</option>
-      <option value="990">990分級　頂點的100語</option>
-      <option value="S1">Supplement 1　題幹・選項</option>
-      <option value="S2">Supplement 2　Part1 重要語</option>
-      <option value="S3">Supplement 3　部署・職業</option>
-      <option value="S4">Supplement 4　介系詞・連接詞</option>
-      <option value="S5">Supplement 5　片假名英語</option>
-      <option value="S6">Supplement 6　多義語</option>
-      <option value="S7">Supplement 7　定型表現</option>
+      <option value="600">600分級　助跑的 400 字</option>
+      <option value="730">730分級　加速的 300 字</option>
+      <option value="860">860分級　飛躍的 200 字</option>
+      <option value="990">990分級　頂點的 100 字</option>
+      <option value="S1">Supplement 1　題幹、選項</option>
+      <option value="S2">Supplement 2　Part 1 重要單字</option>
+      <option value="S3">Supplement 3　部門、職業</option>
+      <option value="S4">Supplement 4　介系詞、連接詞</option>
+      <option value="S5">Supplement 5　外來語英文</option>
+      <option value="S6">Supplement 6　多義字</option>
+      <option value="S7">Supplement 7　固定用法</option>
       <option value="COL">Column 1–4</option>
     </select>
   </div>
@@ -1009,17 +997,17 @@ body.theme-dark .ap-note{color:#6a6661}
       <span>範圍</span>
       <select id="levelSelect2" onchange="syncLevelFromBrowse()">
         <option value="all">全部</option>
-        <option value="600">600分級　助跑的400語</option>
-        <option value="730">730分級　加速的300語</option>
-        <option value="860">860分級　飛躍的200語</option>
-        <option value="990">990分級　頂點的100語</option>
-        <option value="S1">Supplement 1　題幹・選項</option>
-        <option value="S2">Supplement 2　Part1 重要語</option>
-        <option value="S3">Supplement 3　部署・職業</option>
-        <option value="S4">Supplement 4　介系詞・連接詞</option>
-        <option value="S5">Supplement 5　片假名英語</option>
-        <option value="S6">Supplement 6　多義語</option>
-        <option value="S7">Supplement 7　定型表現</option>
+        <option value="600">600分級　助跑的 400 字</option>
+        <option value="730">730分級　加速的 300 字</option>
+        <option value="860">860分級　飛躍的 200 字</option>
+        <option value="990">990分級　頂點的 100 字</option>
+        <option value="S1">Supplement 1　題幹、選項</option>
+        <option value="S2">Supplement 2　Part 1 重要單字</option>
+        <option value="S3">Supplement 3　部門、職業</option>
+        <option value="S4">Supplement 4　介系詞、連接詞</option>
+        <option value="S5">Supplement 5　外來語英文</option>
+        <option value="S6">Supplement 6　多義字</option>
+        <option value="S7">Supplement 7　固定用法</option>
         <option value="COL">Column 1–4</option>
       </select>
     </div>
@@ -1076,17 +1064,17 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="modal">
     <h2>學習範圍篩選</h2>
     <label class="opt"><div><div>全部</div><div class="sub" id="fAll">0</div></div><input type="checkbox" name="fl" value="all" checked onchange="setLevel('all')"></label>
-    <label class="opt"><div><div>600分級　助跑的400語</div><div class="sub" id="f600">0</div></div><input type="checkbox" name="fl" value="600" onchange="setLevel('600')"></label>
-    <label class="opt"><div><div>730分級　加速的300語</div><div class="sub" id="f730">0</div></div><input type="checkbox" name="fl" value="730" onchange="setLevel('730')"></label>
-    <label class="opt"><div><div>860分級　飛躍的200語</div><div class="sub" id="f860">0</div></div><input type="checkbox" name="fl" value="860" onchange="setLevel('860')"></label>
-    <label class="opt"><div><div>990分級　頂點的100語</div><div class="sub" id="f990">0</div></div><input type="checkbox" name="fl" value="990" onchange="setLevel('990')"></label>
-    <label class="opt"><div><div>Supplement 1　題幹・選項</div><div class="sub" id="fS1">0</div></div><input type="checkbox" name="fl" value="S1" onchange="setLevel('S1')"></label>
-    <label class="opt"><div><div>Supplement 2　Part1 重要語</div><div class="sub" id="fS2">0</div></div><input type="checkbox" name="fl" value="S2" onchange="setLevel('S2')"></label>
-    <label class="opt"><div><div>Supplement 3　部署・職業</div><div class="sub" id="fS3">0</div></div><input type="checkbox" name="fl" value="S3" onchange="setLevel('S3')"></label>
-    <label class="opt"><div><div>Supplement 4　介系詞・連接詞</div><div class="sub" id="fS4">0</div></div><input type="checkbox" name="fl" value="S4" onchange="setLevel('S4')"></label>
-    <label class="opt"><div><div>Supplement 5　片假名英語</div><div class="sub" id="fS5">0</div></div><input type="checkbox" name="fl" value="S5" onchange="setLevel('S5')"></label>
-    <label class="opt"><div><div>Supplement 6　多義語</div><div class="sub" id="fS6">0</div></div><input type="checkbox" name="fl" value="S6" onchange="setLevel('S6')"></label>
-    <label class="opt"><div><div>Supplement 7　定型表現</div><div class="sub" id="fS7">0</div></div><input type="checkbox" name="fl" value="S7" onchange="setLevel('S7')"></label>
+    <label class="opt"><div><div>600分級　助跑的 400 字</div><div class="sub" id="f600">0</div></div><input type="checkbox" name="fl" value="600" onchange="setLevel('600')"></label>
+    <label class="opt"><div><div>730分級　加速的 300 字</div><div class="sub" id="f730">0</div></div><input type="checkbox" name="fl" value="730" onchange="setLevel('730')"></label>
+    <label class="opt"><div><div>860分級　飛躍的 200 字</div><div class="sub" id="f860">0</div></div><input type="checkbox" name="fl" value="860" onchange="setLevel('860')"></label>
+    <label class="opt"><div><div>990分級　頂點的 100 字</div><div class="sub" id="f990">0</div></div><input type="checkbox" name="fl" value="990" onchange="setLevel('990')"></label>
+    <label class="opt"><div><div>Supplement 1　題幹、選項</div><div class="sub" id="fS1">0</div></div><input type="checkbox" name="fl" value="S1" onchange="setLevel('S1')"></label>
+    <label class="opt"><div><div>Supplement 2　Part 1 重要單字</div><div class="sub" id="fS2">0</div></div><input type="checkbox" name="fl" value="S2" onchange="setLevel('S2')"></label>
+    <label class="opt"><div><div>Supplement 3　部門、職業</div><div class="sub" id="fS3">0</div></div><input type="checkbox" name="fl" value="S3" onchange="setLevel('S3')"></label>
+    <label class="opt"><div><div>Supplement 4　介系詞、連接詞</div><div class="sub" id="fS4">0</div></div><input type="checkbox" name="fl" value="S4" onchange="setLevel('S4')"></label>
+    <label class="opt"><div><div>Supplement 5　外來語英文</div><div class="sub" id="fS5">0</div></div><input type="checkbox" name="fl" value="S5" onchange="setLevel('S5')"></label>
+    <label class="opt"><div><div>Supplement 6　多義字</div><div class="sub" id="fS6">0</div></div><input type="checkbox" name="fl" value="S6" onchange="setLevel('S6')"></label>
+    <label class="opt"><div><div>Supplement 7　固定用法</div><div class="sub" id="fS7">0</div></div><input type="checkbox" name="fl" value="S7" onchange="setLevel('S7')"></label>
     <label class="opt"><div><div>Column 1–4</div><div class="sub" id="fCOL">0</div></div><input type="checkbox" name="fl" value="COL" onchange="setLevel('COL')"></label>
     <button class="done-btn" onclick="closeFilter();applyFilter()">完成</button>
   </div>
@@ -1160,7 +1148,7 @@ function updateStats(){
   });
   var _lh=document.getElementById('levelHeadText');
   if(_lh){
-    var _lab={all:'全部範圍','600':'600分級　助跑的400語','730':'730分級　加速的300語','860':'860分級　飛躍的200語','990':'990分級　頂點的100語',S1:'Supplement 1',S2:'Supplement 2',S3:'Supplement 3',S4:'Supplement 4',S5:'Supplement 5',S6:'Supplement 6',S7:'Supplement 7',COL:'Column 1–4'};
+    var _lab={all:'全部範圍','600':'600分級　助跑的 400 字','730':'730分級　加速的 300 字','860':'860分級　飛躍的 200 字','990':'990分級　頂點的 100 字',S1:'Supplement 1',S2:'Supplement 2',S3:'Supplement 3',S4:'Supplement 4',S5:'Supplement 5',S6:'Supplement 6',S7:'Supplement 7',COL:'Column 1–4'};
     _lh.textContent=typeof levelLabel==='function'?levelLabel():(_lab[currentLevel]||currentLevel||'全部範圍');
   }
   document.getElementById('statOk').textContent=ok;
@@ -1190,7 +1178,7 @@ function updateStats(){
   const count = lv => DATA.filter(e=>lv==='all'||e.level===lv).length;
   ['All','600','730','860','990','S1','S2','S3','S4','S5','S6','S7','COL'].forEach(function(k){
     var el = document.getElementById('f'+k);
-    if(el) el.textContent = count(k==='All'?'all':k)+' 語';
+    if(el) el.textContent = count(k==='All'?'all':k)+' 字';
   });
 }
 
@@ -1222,6 +1210,31 @@ function renderList(){
 
 function escapeHtml(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+/* 多詞性單字把詞性寫在釋義字串裡（例如「動 增加、提高　名 增加」），
+   而不是放在 pos 欄位，所以原本渲染不出灰底標籤。這裡統一補上。 */
+var POS_TOKENS = ['他動','自動','及物','不及物','助動','形動','多義',
+                  '名','動','形','副','前','介','接','連','代','助','冠','感','數','量','片','慣'];
+function posTagHtml(text){
+  var s = escapeHtml(String(text || ''));
+  if(!s) return '';
+  // 只在字串開頭或全形空白之後、且後面接空白時才視為詞性，避免誤判「名字、名稱」這類一般詞彙。
+  var re = new RegExp('(^|\\u3000)\\s*(' + POS_TOKENS.join('|') + ')(?=[ \\u3000])', 'g');
+  return s.replace(re, function(m, pre, p){
+    return pre + '<span class="db-pos">' + p + '</span>';
+  });
+}
+/* 註解裡的英文可點擊：發音、加入收藏。先切詞再轉義，避免破壞 HTML。 */
+function noteWordsHtml(text){
+  var raw=String(text||''), out='', last=0;
+  var re=/[A-Za-z][A-Za-z'\-]{2,}/g, m;
+  while((m=re.exec(raw))){
+    out+=escapeHtml(raw.slice(last,m.index));
+    var w=m[0];
+    out+='<button type="button" class="nw" data-w="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>';
+    last=m.index+w.length;
+  }
+  return out+escapeHtml(raw.slice(last));
 }
 function highlightWord(en, word){
   if(!en||!word) return escapeHtml(en);
@@ -1352,6 +1365,7 @@ function hardStopAllPlayback(){
     try{a.removeAttribute('src');a.load();}catch(ignore){}
   }
   if(typeof setPlayerButtonState==='function') setPlayerButtonState('play');
+  if(typeof window.__kinTtsStop === 'function') window.__kinTtsStop();
   document.querySelectorAll('#itemList .item').forEach(function(el){el.classList.remove('is-playing');});
 }
 
@@ -1600,12 +1614,12 @@ function showDetail(){
   if(phon) html += '<div class="db-phon">'+escapeHtml(phon)+'</div>';
   html += '<div class="db-posline">';
   if(pos) html += '<span class="db-pos">'+escapeHtml(pos)+'</span>';
-  if(mean && !senses.length) html += '<span class="db-mean">'+escapeHtml(mean)+'</span>';
-  else if(mean && senses.length) html += '<span class="db-mean" style="color:#666;font-size:12px">'+escapeHtml(mean)+'</span>';
+  if(mean && !senses.length) html += '<span class="db-mean">'+posTagHtml(mean)+'</span>';
+  else if(mean && senses.length) html += '<span class="db-mean" style="color:#666;font-size:12px">'+posTagHtml(mean)+'</span>';
   html += '</div></div></div>';
 
   if(note){
-    html += '<div class="db-note"><span class="ico">◎</span>'+escapeHtml(note)+'</div>';
+    html += '<div class="db-note"><span class="ico">◎</span>'+noteWordsHtml(note)+'</div>';
   }
 
   if(senses.length){
@@ -1626,6 +1640,11 @@ function showDetail(){
   }
 
   host.innerHTML = html;
+
+  // 註解單字：點一下開啟發音與收藏
+  host.querySelectorAll('.nw').forEach(function(b){
+    b.onclick=function(ev){ ev.stopPropagation(); if(typeof nwOpen==='function') nwOpen(b.getAttribute('data-w')); };
+  });
 
   // tap to play on book elements
   var has = !!getAudioForEntry(e);
@@ -2142,7 +2161,22 @@ function playCurrent(autoContinue){
       for(var i=0;i<phrases.length;i++) for(var t=0;t<times;t++){files.push(phrases[i]);titles.push(e.word+'（例句'+(i+1)+'）');}
       playClipFiles(files,titles);return;
     }
-    var info=getAudioForEntry(e);if(!info){window._kinAfterEntry=null;setPlayingVisual(null);alert('尚無音檔：'+e.id);return;}
+    var info=getAudioForEntry(e);
+    if(!info){
+      // 收藏字卡沒有錄音，改用系統語音朗讀，連續播放照樣接續。
+      if(typeof kinSpeak==='function' && kinSpeak(e.word,function(){
+          var done=window._kinAfterEntry; window._kinAfterEntry=null;
+          if(typeof done==='function') setTimeout(done,120);
+      })){
+        var pt=document.getElementById('playTitle'), ps=document.getElementById('playSub');
+        if(pt) pt.textContent=e.word;
+        if(ps) ps.textContent='系統語音';
+        var pb=document.getElementById('playerBar');
+        if(pb){ pb.classList.add('show'); pb.style.display='flex'; }
+        return;
+      }
+      window._kinAfterEntry=null;setPlayingVisual(null);alert('尚無音檔：'+e.id);return;
+    }
     playClip(info[0],info[1],info[2],e.word,null);
   }catch(err){window._kinAfterEntry=null;setPlayingVisual(null);alert('playCurrent: '+err.message);}
 }
@@ -2191,9 +2225,9 @@ function setMediaSession(title, artist){
   if(!('mediaSession' in navigator)) return;
   try{
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: title || '金のフレーズ',
-      artist: artist || '金フレ 音檔',
-      album: 'TOEIC 金のフレーズ',
+      title: title || ((window.CURRENT_BOOK && window.CURRENT_BOOK.title) || '單字學習'),
+      artist: artist || '單字音檔',
+      album: (window.CURRENT_BOOK && window.CURRENT_BOOK.title) || 'TOEIC 單字',
       artwork: [
         {src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23c45c1a" width="100" height="100" rx="20"/><text x="50" y="62" text-anchor="middle" fill="white" font-size="40" font-family="sans-serif">金</text></svg>'), sizes:'100x100', type:'image/svg+xml'}
       ]
@@ -2952,6 +2986,7 @@ function srsBadge(){
     return [
       'book:' + bookId() + ':' + userId() + ':status',   // 習得／要複習狀態
       'book:' + bookId() + ':' + userId() + ':srs',      // SM-2 複習排程
+      'kinCollect:' + userId(),                          // 收藏字卡，跨書共用
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
@@ -3262,6 +3297,33 @@ function srsBadge(){
 }
 #pinBox .btns button.pri{border-color:#c45c1a;background:#c45c1a;color:#fff}
 #pinBox .btns button:disabled{opacity:.45}
+/* Cloud TTS 語音設定 */
+.tts-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.tts-st{font-size:11px;line-height:1.6;padding:7px 9px;border-radius:8px;background:#fff;
+  border:1px solid #e2e2e2;color:#999;margin-bottom:9px}
+.tts-st.on{border-color:#2a9d4a;background:#eef8f0;color:#22863a;font-weight:700}
+.tts-lb{display:block;font-size:12px;color:#666;font-weight:700;margin:0 0 4px}
+.tts-box input,.tts-box select{width:100%;box-sizing:border-box;padding:9px 10px;
+  border:1px solid #ccc;border-radius:8px;font-size:13px;color:#111;background:#fff;
+  font-family:inherit;margin-bottom:9px}
+.tts-btns{display:flex;gap:7px;flex-wrap:wrap}
+.tts-btns button{flex:1 1 46%;min-width:0;padding:10px 6px;border-radius:9px;
+  font-size:12px;font-weight:700;border:1.5px solid #ccc;background:#fff;color:#444}
+.tts-btns button.pri{border-color:#2a9d4a;background:#eef8f0;color:#2a9d4a}
+.tts-btns button.warn{border-color:#e05050;background:#fdf0f0;color:#e05050}
+.tts-btns button:active{transform:scale(.97)}
+.tts-msg{font-size:12px;line-height:1.7;margin-top:9px;min-height:17px;color:#666}
+.tts-msg.ok{color:#2a9d4a}
+.tts-msg.err{color:#e05050}
+body.theme-dark .tts-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .tts-st{background:#141416;border-color:#2a2a2c;color:#7a7671}
+body.theme-dark .tts-st.on{background:#14251a;border-color:#3fa85f;color:#5fd07f}
+body.theme-dark .tts-lb{color:#8a8680}
+body.theme-dark .tts-box input,body.theme-dark .tts-box select{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .tts-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .tts-btns button.pri{background:#14251a;border-color:#3fa85f;color:#5fd07f}
+body.theme-dark .tts-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark .tts-msg{color:#8a8680}
 /* 藍牙遙控器設定 */
 .rc-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
 .rc-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
@@ -3346,6 +3408,31 @@ function srsBadge(){
         <input type="checkbox" id="apAuto" onchange="apToggleAuto()">
       </label>
       <div class="ap-note" id="apNote"></div>
+    </div>
+
+    <h4>語音發音</h4>
+    <div class="tts-box">
+      <div class="tts-st" id="ttsStatus"></div>
+      <label class="tts-lb">Cloud TTS API Key（只存在這台裝置）</label>
+      <input id="ttsKey" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      <label class="tts-lb">音色</label>
+      <select id="ttsVoice" onchange="ttsSetVoice()">
+        <option value="en-US-Neural2-C">美式女聲　Neural2-C</option>
+        <option value="en-US-Neural2-D">美式男聲　Neural2-D</option>
+        <option value="en-US-Neural2-F">美式女聲　Neural2-F</option>
+        <option value="en-US-Neural2-A">美式男聲　Neural2-A</option>
+        <option value="en-GB-Neural2-A">英式女聲　Neural2-A</option>
+        <option value="en-GB-Neural2-B">英式男聲　Neural2-B</option>
+        <option value="en-US-Standard-C">美式女聲　Standard-C</option>
+      </select>
+      <div class="tts-btns">
+        <button type="button" class="pri" onclick="ttsSave()">儲存並測試</button>
+        <button type="button" onclick="ttsTest()">試聽</button>
+        <button type="button" onclick="ttsClearCache()">清除快取</button>
+        <button type="button" class="warn" onclick="ttsClearKey()">清除金鑰</button>
+      </div>
+      <div class="tts-msg" id="ttsMsg"></div>
+      <div class="tip">未設定金鑰時使用系統語音，功能不受影響。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
     </div>
 
     <h4>藍牙遙控器</h4>
@@ -4147,6 +4234,362 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
 })();
 </script>
 
+<style>
+/* 註解裡的可點英文 */
+.db-note .nw{
+  display:inline;padding:0 1px;margin:0;border:0;background:transparent;
+  color:#0b6ea8;font:inherit;font-weight:600;
+  border-bottom:1px dotted #7ab3d0;cursor:pointer;touch-action:manipulation;
+}
+.db-note .nw:active{background:rgba(11,110,168,.10)}
+.db-note .nw.saved{color:#2a9d4a;border-bottom-color:#7ecb96}
+body.theme-dark .db-note .nw{color:#6fc0ee;border-bottom-color:#3f6f88}
+body.theme-dark .db-note .nw.saved{color:#5fd07f;border-bottom-color:#3a7a52}
+/* 單字彈窗 */
+#nwMask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10020;display:none}
+#nwMask.show{display:block}
+#nwBox{
+  position:fixed;left:50%;bottom:0;transform:translateX(-50%) translateY(100%);
+  width:100%;max-width:480px;background:#fff;z-index:10021;
+  border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -6px 30px rgba(0,0,0,.22);transition:transform .18s ease;
+}
+#nwBox.show{transform:translateX(-50%) translateY(0)}
+#nwBox .w{font-size:24px;font-weight:800;color:#111;text-align:center;word-break:break-word}
+#nwBox .s{font-size:12px;color:#999;text-align:center;margin-top:4px;min-height:16px}
+#nwBox .btns{display:flex;gap:9px;margin-top:16px}
+#nwBox .btns button{
+  flex:1;padding:13px 8px;border-radius:11px;font-size:14px;font-weight:700;
+  border:1.5px solid #ccc;background:#fff;color:#444;touch-action:manipulation;
+}
+#nwBox .btns button:active{transform:scale(.97)}
+#nwBox .btns .spk{border-color:#c45c1a;color:#c45c1a;background:#fdf5ee}
+#nwBox .btns .add{border-color:#2a9d4a;color:#2a9d4a;background:#eef8f0}
+#nwBox .btns .add.on{border-color:#e05050;color:#e05050;background:#fdf0f0}
+#nwBox .cl{width:100%;margin-top:9px;padding:11px;border:0;background:transparent;color:#999;font-size:13px}
+#nwBox .note{font-size:11px;color:#a09a94;line-height:1.7;margin-top:10px;text-align:center}
+body.theme-dark #nwBox{background:#161618;box-shadow:0 -6px 30px rgba(0,0,0,.7)}
+body.theme-dark #nwBox .w{color:#f2f0ed}
+body.theme-dark #nwBox .s{color:#7a7671}
+body.theme-dark #nwBox .btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark #nwBox .btns .spk{border-color:#ff9142;color:#ff9142;background:#2a1c10}
+body.theme-dark #nwBox .btns .add{border-color:#3fa85f;color:#5fd07f;background:#14251a}
+body.theme-dark #nwBox .btns .add.on{border-color:#e05050;color:#ff7b7b;background:#2a1515}
+body.theme-dark #nwBox .cl{color:#7a7671}
+body.theme-dark #nwBox .note{color:#6a6661}
+</style>
+
+<div id="nwMask" onclick="nwClose()"></div>
+<div id="nwBox" role="dialog" aria-label="單字操作">
+  <div class="w" id="nwWord">—</div>
+  <div class="s" id="nwSub"></div>
+  <div class="btns">
+    <button type="button" class="spk" onclick="nwSpeak()">發音</button>
+    <button type="button" class="add" id="nwAddBtn" onclick="nwToggle()">加入收藏</button>
+  </div>
+  <button type="button" class="cl" onclick="nwClose()">關閉</button>
+  <div class="note" id="nwNote"></div>
+</div>
+
+<script>
+/* ===== 註解單字：發音 + 收藏 =====
+   收藏的字卡存在 kinCollect:<使用者>，已納入 GitHub 同步。 */
+(function(){
+  'use strict';
+
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function key(){ return 'kinCollect:' + uid(); }
+
+  function load(){
+    try{
+      var a = JSON.parse(localStorage.getItem(key()) || '[]');
+      return Array.isArray(a) ? a : [];
+    }catch(e){ return []; }
+  }
+  function save(list){ try{ localStorage.setItem(key(), JSON.stringify(list)); }catch(e){} }
+  function norm(w){ return String(w||'').trim().toLowerCase(); }
+  function find(w){
+    var n = norm(w), list = load();
+    for(var i=0;i<list.length;i++) if(norm(list[i].word) === n) return list[i];
+    return null;
+  }
+  function nextId(list){
+    var max = 0;
+    list.forEach(function(c){
+      var m = String(c.id||'').match(/^X-(\d+)$/);
+      if(m) max = Math.max(max, parseInt(m[1],10));
+    });
+    return 'X-' + ('000' + (max + 1)).slice(-3);
+  }
+  function add(word, from){
+    if(find(word)) return false;
+    var list = load();
+    list.push({ id: nextId(list), word: String(word).trim(), mean: '',
+                from: from || '', at: new Date().toISOString().slice(0,10) });
+    save(list);
+    return true;
+  }
+  function remove(word){
+    var n = norm(word), list = load();
+    var out = list.filter(function(c){ return norm(c.word) !== n; });
+    if(out.length === list.length) return false;
+    save(out);
+    return true;
+  }
+
+  window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, key:key };
+
+  /* ---------- 語音朗讀：Cloud TTS，失敗時退回系統語音 ---------- */
+  var TTS_KEY   = 'kinTtsKey';      // API 金鑰，只存本機
+  var TTS_VOICE = 'kinTtsVoice';
+  var TTS_CACHE = 'kinTtsCache';    // { "voice|word": base64 }
+  var TTS_MAX   = 60;               // 快取上限，避免撐爆 localStorage
+  var ttsAudio  = null;
+
+  function ttsKey(){ try{ return localStorage.getItem(TTS_KEY) || ''; }catch(e){ return ''; } }
+  function ttsVoice(){ try{ return localStorage.getItem(TTS_VOICE) || 'en-US-Neural2-C'; }catch(e){ return 'en-US-Neural2-C'; } }
+  function ttsCache(){
+    try{ return JSON.parse(localStorage.getItem(TTS_CACHE) || '{}') || {}; }catch(e){ return {}; }
+  }
+  function ttsCacheSave(c){
+    try{ localStorage.setItem(TTS_CACHE, JSON.stringify(c)); }
+    catch(e){
+      // 空間不足時砍掉一半舊資料再存一次
+      try{
+        var ks = Object.keys(c);
+        ks.slice(0, Math.floor(ks.length/2)).forEach(function(k){ delete c[k]; });
+        localStorage.setItem(TTS_CACHE, JSON.stringify(c));
+      }catch(e2){}
+    }
+  }
+  function ttsCacheGet(word){ return ttsCache()[ttsVoice() + '|' + String(word).toLowerCase()] || ''; }
+  function ttsCachePut(word, b64){
+    var c = ttsCache(), ks = Object.keys(c);
+    if(ks.length >= TTS_MAX) delete c[ks[0]];
+    c[ttsVoice() + '|' + String(word).toLowerCase()] = b64;
+    ttsCacheSave(c);
+  }
+  window.__kinTtsCacheCount = function(){ return Object.keys(ttsCache()).length; };
+
+  function ttsStop(){
+    if(ttsAudio){ try{ ttsAudio.pause(); ttsAudio.src=''; }catch(e){} ttsAudio = null; }
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+  }
+  window.__kinTtsStop = ttsStop;
+
+  function ttsPlayB64(b64, onend){
+    ttsStop();
+    var a = new Audio('data:audio/mp3;base64,' + b64);
+    ttsAudio = a;
+    try{
+      var r = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined') ? SPEEDS[speedIdx] : 1;
+      a.playbackRate = r || 1;
+    }catch(e){}
+    if(typeof onend === 'function'){ a.onended = onend; a.onerror = onend; }
+    a.play().catch(function(){ if(typeof onend === 'function') onend(); });
+  }
+
+  function speakSystem(text, onend){
+    if(!('speechSynthesis' in window) || !text) return false;
+    try{
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text));
+      u.lang = 'en-US';
+      u.rate = 0.9;
+      var vs = window.speechSynthesis.getVoices() || [];
+      for(var i=0;i<vs.length;i++){ if(/^en[-_]?US/i.test(vs[i].lang)){ u.voice = vs[i]; break; } }
+      if(!u.voice){ for(var j=0;j<vs.length;j++){ if(/^en/i.test(vs[j].lang)){ u.voice = vs[j]; break; } } }
+      if(typeof onend === 'function'){ u.onend = onend; u.onerror = onend; }
+      window.speechSynthesis.speak(u);
+      return true;
+    }catch(e){ return false; }
+  }
+
+  // 回傳值代表「這次發音有沒有被接手」，讓呼叫端維持原本的同步判斷。
+  window.kinSpeak = function(text, onend){
+    if(!text) return false;
+    var key = ttsKey();
+    if(!key) return speakSystem(text, onend);
+
+    var hit = ttsCacheGet(text);
+    if(hit){ ttsPlayB64(hit, onend); return true; }
+
+    ttsStop();
+    fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        input:{ text: String(text) },
+        voice:{ languageCode: ttsVoice().slice(0,5), name: ttsVoice() },
+        audioConfig:{ audioEncoding:'MP3', speakingRate:0.92 }
+      })
+    })
+    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,120)); }); })
+    .then(function(j){
+      if(!j.audioContent) throw new Error('回應沒有音訊內容');
+      ttsCachePut(text, j.audioContent);
+      ttsPlayB64(j.audioContent, onend);
+    })
+    .catch(function(err){
+      console.warn('Cloud TTS 失敗，改用系統語音：', err.message);
+      if(typeof window.__kinToast === 'function') window.__kinToast('雲端語音失敗，改用系統語音');
+      speakSystem(text, onend);
+    });
+    return true;
+  };
+
+  /* ---------- 語音設定介面 ---------- */
+  function ttsMsg(t, cls){
+    var m = document.getElementById('ttsMsg');
+    if(m){ m.textContent = t || ''; m.className = 'tts-msg ' + (cls || ''); }
+  }
+  function ttsPaint(){
+    var st = document.getElementById('ttsStatus');
+    var k  = ttsKey();
+    if(st){
+      st.className = 'tts-st' + (k ? ' on' : '');
+      st.textContent = k
+        ? ('使用 Cloud TTS　金鑰 ••••' + k.slice(-4) + '　已快取 ' + window.__kinTtsCacheCount() + ' 個字')
+        : '未設定金鑰，目前使用系統語音';
+    }
+    var i = document.getElementById('ttsKey');   if(i) i.value = k;
+    var v = document.getElementById('ttsVoice'); if(v) v.value = ttsVoice();
+  }
+  window.__kinPaintTts = ttsPaint;
+
+  window.ttsSetVoice = function(){
+    var v = document.getElementById('ttsVoice');
+    if(!v) return;
+    try{ localStorage.setItem(TTS_VOICE, v.value); }catch(e){}
+    ttsPaint();
+    ttsMsg('音色已改為 ' + v.value + '，換音色會重新產生音檔。', 'ok');
+  };
+  window.ttsSave = function(){
+    var i = document.getElementById('ttsKey');
+    var k = i ? i.value.trim() : '';
+    if(!k){ ttsMsg('請先貼上 API 金鑰。', 'err'); return; }
+    try{ localStorage.setItem(TTS_KEY, k); }catch(e){}
+    ttsPaint();
+    ttsMsg('金鑰已儲存，正在測試…');
+    window.ttsTest();
+  };
+  window.ttsTest = function(){
+    var k = ttsKey();
+    if(!k){ ttsMsg('尚未設定金鑰，將以系統語音試聽。'); speakSystem('vocabulary'); return; }
+    ttsMsg('測試中…');
+    fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(k), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        input:{ text:'vocabulary' },
+        voice:{ languageCode: ttsVoice().slice(0,5), name: ttsVoice() },
+        audioConfig:{ audioEncoding:'MP3', speakingRate:0.92 }
+      })
+    })
+    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+'　'+t.slice(0,160)); }); })
+    .then(function(j){
+      if(!j.audioContent) throw new Error('回應沒有音訊內容');
+      ttsPlayB64(j.audioContent);
+      ttsMsg('連線成功，已播放測試音。', 'ok');
+      ttsPaint();
+    })
+    .catch(function(err){
+      ttsMsg('測試失敗：' + err.message + '　請確認金鑰已啟用 Cloud Text-to-Speech API，且參照網址限制包含本網站。', 'err');
+    });
+  };
+  window.ttsClearCache = function(){
+    try{ localStorage.removeItem(TTS_CACHE); }catch(e){}
+    ttsPaint();
+    ttsMsg('已清除語音快取，下次發音會重新產生。', 'ok');
+  };
+  window.ttsClearKey = function(){
+    if(!confirm('確定清除這台裝置的語音金鑰嗎？清除後改用系統語音。')) return;
+    try{ localStorage.removeItem(TTS_KEY); }catch(e){}
+    var i = document.getElementById('ttsKey'); if(i) i.value = '';
+    ttsPaint();
+    ttsMsg('已清除金鑰，改用系統語音。', 'ok');
+  };
+
+  /* ---------- 彈窗 ---------- */
+  var cur = '';
+  function $(id){ return document.getElementById(id); }
+
+  function paintBtn(){
+    var b = $('nwAddBtn'); if(!b) return;
+    var saved = !!find(cur);
+    b.textContent = saved ? '移除收藏' : '加入收藏';
+    b.classList.toggle('on', saved);
+    var note = $('nwNote');
+    if(note) note.textContent = saved
+      ? '已在「我的收藏」中，可從書名列切換過去複習。'
+      : '收藏後會出現在「我的收藏」，並跟著 GitHub 同步。';
+  }
+  function paintNoteWords(){
+    document.querySelectorAll('.db-note .nw').forEach(function(el){
+      el.classList.toggle('saved', !!find(el.getAttribute('data-w')));
+    });
+  }
+  window.__kinPaintNoteWords = paintNoteWords;
+
+  window.nwOpen = function(word){
+    if(!word) return;
+    cur = String(word);
+    $('nwWord').textContent = cur;
+    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+    $('nwSub').textContent = e ? ('來自 ' + e.id + '　' + (e.word||'')) : '';
+    paintBtn();
+    $('nwMask').classList.add('show');
+    $('nwBox').classList.add('show');
+  };
+  window.nwClose = function(){
+    $('nwMask').classList.remove('show');
+    $('nwBox').classList.remove('show');
+  };
+  window.nwSpeak = function(){
+    if(!kinSpeak(cur) && typeof window.__kinToast === 'function'){
+      window.__kinToast('此裝置不支援語音朗讀');
+    }
+  };
+  window.nwToggle = function(){
+    if(!cur) return;
+    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+    var from = e ? (e.id + ' ' + (e.word||'')) : '';
+    var saved = !!find(cur);
+    if(saved){
+      if(!confirm('要把「' + cur + '」從收藏中移除嗎？')) return;
+      remove(cur);
+      if(typeof window.__kinToast === 'function') window.__kinToast('已移除 ' + cur);
+    }else{
+      add(cur, from);
+      if(typeof window.__kinToast === 'function') window.__kinToast('已收藏 ' + cur);
+    }
+    paintBtn();
+    paintNoteWords();
+    if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
+  };
+
+  // 開啟使用者專區時刷新語音設定
+  if(typeof window.usOpen === 'function'){
+    var _usOpenTts = window.usOpen;
+    window.usOpen = function(){
+      var r = _usOpenTts.apply(this, arguments);
+      ttsPaint(); ttsMsg('');
+      return r;
+    };
+  }
+
+  // 解說重新繪製後，同步標示已收藏的字
+  if(typeof window.showDetail === 'function'){
+    var _sd = window.showDetail;
+    window.showDetail = function(){
+      var r = _sd.apply(this, arguments);
+      setTimeout(paintNoteWords, 0);
+      return r;
+    };
+  }
+})();
+</script>
+
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -4169,10 +4612,19 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
   }
 
   function renderBookList(){
+    ensureCollectBook();
     var box = document.getElementById('bkList');
     if(!box || !window.BOOKS) return;
     box.innerHTML = window.BOOKS.map(function(b){
       var learned = statusCount(b.id, (window.KIN_USER && window.KIN_USER.id()) || 'paul');
+      if(b.virtual){
+        var n = (window.KIN_COLLECT ? window.KIN_COLLECT.load().length : 0);
+        b.count = n;
+        var cur0 = (window.CURRENT_BOOK && window.CURRENT_BOOK.id === b.id) ? ' is-current' : '';
+        return '<button type="button" class="bk-card' + cur0 + '" data-book="' + b.id + '">' +
+               '<div class="t">' + b.title + '</div><div class="s">' + b.subtitle + '</div>' +
+               '<div class="m">' + (n ? ('已收藏 <b>' + n + '</b> 字') : '尚未收藏任何單字') + '</div></button>';
+      }
       var meta = learned
         ? (b.count + ' 字 · 已標記 <b>' + learned + '</b>')
         : (b.count + ' 字 · 尚未開始');
@@ -4187,9 +4639,36 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
     });
   }
 
+  // 我的收藏是虛擬書，資料直接來自 localStorage，不需要 .js 檔。
+  function ensureCollectBook(){
+    var books = window.BOOKS || (window.BOOKS = []);
+    if(books.some(function(b){ return b.id === 'custom'; })) return;
+    books.push({ id:'custom', title:'我的收藏', subtitle:'從解說註解加入的單字',
+                 file:'', audioBase:'', count:0, virtual:true });
+  }
+  function collectPayload(){
+    var cards = (window.KIN_COLLECT ? window.KIN_COLLECT.load() : []);
+    return {
+      id:'custom', clipMap:{}, audioFix:function(){},
+      data: cards.map(function(c){
+        return { id:c.id, word:c.word, mean:c.mean||'', pos:'',
+                 level:'CUSTOM', level_label:'我的收藏',
+                 note:c.from ? ('加入來源：'+c.from) : '', en:'', ja:'' };
+      })
+    };
+  }
+  window.__kinReloadCollect = function(){
+    if(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom'){
+      var b = window.BOOKS.filter(function(x){ return x.id==='custom'; })[0];
+      if(b) applyBook(b, collectPayload());
+    }
+  };
+
   function loadBook(bookId){
+    ensureCollectBook();
     var book = (window.BOOKS || []).filter(function(b){ return b.id === bookId; })[0];
     if(!book){ alert('找不到書籍：' + bookId); return; }
+    if(book.virtual){ applyBook(book, collectPayload()); return; }
 
     var loading = document.getElementById('bkLoading');
     if(loading){ loading.style.display = ''; loading.textContent = '載入「' + book.title + '」…'; }
@@ -4228,6 +4707,10 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
 
     // 音檔路徑與紀錄鍵，全部隨書切換
     AUDIO_BASE = meta.audioBase || 'audio/kin1000/CLIPS/';
+    if(meta.virtual){
+      currentLevels=['all']; currentLevel='all';
+      try{ syncLevelUI(); }catch(e){}
+    }
     // 紀錄鍵同時帶書籍與使用者，兩人各自獨立。
     var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
     STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
@@ -4291,6 +4774,7 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
   };
 
   function boot(){
+    ensureCollectBook();
     var books = window.BOOKS || [];
     if(!books.length){
       window.openBookPicker();
