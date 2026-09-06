@@ -2534,6 +2534,7 @@ function srsBadge(){
 
 <!-- ===== GitHub 學習紀錄同步 v1.0 ===== -->
 <style>
+<<<<<<< HEAD
 #screen-list > .topbar #gsFab{
   flex:0 0 auto;width:34px;height:34px;border-radius:50%;
   border:1.5px solid #ccc;background:#fff;color:#999;
@@ -2547,6 +2548,20 @@ function srsBadge(){
 #screen-list > .topbar #gsFab.s-busy{border-color:#0078d4;color:#0078d4}
 #screen-list > .topbar #gsFab.s-ok{border-color:#2a9d4a;color:#2a9d4a}
 #screen-list > .topbar #gsFab.s-err{border-color:#e05050;color:#e05050}
+=======
+#gsFab{
+  position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 130px);
+  z-index:9998;width:44px;height:44px;border-radius:50%;
+  border:1.5px solid #bbb;background:#fff;color:#777;
+  font-size:11px;font-weight:800;line-height:1.1;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);touch-action:manipulation;
+}
+#gsFab.s-dirty{border-color:#e86f00;color:#e86f00}
+#gsFab.s-busy{border-color:#0078d4;color:#0078d4}
+#gsFab.s-ok{border-color:#2a9d4a;color:#2a9d4a}
+#gsFab.s-err{border-color:#e05050;color:#e05050}
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 #gsMask{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:9999;display:none}
 #gsMask.show{display:block}
 #gsPanel{
@@ -2575,6 +2590,10 @@ function srsBadge(){
 #gsMsg.info{color:#666}
 </style>
 
+<<<<<<< HEAD
+=======
+<button id="gsFab" onclick="gsOpen()" title="GitHub 同步">同步</button>
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 <div id="gsMask" onclick="gsClose()"></div>
 <div id="gsPanel" role="dialog" aria-label="GitHub 同步設定">
   <div class="hd">
@@ -2613,6 +2632,7 @@ function srsBadge(){
   var CFG_KEY='gsConfig', META_KEY='gsMeta', DEBOUNCE=10000;
 
   // 對齊本 App 實際使用的 localStorage 鍵名。
+<<<<<<< HEAD
   // 隨目前書籍動態組出要同步的鍵。
   function bookId(){
     return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000';
@@ -2624,6 +2644,17 @@ function srsBadge(){
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
+=======
+  var SYNC_KEYS=[
+    'kin-app-status-v1',   // 習得／要複習狀態
+    'kin-app-srs-v1',      // SM-2 複習排程
+    'kinLevels',           // 學習範圍複選
+    'kinPlayMode',         // 播放模式
+    'kinSpeed',            // 播放速度
+    'kin_phrase_times',    // 例句播放次數
+    'kinReturnContext'     // 最後瀏覽位置
+  ];
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 
   var cfg=readJSON(CFG_KEY)||{}, meta=readJSON(META_KEY)||{}, timer=null, busy=false;
 
@@ -2634,6 +2665,7 @@ function srsBadge(){
   function setState(s){
     var f=$('gsFab'); if(!f) return;
     f.className = s==='idle' ? '' : ('s-'+s);
+<<<<<<< HEAD
     f.textContent = s==='busy' ? '⟳' : (s==='err' ? '!' : '☁');
     f.title = s==='busy' ? '同步中' : (s==='ok' ? 'GitHub 同步：已同步'
             : (s==='err' ? 'GitHub 同步：失敗，點擊查看' : (s==='dirty' ? 'GitHub 同步：待上傳' : 'GitHub 同步')));
@@ -2641,6 +2673,13 @@ function srsBadge(){
   function msg(t,cls){ var m=$('gsMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
   function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo&&cfg.user); }
   function filePath(){ return 'data/'+(cfg.user||'paul')+'/'+bookId()+'.json'; }
+=======
+    f.textContent = s==='busy'?'···':(s==='ok'?'已同步':(s==='err'?'失敗':(s==='dirty'?'待同步':'同步')));
+  }
+  function msg(t,cls){ var m=$('gsMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
+  function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo&&cfg.user); }
+  function filePath(){ return 'data/'+(cfg.user||'paul')+'.json'; }
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
   function getURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath()+'?ref='+(cfg.branch||'main'); }
   function putURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath(); }
   function headers(){
@@ -2649,13 +2688,21 @@ function srsBadge(){
 
   function collect(){
     var data={};
+<<<<<<< HEAD
     syncKeys().forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) data[k]=v; });
+=======
+    SYNC_KEYS.forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) data[k]=v; });
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
     return {version:1,userId:cfg.user||'paul',updatedAt:new Date().toISOString(),deviceId:cfg.deviceId||'unknown',keys:data};
   }
   function apply(payload){
     if(!payload||!payload.keys) return false;
     Object.keys(payload.keys).forEach(function(k){
+<<<<<<< HEAD
       if(syncKeys().indexOf(k)>=0){ try{ _setItem.call(localStorage,k,payload.keys[k]); }catch(e){} }
+=======
+      if(SYNC_KEYS.indexOf(k)>=0){ try{ _setItem.call(localStorage,k,payload.keys[k]); }catch(e){} }
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
     });
     return true;
   }
@@ -2721,7 +2768,11 @@ function srsBadge(){
   var _setItem=localStorage.setItem;
   localStorage.setItem=function(k,v){
     _setItem.apply(localStorage,arguments);
+<<<<<<< HEAD
     if(syncKeys().indexOf(k)>=0) markDirty();
+=======
+    if(SYNC_KEYS.indexOf(k)>=0) markDirty();
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
   };
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='hidden'){ clearTimeout(timer); push(true); }
@@ -2831,6 +2882,7 @@ function srsBadge(){
   }
 })();
 </script>
+<<<<<<< HEAD
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -2950,5 +3002,7 @@ function srsBadge(){
   else boot();
 })();
 </script>
+=======
+>>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 </body>
 </html>
