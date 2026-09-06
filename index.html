@@ -573,6 +573,24 @@ body.mode-study #paneBrowse{display:none !important}
 }
 .topbar .book-switch .chev{font-size:18px;color:#bbb;font-weight:400;flex-shrink:0}
 .topbar .book-switch:active{background:#f5f5f5;transform:scale(.98)}
+/* 主畫面右上角使用者顯示，避免記錄寫到別人身上 */
+#screen-list > .topbar #userChip{
+  flex:0 0 auto;display:flex;align-items:center;gap:5px;
+  height:32px;max-width:108px;padding:0 9px 0 4px;
+  border:1.5px solid #ddd;border-radius:999px;background:#fff;
+  touch-action:manipulation;
+}
+#screen-list > .topbar #userChip:active{background:#f5f5f5;transform:scale(.95)}
+#screen-list > .topbar #userChip .av{
+  width:22px;height:22px;border-radius:50%;flex-shrink:0;
+  background:#c45c1a;color:#fff;font-size:11px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+#screen-list > .topbar #userChip .nm{
+  font-size:12px;font-weight:700;color:#333;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#screen-list > .topbar .book-switch{font-size:15px}
 
 
 /* CRITICAL pane toggle */
@@ -596,7 +614,7 @@ body.mode-browse #paneBrowse{display:block !important}
 <body class="mode-study">
 
 <!-- ===== 選書畫面 ===== -->
-<div id="screen-books">
+<div id="screen-books" class="hide">
   <div class="bk-head">
     <button type="button" class="bk-close" id="bkClose" onclick="closeBookPicker()" style="display:none" aria-label="關閉" title="關閉">×</button>
     <h1>選擇書籍</h1>
@@ -644,6 +662,7 @@ body.mode-browse #paneBrowse{display:block !important}
   <div class="topbar">
     <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
     <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
+    <button type="button" id="userChip" onclick="usOpen()" title="使用者專區"><span class="av">P</span><span class="nm">Paul</span></button>
     <button class="icon-btn" onclick="openFilter()" title="篩選">☰</button>
   </div>
   
@@ -2607,13 +2626,6 @@ function srsBadge(){
   </div>
   <div class="bd">
     <div class="stat" id="gsStat"></div>
-    <div class="row">
-      <label>使用者</label>
-      <select id="gsUser">
-        <option value="paul">Paul</option>
-        <option value="user2">使用者 2</option>
-      </select>
-    </div>
     <div class="row"><label>Repository owner（GitHub 帳號）</label><input id="gsOwner" placeholder="例如 paul-li" autocomplete="off"></div>
     <div class="row"><label>Repository name</label><input id="gsRepo" placeholder="例如 toeic-app" autocomplete="off"></div>
     <div class="row"><label>Branch</label><input id="gsBranch" placeholder="main" autocomplete="off"></div>
@@ -2641,15 +2653,25 @@ function srsBadge(){
   function bookId(){
     return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000';
   }
+  function userId(){
+    return (window.KIN_USER && window.KIN_USER.id()) || 'paul';
+  }
+  function userName(){
+    return (window.KIN_USER && window.KIN_USER.name()) || userId();
+  }
   function syncKeys(){
     return [
-      'book:' + bookId() + ':status',   // 習得／要複習狀態
-      'book:' + bookId() + ':srs',      // SM-2 複習排程
+      'book:' + bookId() + ':' + userId() + ':status',   // 習得／要複習狀態
+      'book:' + bookId() + ':' + userId() + ':srs',      // SM-2 複習排程
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
+  // 同步狀態依「使用者 + 書籍」分開記錄，切換後不會誤判新舊。
+  function metaKey(){ return META_KEY + ':' + userId() + ':' + bookId(); }
+  function getMeta(){ return readJSON(metaKey()) || {}; }
+  function setMeta(m){ writeJSON(metaKey(), m); }
 
-  var cfg=readJSON(CFG_KEY)||{}, meta=readJSON(META_KEY)||{}, timer=null, busy=false;
+  var cfg=readJSON(CFG_KEY)||{}, timer=null, busy=false;
 
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
   function writeJSON(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
@@ -2663,8 +2685,8 @@ function srsBadge(){
             : (s==='err' ? 'GitHub 同步：失敗，點擊查看' : (s==='dirty' ? 'GitHub 同步：待上傳' : 'GitHub 同步')));
   }
   function msg(t,cls){ var m=$('gsMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
-  function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo&&cfg.user); }
-  function filePath(){ return 'data/'+(cfg.user||'paul')+'/'+bookId()+'.json'; }
+  function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo); }
+  function filePath(){ return 'data/'+userId()+'/'+bookId()+'.json'; }
   function getURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath()+'?ref='+(cfg.branch||'main'); }
   function putURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath(); }
   function headers(){
@@ -2674,7 +2696,7 @@ function srsBadge(){
   function collect(){
     var data={};
     syncKeys().forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) data[k]=v; });
-    return {version:1,userId:cfg.user||'paul',updatedAt:new Date().toISOString(),deviceId:cfg.deviceId||'unknown',keys:data};
+    return {version:1,userId:userId(),userName:userName(),updatedAt:new Date().toISOString(),deviceId:cfg.deviceId||'unknown',keys:data};
   }
   function apply(payload){
     if(!payload||!payload.keys) return false;
@@ -2703,7 +2725,7 @@ function srsBadge(){
       if(res.status===404){ setState('idle'); if(!silent) msg('雲端尚無紀錄，按「立即同步」即可建立。','info'); return {notFound:true}; }
       if(!res.ok) throw new Error('HTTP '+res.status);
       var j=await res.json();
-      meta.sha=j.sha; writeJSON(META_KEY,meta);
+      var m1=getMeta(); m1.sha=j.sha; setMeta(m1);
       setState('ok');
       return {payload:JSON.parse(dec(j.content)),sha:j.sha};
     }catch(err){
@@ -2724,9 +2746,10 @@ function srsBadge(){
       var res=await fetch(putURL(),{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},headers()),body:JSON.stringify(body)});
       if(!res.ok){ throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,120)); }
       var out=await res.json();
-      meta.sha=out.content&&out.content.sha;
-      meta.lastSync=new Date().toISOString();
-      writeJSON(META_KEY,meta);
+      var m2=getMeta();
+      m2.sha=out.content&&out.content.sha;
+      m2.lastSync=new Date().toISOString();
+      setMeta(m2);
       setState('ok'); if(!silent) msg('已同步到 GitHub。','ok');
       renderStat();
       return true;
@@ -2754,15 +2777,15 @@ function srsBadge(){
 
   function renderStat(){
     var box=$('gsStat'); if(!box) return;
-    box.innerHTML='使用者：<b>'+(cfg.user||'未選擇')+'</b><br>'+
+    var m=getMeta();
+    box.innerHTML='使用者：<b>'+userName()+'</b>（'+userId()+'）<br>'+
       '檔案：<b>'+(configured()?filePath():'未設定')+'</b><br>'+
       'Token：<b>'+(cfg.token?('••••'+cfg.token.slice(-4)):'未設定')+'</b><br>'+
-      '最後同步：<b>'+(meta.lastSync?new Date(meta.lastSync).toLocaleString():'尚未同步')+'</b>';
+      '最後同步：<b>'+(m.lastSync?new Date(m.lastSync).toLocaleString():'尚未同步')+'</b>';
   }
 
   window.gsOpen=function(){
     $('gsMask').classList.add('show'); $('gsPanel').classList.add('show');
-    $('gsUser').value=cfg.user||'paul';
     $('gsOwner').value=cfg.owner||'';
     $('gsRepo').value=cfg.repo||'';
     $('gsBranch').value=cfg.branch||'main';
@@ -2772,13 +2795,12 @@ function srsBadge(){
   window.gsClose=function(){ $('gsMask').classList.remove('show'); $('gsPanel').classList.remove('show'); };
 
   window.gsSaveConfig=async function(){
-    cfg.user=$('gsUser').value;
     cfg.owner=$('gsOwner').value.trim();
     cfg.repo=$('gsRepo').value.trim();
     cfg.branch=$('gsBranch').value.trim()||'main';
     cfg.token=$('gsToken').value.trim();
     cfg.deviceId=cfg.deviceId||('dev-'+Math.random().toString(36).slice(2,8));
-    if(!configured()){ msg('請完整填寫 owner、repo、Token 並選擇使用者。','err'); return; }
+    if(!configured()){ msg('請完整填寫 owner、repo 與 Token。','err'); return; }
     writeJSON(CFG_KEY,cfg);
     msg('設定已儲存，正在測試連線…','info');
     var r=await pull(true);
@@ -2793,8 +2815,9 @@ function srsBadge(){
     if(!confirm('確定要用 GitHub 上的紀錄覆蓋這台裝置的本機紀錄嗎？此動作無法復原。')) return;
     var r=await pull(false);
     if(r&&r.payload&&apply(r.payload)){
-      meta.lastSync=r.payload.updatedAt||new Date().toISOString();
-      writeJSON(META_KEY,meta);
+      var m3=getMeta();
+      m3.lastSync=r.payload.updatedAt||new Date().toISOString();
+      setMeta(m3);
       msg('已從 GitHub 還原，重新整理後生效。','ok');
       setTimeout(function(){ location.reload(); },900);
     }
@@ -2804,7 +2827,7 @@ function srsBadge(){
     var blob=new Blob([JSON.stringify(collect(),null,2)],{type:'application/json'});
     var a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
-    a.download='toeic-progress-'+(cfg.user||'paul')+'.json';
+    a.download='toeic-progress-'+userId()+'-'+bookId()+'.json';
     a.click();
     setTimeout(function(){ URL.revokeObjectURL(a.href); },1500);
     msg('已匯出備份檔。','ok');
@@ -2832,8 +2855,11 @@ function srsBadge(){
 
   window.gsForget=function(){
     if(!confirm('確定清除這台裝置儲存的 Token 與同步設定嗎？學習紀錄不會被刪除。')) return;
-    try{ localStorage.removeItem(CFG_KEY); localStorage.removeItem(META_KEY); }catch(e){}
-    cfg={}; meta={};
+    try{
+      localStorage.removeItem(CFG_KEY);
+      Object.keys(localStorage).forEach(function(k){ if(k.indexOf(META_KEY)===0) localStorage.removeItem(k); });
+    }catch(e){}
+    cfg={};
     setState('idle'); renderStat(); msg('已清除本機 Token 與設定。','ok');
   };
 
@@ -2842,12 +2868,13 @@ function srsBadge(){
     pull(true).then(function(r){
       if(r&&r.payload&&r.payload.updatedAt){
         var remote=new Date(r.payload.updatedAt).getTime();
-        var local=meta.lastSync?new Date(meta.lastSync).getTime():0;
+        var m0=getMeta();
+        var local=m0.lastSync?new Date(m0.lastSync).getTime():0;
         // 只有雲端較新才套用，避免蓋掉本機尚未同步的操作。
         if(remote>local+1000){
           apply(r.payload);
-          meta.lastSync=r.payload.updatedAt;
-          writeJSON(META_KEY,meta);
+          m0.lastSync=r.payload.updatedAt;
+          setMeta(m0);
           location.reload();
         }
       }
@@ -2855,6 +2882,243 @@ function srsBadge(){
   }
 })();
 </script>
+<!-- ===== 使用者專區 ===== -->
+<style>
+#usMask{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:9999;display:none}
+#usMask.show{display:block}
+#usPanel{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(92vw,380px);max-height:86vh;overflow-y:auto;
+  background:#fff;border-radius:14px;z-index:10000;display:none;
+  box-shadow:0 12px 40px rgba(0,0,0,.28);
+}
+#usPanel.show{display:block}
+#usPanel .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eee}
+#usPanel .hd h3{margin:0;font-size:15px;font-weight:800;color:#111}
+#usPanel .hd button{width:30px;height:30px;border:0;background:transparent;font-size:20px;color:#888;line-height:1}
+#usPanel .bd{padding:14px 16px}
+#usPanel .who{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+#usPanel .who .big{
+  width:52px;height:52px;border-radius:50%;flex-shrink:0;
+  background:#c45c1a;color:#fff;font-size:22px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+#usPanel .who .txt .n{font-size:17px;font-weight:800;color:#111;line-height:1.3}
+#usPanel .who .txt .i{font-size:11px;color:#999;margin-top:2px}
+#usPanel h4{font-size:12px;color:#8a8580;font-weight:700;margin:16px 0 7px;letter-spacing:.03em}
+#usPanel .nameRow{display:flex;gap:8px}
+#usPanel .nameRow input{
+  flex:1;min-width:0;padding:10px;border:1px solid #ccc;border-radius:8px;
+  font-size:14px;color:#111;background:#fff;font-family:inherit;
+}
+#usPanel .nameRow button{
+  flex:0 0 auto;padding:0 16px;border-radius:8px;font-size:13px;font-weight:700;
+  border:1.5px solid #2a9d4a;background:#eef8f0;color:#2a9d4a;
+}
+#usPanel .uList{display:flex;flex-direction:column;gap:8px}
+#usPanel .uItem{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:11px 12px;border:1.5px solid #ddd;border-radius:10px;background:#fff;
+  touch-action:manipulation;
+}
+#usPanel .uItem:active{background:#fafafa}
+#usPanel .uItem.cur{border-color:#c45c1a;background:#fdf8f0}
+#usPanel .uItem .a{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  background:#ddd;color:#fff;font-size:13px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+}
+#usPanel .uItem.cur .a{background:#c45c1a}
+#usPanel .uItem .t{flex:1;min-width:0}
+#usPanel .uItem .t b{display:block;font-size:14px;color:#111;font-weight:700}
+#usPanel .uItem .t s{display:block;font-size:11px;color:#999;text-decoration:none;margin-top:1px}
+#usPanel .uItem .c{font-size:11px;color:#c45c1a;font-weight:800;flex-shrink:0}
+#usPanel .prog{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+#usPanel .prog .bk{font-size:12px;color:#8a8580;margin-bottom:8px}
+#usPanel .prog .bk b{color:#333}
+#usPanel .prog .g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+#usPanel .prog .g div .v{font-size:19px;font-weight:800}
+#usPanel .prog .g div .k{font-size:10px;color:#999;margin-top:2px}
+#usPanel .prog .g .ok .v{color:#2a9d4a}
+#usPanel .prog .g .rv .v{color:#e05050}
+#usPanel .prog .g .nw .v{color:#999}
+#usMsg{margin-top:12px;font-size:12px;line-height:1.7;min-height:18px}
+#usMsg.ok{color:#2a9d4a}
+#usMsg.err{color:#e05050}
+#usMsg.info{color:#666}
+#usPanel .tip{font-size:11px;color:#a09a94;line-height:1.7;margin-top:10px}
+</style>
+
+<div id="usMask" onclick="usClose()"></div>
+<div id="usPanel" role="dialog" aria-label="使用者專區">
+  <div class="hd">
+    <h3>使用者專區</h3>
+    <button onclick="usClose()" aria-label="關閉">×</button>
+  </div>
+  <div class="bd">
+    <div class="who">
+      <div class="big" id="usAvatar">P</div>
+      <div class="txt">
+        <div class="n" id="usName">Paul</div>
+        <div class="i" id="usId">帳號 ID：paul</div>
+      </div>
+    </div>
+
+    <h4>顯示名稱</h4>
+    <div class="nameRow">
+      <input id="usNameInput" maxlength="16" placeholder="輸入名稱" autocomplete="off">
+      <button onclick="usSaveName()">儲存</button>
+    </div>
+
+    <h4>本書進度</h4>
+    <div class="prog" id="usProg"></div>
+
+    <h4>切換使用者</h4>
+    <div class="uList" id="usList"></div>
+
+    <div id="usMsg" class="info"></div>
+    <div class="tip">名稱只影響畫面顯示。同步檔案一律使用帳號 ID，改名不會弄丟雲端紀錄。兩位使用者的習得與複習紀錄各自獨立儲存。</div>
+  </div>
+</div>
+
+<script>
+/* ===== 使用者系統：名稱可改，紀錄依帳號 ID 分開 ===== */
+(function(){
+  'use strict';
+  var KEY = 'kinUsers';
+  var DEF = { users:[{id:'paul',name:'Paul'},{id:'user2',name:'使用者 2'}], current:'paul' };
+
+  var st = (function(){
+    try{
+      var o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if(o && Array.isArray(o.users) && o.users.length && o.current) return o;
+    }catch(e){}
+    return JSON.parse(JSON.stringify(DEF));
+  })();
+
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(st)); }catch(e){} }
+  function find(id){
+    for(var i=0;i<st.users.length;i++) if(st.users[i].id===id) return st.users[i];
+    return null;
+  }
+  function initial(n){ return String(n||'?').trim().slice(0,1).toUpperCase(); }
+
+  window.KIN_USER = {
+    id:   function(){ return st.current || 'paul'; },
+    name: function(){ var u=find(st.current); return (u && u.name) || st.current || 'Paul'; },
+    list: function(){ return st.users.slice(); },
+    rename: function(id, name){
+      name = String(name||'').trim();
+      if(!name) return false;
+      var u = find(id); if(!u) return false;
+      u.name = name.slice(0,16); save(); paintChip(); return true;
+    },
+    switchTo: function(id){
+      if(!find(id) || id === st.current) return false;
+      st.current = id; save(); paintChip(); return true;
+    }
+  };
+
+  function paintChip(){
+    var chip = document.getElementById('userChip'); if(!chip) return;
+    var n = window.KIN_USER.name();
+    var av = chip.querySelector('.av'), nm = chip.querySelector('.nm');
+    if(av) av.textContent = initial(n);
+    if(nm) nm.textContent = n;
+    chip.title = '目前使用者：' + n + '　點擊開啟使用者專區';
+  }
+  window.__kinPaintUser = paintChip;
+
+  function $(id){ return document.getElementById(id); }
+  function msg(t, cls){ var m=$('usMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
+
+  function progressHtml(){
+    try{
+      if(typeof DATA === 'undefined' || !DATA.length) return '<div class="bk">尚未載入書籍</div>';
+      var ok=0, rev=0, neu=0;
+      for(var i=0;i<DATA.length;i++){
+        var s = statusMap[DATA[i].id] || '';
+        if(s==='ok') ok++; else if(s==='review') rev++; else neu++;
+      }
+      var title = (window.CURRENT_BOOK && window.CURRENT_BOOK.title) || '目前書籍';
+      return '<div class="bk"><b>' + title + '</b>　共 ' + DATA.length + ' 字</div>' +
+        '<div class="g">' +
+        '<div class="ok"><div class="v">' + ok  + '</div><div class="k">已習得</div></div>' +
+        '<div class="rv"><div class="v">' + rev + '</div><div class="k">要複習</div></div>' +
+        '<div class="nw"><div class="v">' + neu + '</div><div class="k">未學習</div></div>' +
+        '</div>';
+    }catch(e){ return '<div class="bk">讀取進度失敗</div>'; }
+  }
+
+  function countFor(userId){
+    try{
+      if(!window.CURRENT_BOOK) return null;
+      var raw = localStorage.getItem('book:' + window.CURRENT_BOOK.id + ':' + userId + ':status');
+      if(!raw) return 0;
+      return Object.keys(JSON.parse(raw) || {}).length;
+    }catch(e){ return null; }
+  }
+
+  function render(){
+    var cur = window.KIN_USER.id(), name = window.KIN_USER.name();
+    if($('usAvatar')) $('usAvatar').textContent = initial(name);
+    if($('usName'))   $('usName').textContent = name;
+    if($('usId'))     $('usId').textContent = '帳號 ID：' + cur;
+    if($('usNameInput')) $('usNameInput').value = name;
+    if($('usProg'))   $('usProg').innerHTML = progressHtml();
+
+    var box = $('usList'); if(!box) return;
+    box.innerHTML = window.KIN_USER.list().map(function(u){
+      var isCur = (u.id === cur);
+      var n = countFor(u.id);
+      var sub = (n === null) ? u.id : (u.id + '　已標記 ' + n + ' 字');
+      return '<button type="button" class="uItem' + (isCur ? ' cur' : '') + '" data-uid="' + u.id + '">' +
+             '<span class="a">' + initial(u.name) + '</span>' +
+             '<span class="t"><b>' + u.name + '</b><s>' + sub + '</s></span>' +
+             (isCur ? '<span class="c">使用中</span>' : '') + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.uItem'), function(el){
+      el.onclick = function(){ usSwitch(el.getAttribute('data-uid')); };
+    });
+  }
+
+  window.usOpen = function(){
+    $('usMask').classList.add('show');
+    $('usPanel').classList.add('show');
+    render(); msg('');
+  };
+  window.usClose = function(){
+    $('usMask').classList.remove('show');
+    $('usPanel').classList.remove('show');
+  };
+
+  window.usSaveName = function(){
+    var v = $('usNameInput').value;
+    if(!String(v||'').trim()){ msg('名稱不能空白。','err'); return; }
+    if(window.KIN_USER.rename(window.KIN_USER.id(), v)){
+      render(); msg('名稱已更新為「' + window.KIN_USER.name() + '」。','ok');
+    }else{
+      msg('更新失敗。','err');
+    }
+  };
+
+  window.usSwitch = function(id){
+    if(id === window.KIN_USER.id()){ msg('已經是目前使用者。','info'); return; }
+    var target = null;
+    window.KIN_USER.list().forEach(function(u){ if(u.id === id) target = u; });
+    if(!target) return;
+    if(!confirm('切換到「' + target.name + '」？\n\n兩人的學習紀錄分開儲存，不會互相覆蓋。')) return;
+    window.KIN_USER.switchTo(id);
+    if(typeof window.__kinReapplyBook === 'function') window.__kinReapplyBook();
+    render();
+    msg('已切換到「' + target.name + '」。','ok');
+  };
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintChip);
+  else paintChip();
+})();
+</script>
+
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -2862,13 +3126,15 @@ function srsBadge(){
   'use strict';
   var LAST_KEY = 'kinLastBook';
   var pending = null;
+  var loadedFiles = {};      // 已載入過的書籍檔，避免重複下載
+  var pickerOpen = false;    // 使用者手動開啟選書時為 true
 
   // 書籍檔會呼叫這個函式把資料交出來。
   window.registerBook = function(book){ pending = book; };
 
-  function statusCount(bookId){
+  function statusCount(bookId, userId){
     try{
-      var raw = localStorage.getItem('book:' + bookId + ':status');
+      var raw = localStorage.getItem('book:' + bookId + ':' + (userId||'paul') + ':status');
       if(!raw) return 0;
       return Object.keys(JSON.parse(raw) || {}).length;
     }catch(e){ return 0; }
@@ -2878,7 +3144,7 @@ function srsBadge(){
     var box = document.getElementById('bkList');
     if(!box || !window.BOOKS) return;
     box.innerHTML = window.BOOKS.map(function(b){
-      var learned = statusCount(b.id);
+      var learned = statusCount(b.id, (window.KIN_USER && window.KIN_USER.id()) || 'paul');
       var meta = learned
         ? (b.count + ' 字 · 已標記 <b>' + learned + '</b>')
         : (b.count + ' 字 · 尚未開始');
@@ -2900,16 +3166,23 @@ function srsBadge(){
     var loading = document.getElementById('bkLoading');
     if(loading){ loading.style.display = ''; loading.textContent = '載入「' + book.title + '」…'; }
 
+    // 已載入過就直接套用，不重新下載，也不會被 onload 時序影響。
+    if(loadedFiles[book.id]){
+      applyBook(book, loadedFiles[book.id]);
+      return;
+    }
+
     var sc = document.createElement('script');
     sc.src = book.file;
     sc.onerror = function(){
-      if(loading) loading.textContent = '載入失敗：' + book.file;
+      if(loading) loading.textContent = '載入失敗：' + book.file + '（請確認檔案已上傳）';
     };
     sc.onload = function(){
       if(!pending || pending.id !== book.id){
         if(loading) loading.textContent = '書籍資料格式不正確：' + book.file;
         return;
       }
+      loadedFiles[book.id] = pending;
       applyBook(book, pending);
       pending = null;
     };
@@ -2926,9 +3199,12 @@ function srsBadge(){
 
     // 音檔路徑與紀錄鍵，全部隨書切換
     AUDIO_BASE = meta.audioBase || 'audio/kin1000/CLIPS/';
-    STORE_KEY  = 'book:' + meta.id + ':status';
-    SRS_KEY    = 'book:' + meta.id + ':srs';
+    // 紀錄鍵同時帶書籍與使用者，兩人各自獨立。
+    var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
+    STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
+    SRS_KEY    = 'book:' + meta.id + ':' + uid + ':srs';
     window.CURRENT_BOOK = meta;
+    if(typeof window.__kinPaintUser === 'function') window.__kinPaintUser();
 
     // 重新讀取這本書的紀錄
     if(typeof loadStatus === 'function') loadStatus();
@@ -2939,8 +3215,9 @@ function srsBadge(){
     var title = document.getElementById('bookTitle');
     if(title) title.textContent = meta.title + ' 全集合';
 
+    pickerOpen = false;
     var screen = document.getElementById('screen-books');
-    if(screen) screen.classList.add('hide');
+    if(screen){ screen.classList.add('hide'); screen.style.display = 'none'; }
 
     // 啟動主畫面
     currentList = filtered();
@@ -2953,7 +3230,8 @@ function srsBadge(){
   // 回到選書畫面
   window.openBookPicker = function(){
     var screen = document.getElementById('screen-books');
-    if(!screen) return;
+    if(!screen){ alert('選書畫面尚未載入，請重新整理頁面。'); return; }
+    pickerOpen = true;
     var loading = document.getElementById('bkLoading');
     if(loading) loading.style.display = 'none';
     renderBookList();
@@ -2961,23 +3239,37 @@ function srsBadge(){
     var close = document.getElementById('bkClose');
     if(close) close.style.display = window.CURRENT_BOOK ? '' : 'none';
     screen.classList.remove('hide');
+    screen.style.display = 'block';
     window.scrollTo(0,0);
+  };
+
+  // 切換使用者後重新套用目前書籍，重讀該使用者的紀錄。
+  window.__kinReapplyBook = function(){
+    if(window.CURRENT_BOOK) loadBook(window.CURRENT_BOOK.id);
   };
 
   window.closeBookPicker = function(){
     if(!window.CURRENT_BOOK) return;
+    pickerOpen = false;
     var screen = document.getElementById('screen-books');
-    if(screen) screen.classList.add('hide');
+    if(screen){ screen.classList.add('hide'); screen.style.display = 'none'; }
   };
 
   function boot(){
-    renderBookList();
+    var books = window.BOOKS || [];
+    if(!books.length){
+      window.openBookPicker();
+      var box = document.getElementById('bkList');
+      if(box) box.innerHTML = '<div class="bk-loading">找不到 books.js，請確認檔案已上傳。</div>';
+      return;
+    }
     var last = '';
     try{ last = localStorage.getItem(LAST_KEY) || ''; }catch(e){}
-    var exists = (window.BOOKS || []).some(function(b){ return b.id === last; });
-    // 只有一本書時直接進入；有多本則記住上次選擇
+    var exists = books.some(function(b){ return b.id === last; });
+    // 記住上次選擇；沒有紀錄且只有一本時直接進入，否則停在選書畫面。
     if(exists) loadBook(last);
-    else if((window.BOOKS || []).length === 1) loadBook(window.BOOKS[0].id);
+    else if(books.length === 1) loadBook(books[0].id);
+    else window.openBookPicker();
   }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
