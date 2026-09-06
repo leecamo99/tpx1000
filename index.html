@@ -2501,5 +2501,300 @@ function srsBadge(){
 })();
 </script>
 
+<!-- ===== GitHub 學習紀錄同步 v1.0 ===== -->
+<style>
+#gsFab{
+  position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 130px);
+  z-index:9998;width:44px;height:44px;border-radius:50%;
+  border:1.5px solid #bbb;background:#fff;color:#777;
+  font-size:11px;font-weight:800;line-height:1.1;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);touch-action:manipulation;
+}
+#gsFab.s-dirty{border-color:#e86f00;color:#e86f00}
+#gsFab.s-busy{border-color:#0078d4;color:#0078d4}
+#gsFab.s-ok{border-color:#2a9d4a;color:#2a9d4a}
+#gsFab.s-err{border-color:#e05050;color:#e05050}
+#gsMask{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:9999;display:none}
+#gsMask.show{display:block}
+#gsPanel{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(92vw,380px);max-height:86vh;overflow-y:auto;
+  background:#fff;border-radius:14px;z-index:10000;display:none;
+  box-shadow:0 12px 40px rgba(0,0,0,.28);
+}
+#gsPanel.show{display:block}
+#gsPanel .hd{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #eee}
+#gsPanel .hd h3{margin:0;font-size:15px;font-weight:800;color:#111}
+#gsPanel .hd button{width:30px;height:30px;border:0;background:transparent;font-size:20px;color:#888;line-height:1}
+#gsPanel .bd{padding:14px 16px}
+#gsPanel .row{margin-bottom:11px}
+#gsPanel label{display:block;font-size:12px;color:#666;margin-bottom:4px;font-weight:700}
+#gsPanel input,#gsPanel select{width:100%;box-sizing:border-box;padding:9px 10px;border:1px solid #ccc;border-radius:8px;font-size:13px;color:#111;background:#fff}
+#gsPanel .stat{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:10px 12px;font-size:12px;color:#444;line-height:1.9;margin-bottom:12px}
+#gsPanel .stat b{color:#111}
+#gsPanel .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+#gsPanel .btns button{flex:1 1 46%;min-width:0;padding:11px 8px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #ccc;background:#fff;color:#444}
+#gsPanel .btns button.pri{border-color:#2a9d4a;color:#2a9d4a;background:#eef8f0}
+#gsPanel .btns button.warn{border-color:#e05050;color:#e05050;background:#fdf0f0}
+#gsMsg{margin-top:10px;font-size:12px;line-height:1.7;min-height:18px}
+#gsMsg.ok{color:#2a9d4a}
+#gsMsg.err{color:#e05050}
+#gsMsg.info{color:#666}
+</style>
+
+<button id="gsFab" onclick="gsOpen()" title="GitHub 同步">同步</button>
+<div id="gsMask" onclick="gsClose()"></div>
+<div id="gsPanel" role="dialog" aria-label="GitHub 同步設定">
+  <div class="hd">
+    <h3>GitHub 學習紀錄同步</h3>
+    <button onclick="gsClose()" aria-label="關閉">×</button>
+  </div>
+  <div class="bd">
+    <div class="stat" id="gsStat"></div>
+    <div class="row">
+      <label>使用者</label>
+      <select id="gsUser">
+        <option value="paul">Paul</option>
+        <option value="user2">使用者 2</option>
+      </select>
+    </div>
+    <div class="row"><label>Repository owner（GitHub 帳號）</label><input id="gsOwner" placeholder="例如 paul-li" autocomplete="off"></div>
+    <div class="row"><label>Repository name</label><input id="gsRepo" placeholder="例如 toeic-app" autocomplete="off"></div>
+    <div class="row"><label>Branch</label><input id="gsBranch" placeholder="main" autocomplete="off"></div>
+    <div class="row"><label>Fine-grained Token（只存在這台裝置）</label><input id="gsToken" type="password" placeholder="github_pat_..." autocomplete="off"></div>
+    <div class="btns">
+      <button class="pri" onclick="gsSaveConfig()">連線並儲存</button>
+      <button onclick="gsSyncNow()">立即同步</button>
+      <button onclick="gsPullNow()">從 GitHub 下載</button>
+      <button onclick="gsExport()">匯出備份</button>
+      <button onclick="gsImport()">匯入備份</button>
+      <button class="warn" onclick="gsForget()">清除本機 Token</button>
+    </div>
+    <div id="gsMsg" class="info"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  var CFG_KEY='gsConfig', META_KEY='gsMeta', DEBOUNCE=10000;
+
+  // 對齊本 App 實際使用的 localStorage 鍵名。
+  var SYNC_KEYS=[
+    'kin-app-status-v1',   // 習得／要複習狀態
+    'kin-app-srs-v1',      // SM-2 複習排程
+    'kinLevels',           // 學習範圍複選
+    'kinPlayMode',         // 播放模式
+    'kinSpeed',            // 播放速度
+    'kin_phrase_times',    // 例句播放次數
+    'kinReturnContext'     // 最後瀏覽位置
+  ];
+
+  var cfg=readJSON(CFG_KEY)||{}, meta=readJSON(META_KEY)||{}, timer=null, busy=false;
+
+  function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
+  function writeJSON(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function $(id){ return document.getElementById(id); }
+
+  function setState(s){
+    var f=$('gsFab'); if(!f) return;
+    f.className = s==='idle' ? '' : ('s-'+s);
+    f.textContent = s==='busy'?'···':(s==='ok'?'已同步':(s==='err'?'失敗':(s==='dirty'?'待同步':'同步')));
+  }
+  function msg(t,cls){ var m=$('gsMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
+  function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo&&cfg.user); }
+  function filePath(){ return 'data/'+(cfg.user||'paul')+'.json'; }
+  function getURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath()+'?ref='+(cfg.branch||'main'); }
+  function putURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath(); }
+  function headers(){
+    return {'Authorization':'Bearer '+cfg.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  }
+
+  function collect(){
+    var data={};
+    SYNC_KEYS.forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) data[k]=v; });
+    return {version:1,userId:cfg.user||'paul',updatedAt:new Date().toISOString(),deviceId:cfg.deviceId||'unknown',keys:data};
+  }
+  function apply(payload){
+    if(!payload||!payload.keys) return false;
+    Object.keys(payload.keys).forEach(function(k){
+      if(SYNC_KEYS.indexOf(k)>=0){ try{ _setItem.call(localStorage,k,payload.keys[k]); }catch(e){} }
+    });
+    return true;
+  }
+
+  function enc(str){
+    var b=new TextEncoder().encode(str), s='';
+    for(var i=0;i<b.length;i++) s+=String.fromCharCode(b[i]);
+    return btoa(s);
+  }
+  function dec(b64){
+    var bin=atob((b64||'').replace(/\s/g,'')), arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    return new TextDecoder().decode(arr);
+  }
+
+  async function pull(silent){
+    if(!configured()){ if(!silent) msg('請先完成設定並儲存。','err'); return null; }
+    setState('busy');
+    try{
+      var res=await fetch(getURL(),{headers:headers(),cache:'no-store'});
+      if(res.status===404){ setState('idle'); if(!silent) msg('雲端尚無紀錄，按「立即同步」即可建立。','info'); return {notFound:true}; }
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      var j=await res.json();
+      meta.sha=j.sha; writeJSON(META_KEY,meta);
+      setState('ok');
+      return {payload:JSON.parse(dec(j.content)),sha:j.sha};
+    }catch(err){
+      setState('err'); if(!silent) msg('下載失敗：'+err.message,'err');
+      return null;
+    }
+  }
+
+  async function push(silent){
+    if(!configured()||busy) return false;
+    busy=true; setState('busy');
+    try{
+      var head=await fetch(getURL(),{headers:headers(),cache:'no-store'});
+      var sha=null;
+      if(head.ok){ sha=(await head.json()).sha; }
+      var body={message:'Update '+filePath()+' from '+(cfg.deviceId||'device'),content:enc(JSON.stringify(collect(),null,2)),branch:cfg.branch||'main'};
+      if(sha) body.sha=sha;
+      var res=await fetch(putURL(),{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},headers()),body:JSON.stringify(body)});
+      if(!res.ok){ throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,120)); }
+      var out=await res.json();
+      meta.sha=out.content&&out.content.sha;
+      meta.lastSync=new Date().toISOString();
+      writeJSON(META_KEY,meta);
+      setState('ok'); if(!silent) msg('已同步到 GitHub。','ok');
+      renderStat();
+      return true;
+    }catch(err){
+      setState('err'); if(!silent) msg('上傳失敗：'+err.message,'err');
+      return false;
+    }finally{ busy=false; }
+  }
+
+  function markDirty(){
+    if(!configured()) return;
+    setState('dirty');
+    clearTimeout(timer);
+    timer=setTimeout(function(){ push(true); },DEBOUNCE);
+  }
+  var _setItem=localStorage.setItem;
+  localStorage.setItem=function(k,v){
+    _setItem.apply(localStorage,arguments);
+    if(SYNC_KEYS.indexOf(k)>=0) markDirty();
+  };
+  document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState==='hidden'){ clearTimeout(timer); push(true); }
+  });
+  window.addEventListener('online',function(){ if(configured()) push(true); });
+
+  function renderStat(){
+    var box=$('gsStat'); if(!box) return;
+    box.innerHTML='使用者：<b>'+(cfg.user||'未選擇')+'</b><br>'+
+      '檔案：<b>'+(configured()?filePath():'未設定')+'</b><br>'+
+      'Token：<b>'+(cfg.token?('••••'+cfg.token.slice(-4)):'未設定')+'</b><br>'+
+      '最後同步：<b>'+(meta.lastSync?new Date(meta.lastSync).toLocaleString():'尚未同步')+'</b>';
+  }
+
+  window.gsOpen=function(){
+    $('gsMask').classList.add('show'); $('gsPanel').classList.add('show');
+    $('gsUser').value=cfg.user||'paul';
+    $('gsOwner').value=cfg.owner||'';
+    $('gsRepo').value=cfg.repo||'';
+    $('gsBranch').value=cfg.branch||'main';
+    $('gsToken').value=cfg.token||'';
+    renderStat(); msg('');
+  };
+  window.gsClose=function(){ $('gsMask').classList.remove('show'); $('gsPanel').classList.remove('show'); };
+
+  window.gsSaveConfig=async function(){
+    cfg.user=$('gsUser').value;
+    cfg.owner=$('gsOwner').value.trim();
+    cfg.repo=$('gsRepo').value.trim();
+    cfg.branch=$('gsBranch').value.trim()||'main';
+    cfg.token=$('gsToken').value.trim();
+    cfg.deviceId=cfg.deviceId||('dev-'+Math.random().toString(36).slice(2,8));
+    if(!configured()){ msg('請完整填寫 owner、repo、Token 並選擇使用者。','err'); return; }
+    writeJSON(CFG_KEY,cfg);
+    msg('設定已儲存，正在測試連線…','info');
+    var r=await pull(true);
+    if(r===null){ msg('連線失敗。請確認 Token 權限為 Contents: Read and write。','err'); return; }
+    msg('連線成功。'+(r.notFound?'雲端尚無紀錄，按「立即同步」即可建立。':'已讀取雲端紀錄。'),'ok');
+    renderStat();
+  };
+
+  window.gsSyncNow=function(){ push(false); };
+
+  window.gsPullNow=async function(){
+    if(!confirm('確定要用 GitHub 上的紀錄覆蓋這台裝置的本機紀錄嗎？此動作無法復原。')) return;
+    var r=await pull(false);
+    if(r&&r.payload&&apply(r.payload)){
+      meta.lastSync=r.payload.updatedAt||new Date().toISOString();
+      writeJSON(META_KEY,meta);
+      msg('已從 GitHub 還原，重新整理後生效。','ok');
+      setTimeout(function(){ location.reload(); },900);
+    }
+  };
+
+  window.gsExport=function(){
+    var blob=new Blob([JSON.stringify(collect(),null,2)],{type:'application/json'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='toeic-progress-'+(cfg.user||'paul')+'.json';
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },1500);
+    msg('已匯出備份檔。','ok');
+  };
+
+  window.gsImport=function(){
+    var inp=document.createElement('input');
+    inp.type='file'; inp.accept='application/json';
+    inp.onchange=function(){
+      var f=inp.files&&inp.files[0]; if(!f) return;
+      if(!confirm('匯入會覆蓋這台裝置的本機紀錄，確定繼續嗎？')) return;
+      var fr=new FileReader();
+      fr.onload=function(){
+        try{
+          if(apply(JSON.parse(fr.result))){
+            msg('已匯入備份，重新整理後生效。','ok');
+            setTimeout(function(){ location.reload(); },900);
+          }else{ msg('檔案格式不正確。','err'); }
+        }catch(e){ msg('匯入失敗：'+e.message,'err'); }
+      };
+      fr.readAsText(f);
+    };
+    inp.click();
+  };
+
+  window.gsForget=function(){
+    if(!confirm('確定清除這台裝置儲存的 Token 與同步設定嗎？學習紀錄不會被刪除。')) return;
+    try{ localStorage.removeItem(CFG_KEY); localStorage.removeItem(META_KEY); }catch(e){}
+    cfg={}; meta={};
+    setState('idle'); renderStat(); msg('已清除本機 Token 與設定。','ok');
+  };
+
+  setState('idle');
+  if(configured()){
+    pull(true).then(function(r){
+      if(r&&r.payload&&r.payload.updatedAt){
+        var remote=new Date(r.payload.updatedAt).getTime();
+        var local=meta.lastSync?new Date(meta.lastSync).getTime():0;
+        // 只有雲端較新才套用，避免蓋掉本機尚未同步的操作。
+        if(remote>local+1000){
+          apply(r.payload);
+          meta.lastSync=r.payload.updatedAt;
+          writeJSON(META_KEY,meta);
+          location.reload();
+        }
+      }
+    });
+  }
+})();
+</script>
 </body>
 </html>
