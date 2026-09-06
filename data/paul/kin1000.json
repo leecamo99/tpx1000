@@ -1,13 +1,11 @@
 {
   "version": 1,
   "userId": "paul",
-  "updatedAt": "2026-09-06T14:37:30.356Z",
-  "deviceId": "dev-4zl46m",
+  "updatedAt": "2026-09-06T14:50:23.353Z",
+  "deviceId": "dev-0rf2s3",
   "keys": {
-    "book:kin1000:status": "{\"001\":\"ok\",\"002\":\"ok\",\"003\":\"ok\"}",
-    "book:kin1000:srs": "{\"cards\":{\"001\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"002\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"003\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"}},\"log\":{\"2026-09-06\":3},\"v\":1}",
     "kinLevels": "[\"all\"]",
-    "kinSpeed": "1.75",
-    "kinReturnContext": "{\"id\":\"005\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788691624899}"
+    "kinPlayMode": "once",
+    "kinReturnContext": "{\"id\":\"070\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788691555747}"
   }
 }
