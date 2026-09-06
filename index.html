@@ -4048,6 +4048,7 @@ function srsBadge(){
 #navBack{opacity:.32;pointer-events:none;transition:opacity .18s}
 #navBack.ready{opacity:1;pointer-events:auto}
 #navBack .ico{font-size:18px;font-weight:900}
+#navBack .ico svg{display:block;color:inherit}
 #navBack.ready{color:#c45c1a}
 #navBack.ready .ico{color:#c45c1a}
 body.theme-dark #navBack.ready,
@@ -4113,7 +4114,14 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
     var b = document.createElement('button');
     b.type = 'button';
     b.id = 'navBack';
-    b.innerHTML = '<span class="ico">↩</span>解說';
+    // 用 SVG 畫迴轉箭頭，避免 iOS 把箭頭字元當成 emoji 顯示成藍底方框。
+    b.innerHTML = '<span class="ico">' +
+      '<svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">' +
+      '<path d="M9 7h6a4.5 4.5 0 0 1 0 9h-4" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '<path d="M12.4 12.4 8.6 16l3.8 3.6" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg></span>解說';
     b.onclick = window.navBackGo;
     nav.appendChild(b);
 
