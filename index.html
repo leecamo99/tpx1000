@@ -1237,8 +1237,7 @@ function setListMode(mode){
   if(window._kinReturnLock && Date.now()<window._kinReturnLock && mode!=='browse') return;
   window._kinStudyQueueActive=false;
   listMode = (mode === 'browse') ? 'browse' : 'study';
-  document.body.className = document.body.className
-    .replace(/\bmode-study\b/g,'').replace(/\bmode-browse\b/g,'').replace(/\s+/g,' ').trim();
+  document.body.classList.remove('mode-study','mode-browse','mode-srs');
   document.body.classList.add(listMode === 'browse' ? 'mode-browse' : 'mode-study');
   var ns = document.getElementById('navStudy');
   var nl = document.getElementById('navList');
@@ -2485,7 +2484,9 @@ function srsStreak(){
 
 /* ================= 畫面 ================= */
 function srsClose(){
-  document.body.className = 'mode-study';
+  // 只切換模式類別，保留 theme-dark 等其他狀態。
+  document.body.classList.remove('mode-srs','mode-browse');
+  document.body.classList.add('mode-study');
   var sb = document.getElementById('navSrs'); if(sb) sb.classList.remove('active');
   var ns = document.getElementById('navStudy'); if(ns) ns.classList.add('active');
   var nl = document.getElementById('navList'); if(nl) nl.classList.remove('active');
@@ -2495,7 +2496,8 @@ function srsClose(){
   window.scrollTo(0,0);
 }
 function srsOpen(){
-  document.body.className = 'mode-srs';
+  document.body.classList.remove('mode-study','mode-browse');
+  document.body.classList.add('mode-srs');
   var ids = ['navStudy','navList','navSrs'];
   ids.forEach(function(i){ var b=document.getElementById(i); if(b) b.classList.remove('active'); });
   var b = document.getElementById('navSrs'); if(b) b.classList.add('active');
@@ -2575,7 +2577,8 @@ function srsRender(){
 function srsStartDue(){
   var due = srsDueList();
   if(!due.length) return;
-  document.body.className = 'mode-study';
+  document.body.classList.remove('mode-srs','mode-browse');
+  document.body.classList.add('mode-study');
   var b = document.getElementById('navSrs'); if(b) b.classList.remove('active');
   var s = document.getElementById('navStudy'); if(s) s.classList.add('active');
   currentList = due; currentIdx = 0;
