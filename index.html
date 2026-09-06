@@ -2947,6 +2947,34 @@ function srsBadge(){
 #usMsg.err{color:#e05050}
 #usMsg.info{color:#666}
 #usPanel .tip{font-size:11px;color:#a09a94;line-height:1.7;margin-top:10px}
+/* 藍牙遙控器設定 */
+.rc-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.rc-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
+.rc-sw input{width:20px;height:20px;accent-color:#c45c1a;flex:0 0 auto}
+.rc-map{margin:8px 0 4px;border-top:1px solid #ececec;padding-top:8px}
+.rc-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.rc-row .act{width:78px;flex:0 0 auto;color:#655f5a;font-weight:700}
+.rc-row .keys{flex:1;min-width:0;color:#111;font-size:11px;line-height:1.6}
+.rc-row .keys kbd{display:inline-block;background:#fff;border:1px solid #ddd;border-radius:4px;
+  padding:1px 6px;margin:1px 3px 1px 0;font:600 11px/17px system-ui;color:#333}
+.rc-detect{width:100%;margin-top:8px;padding:10px;border-radius:9px;font-size:13px;font-weight:700;
+  border:1.5px solid #c45c1a;background:#fff;color:#c45c1a}
+.rc-detect.on{background:#c45c1a;color:#fff}
+.rc-result{font-size:12px;color:#666;line-height:1.8;margin-top:8px;min-height:16px}
+.rc-result b{color:#c45c1a;font-size:13px}
+.rc-assign{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.rc-assign button{flex:1 1 46%;padding:8px 4px;border-radius:8px;font-size:12px;font-weight:700;
+  border:1.5px solid #ccc;background:#fff;color:#444}
+.rc-assign button.rm{flex:1 1 100%;border-color:#e05050;color:#e05050;background:#fdf0f0}
+/* 遙控器操作提示 */
+#rcToast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 64px);
+  transform:translateX(-50%) translateY(-6px);z-index:10002;
+  background:rgba(35,33,30,.92);color:#fff;padding:9px 18px;border-radius:20px;
+  font-size:15px;font-weight:700;opacity:0;pointer-events:none;transition:.13s;white-space:nowrap;
+  box-shadow:0 4px 18px rgba(0,0,0,.22)}
+#rcToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#rcToast.ok{background:rgba(42,157,74,.94)}
+#rcToast.rev{background:rgba(224,80,80,.94)}
 </style>
 
 <div id="usMask" onclick="usClose()"></div>
@@ -2975,6 +3003,22 @@ function srsBadge(){
 
     <h4>切換使用者</h4>
     <div class="uList" id="usList"></div>
+
+    <h4>藍牙遙控器</h4>
+    <div class="rc-box">
+      <label class="rc-sw">
+        <span>啟用遙控器模式</span>
+        <input type="checkbox" id="rcEnable" onchange="rcToggle()">
+      </label>
+      <label class="rc-sw">
+        <span>標記後自動下一個</span>
+        <input type="checkbox" id="rcAutoNext" onchange="rcToggleAuto()">
+      </label>
+      <div class="rc-map" id="rcMap"></div>
+      <button type="button" class="rc-detect" id="rcDetectBtn" onclick="rcDetect()">按鍵偵測</button>
+      <div class="rc-result" id="rcResult"></div>
+      <div class="tip">遙控器需為「藍牙鍵盤」模式。iPhone 無法攔截音量鍵，只送音量訊號的自拍遙控器不適用。主畫面與解說頁都可操作，標記時不會中斷播放。</div>
+    </div>
 
     <div id="usMsg" class="info"></div>
     <div class="tip">名稱只影響畫面顯示。同步檔案一律使用帳號 ID，改名不會弄丟雲端紀錄。兩位使用者的習得與複習紀錄各自獨立儲存。</div>
@@ -3116,6 +3160,233 @@ function srsBadge(){
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintChip);
   else paintChip();
+})();
+</script>
+
+<div id="rcToast"></div>
+<script>
+/* ===== 藍牙遙控器（4 顆按鈕即可操作） =====
+   多數遙控器為藍牙鍵盤，會送出標準按鍵事件。
+   主畫面與解說頁共用同一組按鍵；標記時不中斷播放。 */
+(function(){
+  'use strict';
+  var KEY = 'kinRemote';
+  var DEF = {
+    enabled: true,
+    autoNext: false,
+    keys: {
+      prev:   ['ArrowLeft','PageUp'],
+      next:   ['ArrowRight','PageDown'],
+      ok:     ['ArrowUp','Enter'],
+      review: ['ArrowDown']
+    }
+  };
+  var LABEL = { prev:'上一個', next:'下一個', ok:'標記習得', review:'標記要複習' };
+  var ORDER = ['prev','next','ok','review'];
+
+  var cfg = (function(){
+    try{
+      var o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if(o && o.keys) {
+        ORDER.forEach(function(a){ if(!Array.isArray(o.keys[a])) o.keys[a] = DEF.keys[a].slice(); });
+        return o;
+      }
+    }catch(e){}
+    return JSON.parse(JSON.stringify(DEF));
+  })();
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){} }
+
+  var detecting = false, lastKey = '';
+
+  function $(id){ return document.getElementById(id); }
+
+  function toast(text, kind){
+    var el = $('rcToast'); if(!el) return;
+    el.textContent = text;
+    el.className = 'show' + (kind ? ' ' + kind : '');
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.className = ''; }, 800);
+  }
+
+  function detailActive(){
+    var s = $('screen-detail');
+    return !!(s && s.classList.contains('active')) && !document.body.classList.contains('mode-srs');
+  }
+  // 任一面板開啟時不攔截按鍵，避免影響設定操作
+  function panelOpen(){
+    var books = $('screen-books');
+    if(books && !books.classList.contains('hide') && books.style.display !== 'none') return true;
+    if(($('usPanel')||{}).classList && $('usPanel').classList.contains('show')) return true;
+    if(($('gsPanel')||{}).classList && $('gsPanel').classList.contains('show')) return true;
+    var fm = $('filterModal');
+    if(fm && fm.classList.contains('open')) return true;
+    return false;
+  }
+  function isTyping(el){
+    if(!el) return false;
+    var t = (el.tagName||'').toLowerCase();
+    return t==='input' || t==='textarea' || t==='select' || el.isContentEditable;
+  }
+
+  function ensureList(){
+    if(!currentList || !currentList.length){
+      try{ currentList = window._kinStudyQueueActive ? studyQueue() : filtered(); }catch(e){}
+      if(currentIdx == null || currentIdx < 0) currentIdx = 0;
+    }
+    return currentList && currentList.length;
+  }
+
+  function move(delta){
+    if(detailActive()){
+      if(delta > 0 && typeof nextItem === 'function'){ nextItem(); toast('下一個 ›'); }
+      else if(delta < 0 && typeof prevItem === 'function'){ prevItem(); toast('‹ 上一個'); }
+      return;
+    }
+    if(!ensureList()) return;
+    var i = currentIdx + delta;
+    if(i < 0){ toast('已是第一個'); return; }
+    if(i >= currentList.length){ toast('已到最後一個'); return; }
+    currentIdx = i;
+    window._kinListPlayback = true;
+    toast(delta > 0 ? '下一個 ›' : '‹ 上一個');
+    try{ playCurrent(true); }catch(e){}
+  }
+
+  // 標記不中斷播放，也不切換畫面
+  function mark(st){
+    if(!ensureList()) return;
+    var e = currentList[currentIdx];
+    if(!e){ toast('沒有目前單字'); return; }
+    var before = statusMap[e.id] || '';
+    statusMap[e.id] = st;
+    try{ saveStatus(); }catch(err){}
+    if(before !== st && typeof srsGrade === 'function') srsGrade(e.id, st === 'ok');
+    try{ updateStats(); }catch(err){}
+    try{ refreshAllStatusUI(); }catch(err){}
+    try{ if(typeof updateDetailMarkUI === 'function') updateDetailMarkUI(e.id); }catch(err){}
+    try{ if(typeof srsBadge === 'function') srsBadge(); }catch(err){}
+    toast(st === 'ok' ? '✓ 習得' : '! 要複習', st === 'ok' ? 'ok' : 'rev');
+    if(cfg.autoNext) setTimeout(function(){ move(1); }, 260);
+  }
+
+  function actionFor(key){
+    for(var i=0;i<ORDER.length;i++){
+      if(cfg.keys[ORDER[i]].indexOf(key) >= 0) return ORDER[i];
+    }
+    return null;
+  }
+
+  // 掛在 window 捕獲階段，優先於既有的 document 鍵盤處理
+  window.addEventListener('keydown', function(ev){
+    if(ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    var key = ev.key;
+
+    if(detecting){
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      lastKey = key;
+      showDetected(key, ev.code);
+      return;
+    }
+    if(!cfg.enabled) return;
+    if(isTyping(ev.target) || panelOpen()) return;
+
+    var act = actionFor(key);
+    if(!act) return;
+
+    // Enter／Space 落在按鈕上時交還原生行為
+    var ae = document.activeElement;
+    if((key === 'Enter' || key === ' ') && ae && (ae.tagName||'').toLowerCase() === 'button') return;
+
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    if(ev.repeat) return;
+
+    if(act === 'prev') move(-1);
+    else if(act === 'next') move(1);
+    else if(act === 'ok') mark('ok');
+    else if(act === 'review') mark('review');
+  }, true);
+
+  /* ---------- 設定介面 ---------- */
+  function keyName(k){
+    var m = {'ArrowUp':'↑','ArrowDown':'↓','ArrowLeft':'←','ArrowRight':'→',
+             ' ':'Space','Enter':'Enter','PageUp':'PageUp','PageDown':'PageDown','Escape':'Esc'};
+    return m[k] || k;
+  }
+  function renderMap(){
+    var box = $('rcMap'); if(!box) return;
+    box.innerHTML = ORDER.map(function(a){
+      var ks = cfg.keys[a];
+      var html = ks.length
+        ? ks.map(function(k){ return '<kbd>' + keyName(k) + '</kbd>'; }).join('')
+        : '<span style="color:#bbb">未設定</span>';
+      return '<div class="rc-row"><span class="act">' + LABEL[a] + '</span><span class="keys">' + html + '</span></div>';
+    }).join('');
+    var en = $('rcEnable'); if(en) en.checked = !!cfg.enabled;
+    var an = $('rcAutoNext'); if(an) an.checked = !!cfg.autoNext;
+  }
+  function showDetected(k, code){
+    var r = $('rcResult'); if(!r) return;
+    r.innerHTML = '偵測到：<b>' + keyName(k) + '</b>　<span style="color:#aaa">(' + (code||'') + ')</span>' +
+      '<div class="rc-assign">' +
+      ORDER.map(function(a){ return '<button type="button" data-a="' + a + '">設為' + LABEL[a] + '</button>'; }).join('') +
+      '<button type="button" class="rm" data-a="__clear">從所有動作移除這顆鍵</button></div>';
+    Array.prototype.forEach.call(r.querySelectorAll('button'), function(b){
+      b.onclick = function(){ assign(b.getAttribute('data-a')); };
+    });
+  }
+  function assign(act){
+    if(!lastKey) return;
+    ORDER.forEach(function(a){
+      cfg.keys[a] = cfg.keys[a].filter(function(k){ return k !== lastKey; });
+    });
+    if(act !== '__clear' && cfg.keys[act]) cfg.keys[act].push(lastKey);
+    save(); renderMap(); stopDetect();
+    var r = $('rcResult');
+    if(r) r.textContent = act === '__clear'
+      ? ('已移除 ' + keyName(lastKey))
+      : ('已把 ' + keyName(lastKey) + ' 設為「' + LABEL[act] + '」');
+  }
+  function stopDetect(){
+    detecting = false;
+    var b = $('rcDetectBtn');
+    if(b){ b.classList.remove('on'); b.textContent = '按鍵偵測'; }
+  }
+
+  window.rcDetect = function(){
+    if(detecting){ stopDetect(); return; }
+    detecting = true; lastKey = '';
+    var b = $('rcDetectBtn');
+    if(b){ b.classList.add('on'); b.textContent = '偵測中…按遙控器任一鍵（再點一次取消）'; }
+    var r = $('rcResult'); if(r) r.textContent = '請按下遙控器上的按鍵。';
+  };
+  window.rcToggle = function(){
+    cfg.enabled = !!$('rcEnable').checked; save();
+    var r = $('rcResult');
+    if(r) r.textContent = cfg.enabled ? '遙控器模式已啟用。' : '遙控器模式已關閉，方向鍵恢復捲動頁面。';
+  };
+  window.rcToggleAuto = function(){
+    cfg.autoNext = !!$('rcAutoNext').checked; save();
+    var r = $('rcResult');
+    if(r) r.textContent = cfg.autoNext ? '標記後會自動前往下一個。' : '標記後會停留在目前單字。';
+  };
+  window.rcRenderSettings = renderMap;
+
+  // 開啟使用者專區時同步刷新遙控器設定
+  if(typeof window.usOpen === 'function'){
+    var _usOpen = window.usOpen;
+    window.usOpen = function(){
+      var r = _usOpen.apply(this, arguments);
+      stopDetect();
+      var rr = $('rcResult'); if(rr) rr.textContent = '';
+      renderMap();
+      return r;
+    };
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderMap);
+  else renderMap();
 })();
 </script>
 
