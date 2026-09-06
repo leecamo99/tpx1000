@@ -560,8 +560,19 @@ body.mode-study #paneBrowse{display:none !important}
   background:#2a2a2a;color:#fff;
 }
 /* hide old topbar title on study or keep */
-#screen-list > .topbar{display:none}
-body.mode-browse #screen-list > .topbar{display:flex}
+/* 標題列在習得與一覽都要顯示，才能隨時切換書籍與同步 */
+#screen-list > .topbar{display:flex}
+.topbar .book-switch{
+  flex:1;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;
+  background:transparent;border:0;padding:6px 8px;border-radius:8px;
+  font-family:inherit;font-size:16px;font-weight:600;color:#222;
+  touch-action:manipulation;
+}
+.topbar .book-switch #bookTitle{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.topbar .book-switch .chev{font-size:18px;color:#bbb;font-weight:400;flex-shrink:0}
+.topbar .book-switch:active{background:#f5f5f5;transform:scale(.98)}
 
 
 /* CRITICAL pane toggle */
@@ -587,6 +598,7 @@ body.mode-browse #paneBrowse{display:block !important}
 <!-- ===== 選書畫面 ===== -->
 <div id="screen-books">
   <div class="bk-head">
+    <button type="button" class="bk-close" id="bkClose" onclick="closeBookPicker()" style="display:none" aria-label="關閉" title="關閉">×</button>
     <h1>選擇書籍</h1>
     <p>選好後才會載入該書資料</p>
   </div>
@@ -599,7 +611,19 @@ body.mode-browse #paneBrowse{display:block !important}
   padding:calc(env(safe-area-inset-top,0px) + 28px) 16px 32px;
 }
 #screen-books.hide{display:none}
+#screen-books .bk-head{position:relative}
 #screen-books .bk-head h1{margin:0 0 4px;font-size:20px;font-weight:800;color:#111}
+#screen-books .bk-close{
+  position:absolute;right:0;top:-2px;
+  width:34px;height:34px;border-radius:50%;
+  border:1.5px solid #ddd;background:#fff;color:#888;
+  font-size:22px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;
+}
+#screen-books .bk-close:active{background:#f3f3f3;transform:scale(.94)}
+#screen-books .bk-card.is-current{border-color:#e86f00}
+#screen-books .bk-card.is-current .t{color:#e86f00}
 #screen-books .bk-head p{margin:0 0 20px;font-size:13px;color:#777}
 .bk-list{display:flex;flex-direction:column;gap:10px}
 .bk-card{
@@ -619,7 +643,7 @@ body.mode-browse #paneBrowse{display:block !important}
 <div id="screen-list" class="screen active">
   <div class="topbar">
     <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
-    <h1 id="bookTitle">金のフレーズ 全集合</h1>
+    <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
     <button class="icon-btn" onclick="openFilter()" title="篩選">☰</button>
   </div>
   
@@ -2534,7 +2558,6 @@ function srsBadge(){
 
 <!-- ===== GitHub 學習紀錄同步 v1.0 ===== -->
 <style>
-<<<<<<< HEAD
 #screen-list > .topbar #gsFab{
   flex:0 0 auto;width:34px;height:34px;border-radius:50%;
   border:1.5px solid #ccc;background:#fff;color:#999;
@@ -2548,20 +2571,6 @@ function srsBadge(){
 #screen-list > .topbar #gsFab.s-busy{border-color:#0078d4;color:#0078d4}
 #screen-list > .topbar #gsFab.s-ok{border-color:#2a9d4a;color:#2a9d4a}
 #screen-list > .topbar #gsFab.s-err{border-color:#e05050;color:#e05050}
-=======
-#gsFab{
-  position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 130px);
-  z-index:9998;width:44px;height:44px;border-radius:50%;
-  border:1.5px solid #bbb;background:#fff;color:#777;
-  font-size:11px;font-weight:800;line-height:1.1;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 2px 8px rgba(0,0,0,.12);touch-action:manipulation;
-}
-#gsFab.s-dirty{border-color:#e86f00;color:#e86f00}
-#gsFab.s-busy{border-color:#0078d4;color:#0078d4}
-#gsFab.s-ok{border-color:#2a9d4a;color:#2a9d4a}
-#gsFab.s-err{border-color:#e05050;color:#e05050}
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 #gsMask{position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:9999;display:none}
 #gsMask.show{display:block}
 #gsPanel{
@@ -2590,10 +2599,6 @@ function srsBadge(){
 #gsMsg.info{color:#666}
 </style>
 
-<<<<<<< HEAD
-=======
-<button id="gsFab" onclick="gsOpen()" title="GitHub 同步">同步</button>
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 <div id="gsMask" onclick="gsClose()"></div>
 <div id="gsPanel" role="dialog" aria-label="GitHub 同步設定">
   <div class="hd">
@@ -2632,7 +2637,6 @@ function srsBadge(){
   var CFG_KEY='gsConfig', META_KEY='gsMeta', DEBOUNCE=10000;
 
   // 對齊本 App 實際使用的 localStorage 鍵名。
-<<<<<<< HEAD
   // 隨目前書籍動態組出要同步的鍵。
   function bookId(){
     return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000';
@@ -2644,17 +2648,6 @@ function srsBadge(){
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
-=======
-  var SYNC_KEYS=[
-    'kin-app-status-v1',   // 習得／要複習狀態
-    'kin-app-srs-v1',      // SM-2 複習排程
-    'kinLevels',           // 學習範圍複選
-    'kinPlayMode',         // 播放模式
-    'kinSpeed',            // 播放速度
-    'kin_phrase_times',    // 例句播放次數
-    'kinReturnContext'     // 最後瀏覽位置
-  ];
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 
   var cfg=readJSON(CFG_KEY)||{}, meta=readJSON(META_KEY)||{}, timer=null, busy=false;
 
@@ -2665,7 +2658,6 @@ function srsBadge(){
   function setState(s){
     var f=$('gsFab'); if(!f) return;
     f.className = s==='idle' ? '' : ('s-'+s);
-<<<<<<< HEAD
     f.textContent = s==='busy' ? '⟳' : (s==='err' ? '!' : '☁');
     f.title = s==='busy' ? '同步中' : (s==='ok' ? 'GitHub 同步：已同步'
             : (s==='err' ? 'GitHub 同步：失敗，點擊查看' : (s==='dirty' ? 'GitHub 同步：待上傳' : 'GitHub 同步')));
@@ -2673,13 +2665,6 @@ function srsBadge(){
   function msg(t,cls){ var m=$('gsMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
   function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo&&cfg.user); }
   function filePath(){ return 'data/'+(cfg.user||'paul')+'/'+bookId()+'.json'; }
-=======
-    f.textContent = s==='busy'?'···':(s==='ok'?'已同步':(s==='err'?'失敗':(s==='dirty'?'待同步':'同步')));
-  }
-  function msg(t,cls){ var m=$('gsMsg'); if(m){ m.textContent=t||''; m.className=cls||'info'; } }
-  function configured(){ return !!(cfg.token&&cfg.owner&&cfg.repo&&cfg.user); }
-  function filePath(){ return 'data/'+(cfg.user||'paul')+'.json'; }
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
   function getURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath()+'?ref='+(cfg.branch||'main'); }
   function putURL(){ return 'https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+'/contents/'+filePath(); }
   function headers(){
@@ -2688,21 +2673,13 @@ function srsBadge(){
 
   function collect(){
     var data={};
-<<<<<<< HEAD
     syncKeys().forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) data[k]=v; });
-=======
-    SYNC_KEYS.forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) data[k]=v; });
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
     return {version:1,userId:cfg.user||'paul',updatedAt:new Date().toISOString(),deviceId:cfg.deviceId||'unknown',keys:data};
   }
   function apply(payload){
     if(!payload||!payload.keys) return false;
     Object.keys(payload.keys).forEach(function(k){
-<<<<<<< HEAD
       if(syncKeys().indexOf(k)>=0){ try{ _setItem.call(localStorage,k,payload.keys[k]); }catch(e){} }
-=======
-      if(SYNC_KEYS.indexOf(k)>=0){ try{ _setItem.call(localStorage,k,payload.keys[k]); }catch(e){} }
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
     });
     return true;
   }
@@ -2768,11 +2745,7 @@ function srsBadge(){
   var _setItem=localStorage.setItem;
   localStorage.setItem=function(k,v){
     _setItem.apply(localStorage,arguments);
-<<<<<<< HEAD
     if(syncKeys().indexOf(k)>=0) markDirty();
-=======
-    if(SYNC_KEYS.indexOf(k)>=0) markDirty();
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
   };
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='hidden'){ clearTimeout(timer); push(true); }
@@ -2882,7 +2855,6 @@ function srsBadge(){
   }
 })();
 </script>
-<<<<<<< HEAD
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -2910,7 +2882,8 @@ function srsBadge(){
       var meta = learned
         ? (b.count + ' 字 · 已標記 <b>' + learned + '</b>')
         : (b.count + ' 字 · 尚未開始');
-      return '<button type="button" class="bk-card" data-book="' + b.id + '">' +
+      var cur = (window.CURRENT_BOOK && window.CURRENT_BOOK.id === b.id) ? ' is-current' : '';
+      return '<button type="button" class="bk-card' + cur + '" data-book="' + b.id + '">' +
              '<div class="t">' + b.title + '</div>' +
              '<div class="s">' + (b.subtitle || '') + '</div>' +
              '<div class="m">' + meta + '</div></button>';
@@ -2984,8 +2957,17 @@ function srsBadge(){
     var loading = document.getElementById('bkLoading');
     if(loading) loading.style.display = 'none';
     renderBookList();
+    // 已載入書籍才允許直接關閉，首次進入必須先選書。
+    var close = document.getElementById('bkClose');
+    if(close) close.style.display = window.CURRENT_BOOK ? '' : 'none';
     screen.classList.remove('hide');
     window.scrollTo(0,0);
+  };
+
+  window.closeBookPicker = function(){
+    if(!window.CURRENT_BOOK) return;
+    var screen = document.getElementById('screen-books');
+    if(screen) screen.classList.add('hide');
   };
 
   function boot(){
@@ -3002,7 +2984,5 @@ function srsBadge(){
   else boot();
 })();
 </script>
-=======
->>>>>>> 1e5c7b026136f166a4b91d59982aa5fc1ee9e231
 </body>
 </html>
