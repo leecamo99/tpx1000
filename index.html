@@ -609,9 +609,278 @@ body.mode-browse #paneBrowse{display:block !important}
 .audio-hint.show{display:block}
 .audio-hint code{background:#ffe8e8;padding:1px 4px;border-radius:3px}
 
+/* ===================== 深黑模式（OLED 省電、夜間不刺眼） ===================== */
+body.theme-dark{background:#000;color:#e8e6e3}
+body.theme-dark .screen{background:#000}
+
+/* 頂列與導覽 */
+body.theme-dark .topbar{background:#0e0e0e;border-bottom-color:#242426}
+body.theme-dark .topbar h1{color:#e8e6e3}
+body.theme-dark .topbar .icon-btn{background:#1c1c1e;color:#b8b4af}
+body.theme-dark .topbar .book-switch{color:#e8e6e3}
+body.theme-dark .topbar .book-switch .chev{color:#5c5a57}
+body.theme-dark .topbar .book-switch:active{background:#1c1c1e}
+body.theme-dark .topbar .back{border-color:#ff9142;color:#ff9142}
+body.theme-dark .topbar .back:active{color:#e8873c;border-color:#e8873c}
+body.theme-dark .topbar .icon-btn.play-top{color:#e8e6e3;background:transparent}
+body.theme-dark .topbar .icon-btn#markBtn{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .topbar .icon-btn#markBtn.mark-ok{border-color:#3fa85f;background:#14251a;color:#5fd07f}
+body.theme-dark .topbar .icon-btn#markBtn.mark-review{border-color:#e05050;background:#2a1515;color:#ff7b7b}
+body.theme-dark .topbar .icon-btn#markBtn.mark-empty{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
+body.theme-dark #screen-list > .topbar #userChip{background:#1c1c1e;border-color:#3a3a3c}
+body.theme-dark #screen-list > .topbar #userChip .nm{color:#d8d5d1}
+body.theme-dark #screen-list > .topbar #userChip:active{background:#262628}
+body.theme-dark #screen-list > .topbar #gsFab{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
+body.theme-dark .bottom-nav{background:#0e0e0e;border-top-color:#242426}
+body.theme-dark .bottom-nav button{color:#7a7671}
+body.theme-dark .bottom-nav button.active{color:#ff9142}
+body.theme-dark .bottom-nav .progress-ico{color:#6a6661}
+body.theme-dark .bottom-nav #navSrs.active .progress-ico{color:#ff9142}
+
+/* 習得頁 */
+body.theme-dark #paneStudy,
+body.theme-dark #paneBrowse{background:#000}
+body.theme-dark .level-head{background:#000;color:#e8e6e3}
+body.theme-dark .level-head .chev{color:#5c5a57}
+body.theme-dark .ring-wrap{background:#000}
+body.theme-dark .ring .bg{stroke:#232325}
+body.theme-dark .ring .fg{stroke:#ff9142}
+body.theme-dark .ring .pct .num{color:#f2f0ed}
+body.theme-dark .ring .pct .unit{color:#7a7671}
+body.theme-dark .ring-title{color:#9a9691}
+body.theme-dark .list-stats{background:#000}
+body.theme-dark .pane-study .list-stats .n,
+body.theme-dark .pane-study .list-stats .n.ok{color:#f2f0ed}
+body.theme-dark .pane-study .list-stats .l{color:#8a8680}
+body.theme-dark .list-actions{background:#000}
+body.theme-dark .pane-study .list-actions{background:#000}
+body.theme-dark .pane-study .list-actions .primary,
+body.theme-dark .pane-study .list-actions .ghost-dark{background:#1f1f21;color:#f2f0ed;border:1px solid #3a3a3c}
+body.theme-dark .section-pick{background:#0e0e0e;border-top-color:#242426;color:#9a9691}
+body.theme-dark .browse-pick{background:#0e0e0e;border-bottom-color:#242426}
+body.theme-dark .section-pick select{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .progress-bar{background:#232325}
+body.theme-dark .progress-bar i{background:#ff9142}
+
+/* 單字列表 */
+body.theme-dark .item{background:#0e0e0e;border-bottom-color:#1c1c1e}
+body.theme-dark .item:active{background:#161618}
+body.theme-dark #itemList .item .en,
+body.theme-dark #itemList .item .word-id,
+body.theme-dark #itemList .item .hw,
+body.theme-dark #itemList .item .sub{color:#e8e6e3 !important}
+body.theme-dark #itemList .item .sub{color:#8f8b86 !important}
+body.theme-dark .item .detail-btn{background:#1c1c1e;border-color:#4a4a4c;color:#a8a49f}
+body.theme-dark .item .detail-btn:active{background:#262628;color:#d8d5d1;border-color:#5c5c5e}
+body.theme-dark .item .mark{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
+body.theme-dark .item .mark.mark-ok{border-color:#3fa85f;color:#5fd07f;background:#14251a}
+body.theme-dark .item .mark.mark-rev{border-color:#e05050;color:#ff7b7b;background:#2a1515}
+body.theme-dark .item.done .mark{border-color:#3fa85f;color:#5fd07f;background:#14251a}
+body.theme-dark .item.review .mark{border-color:#e05050;color:#ff7b7b;background:#2a1515}
+body.theme-dark #itemList .item .play-hit:active{background:rgba(255,255,255,.05)}
+body.theme-dark .empty{color:#6a6661}
+
+/* 播放中／返回定位框 */
+body.theme-dark .item.is-playing,
+body.theme-dark .item.return-focus{border-color:#ff9142;background:transparent}
+body.theme-dark .item.is-playing .en,
+body.theme-dark .item.is-playing .word-id,
+body.theme-dark .item.is-playing .hw,
+body.theme-dark .item.is-playing .sub,
+body.theme-dark .item.return-focus .en,
+body.theme-dark .item.return-focus .word-id,
+body.theme-dark .item.return-focus .hw,
+body.theme-dark .item.return-focus .sub{color:#ff9142 !important}
+body.theme-dark .item.is-playing::before{background:#0e0e0e;border-color:#ff9142;color:#ff9142}
+body.theme-dark.returning-from-detail .item.is-playing:not(.return-focus) .en,
+body.theme-dark.returning-from-detail .item.is-playing:not(.return-focus) .word-id,
+body.theme-dark.returning-from-detail .item.is-playing:not(.return-focus) .hw,
+body.theme-dark.returning-from-detail .item.is-playing:not(.return-focus) .sub{color:#e8e6e3 !important}
+
+/* 解說書卡 */
+body.theme-dark .detail-book{background:#0e0e0e;border-color:#2a2a2c;box-shadow:none}
+body.theme-dark .db-idbar{background:#1f1f21;color:#b8b4af}
+body.theme-dark .db-head{background:#161618;border-bottom-color:#2a2a2c}
+body.theme-dark .db-word{background:#3a2a18;color:#ffbe7d}
+body.theme-dark .db-phon{color:#7a7671}
+body.theme-dark .db-posline{color:#d8d5d1}
+body.theme-dark .db-pos{background:#2a2a2c;color:#b8b4af}
+body.theme-dark .db-mean{color:#d8d5d1}
+body.theme-dark .db-note{background:#141416;color:#b8b4af;border-bottom-color:#242426}
+body.theme-dark .db-note .ico{background:#3a2a18;border-color:#7a5a30;color:#e0a860}
+body.theme-dark .db-ex{border-top-color:#242426}
+body.theme-dark .db-sense{border-top-color:#2a2a2c}
+body.theme-dark .db-ex-en{background:#0e0e0e;color:#e8e6e3}
+body.theme-dark .db-ex-en .hl{color:#ff9142}
+body.theme-dark .db-ex-zh{background:#161618;color:#a8a49f}
+body.theme-dark .db-ex-zh .hl{color:#ff9142}
+body.theme-dark .detail-actions .btn-ok{background:#14251a;color:#5fd07f;border-color:#3fa85f}
+body.theme-dark .detail-actions .btn-rev{background:#2a1515;color:#ff7b7b;border-color:#e05050}
+body.theme-dark .detail-actions .btn-skip{background:#1c1c1e;color:#9a9691;border-color:#3a3a3c}
+
+/* 播放列 */
+body.theme-dark .player-bar{background:#0e0e0e;border-top-color:#242426;box-shadow:0 -2px 16px rgba(0,0,0,.6)}
+body.theme-dark .player-bar .play-btn,
+body.theme-dark .player-bar .play-btn:active{color:#f2f0ed !important;background:transparent !important}
+body.theme-dark .player-bar .play-btn svg{fill:#f2f0ed}
+body.theme-dark .player-bar .info{color:#8f8b86}
+body.theme-dark .player-bar .info .t{color:#e8e6e3}
+body.theme-dark .player-bar .speed,
+body.theme-dark .player-bar .times{background:#1c1c1e;border-color:#3a3a3c;color:#d8d5d1}
+
+/* 篩選視窗 */
+body.theme-dark .modal{background:#161618}
+body.theme-dark .modal h2{color:#e8e6e3}
+body.theme-dark .modal .opt{border-bottom-color:#242426;color:#d8d5d1}
+body.theme-dark .modal .opt .sub{color:#7a7671}
+body.theme-dark .modal .done-btn{background:#1f1f21;color:#f2f0ed;border:1px solid #3a3a3c}
+
+/* 選書畫面 */
+body.theme-dark #screen-books{background:#000}
+body.theme-dark #screen-books .bk-head h1{color:#f2f0ed}
+body.theme-dark #screen-books .bk-head p{color:#7a7671}
+body.theme-dark #screen-books .bk-close{background:#1c1c1e;border-color:#3a3a3c;color:#9a9691}
+body.theme-dark #screen-books .bk-close:active{background:#262628}
+body.theme-dark .bk-card{background:#0e0e0e;border-color:#2a2a2c}
+body.theme-dark .bk-card:active{background:#161618}
+body.theme-dark .bk-card .t{color:#e8e6e3}
+body.theme-dark .bk-card .s{color:#7a7671}
+body.theme-dark .bk-card .m{color:#9a9691}
+body.theme-dark .bk-card .m b{color:#ff9142}
+body.theme-dark #screen-books .bk-card.is-current{border-color:#ff9142}
+body.theme-dark #screen-books .bk-card.is-current .t{color:#ff9142}
+body.theme-dark .bk-loading{color:#8a8680}
+
+/* 學習儀表板 */
+body.theme-dark .srs-screen{background:#000}
+body.theme-dark .srs-h{color:#f2f0ed}
+body.theme-dark .srs-close{background:#1c1c1e;border-color:#3a3a3c;color:#9a9691;box-shadow:none}
+body.theme-dark .srs-close:active{background:#262628}
+body.theme-dark .srs-card{background:#0e0e0e;border-color:#242426}
+body.theme-dark .srs-card h3{color:#7a7671}
+body.theme-dark .srs-due{background:linear-gradient(135deg,#8a3f10,#b06a24);border:none}
+body.theme-dark .srs-due button{background:#1a1a1c;color:#ff9142}
+body.theme-dark .srs-kpi div{background:#0e0e0e;border-color:#242426}
+body.theme-dark .srs-kpi .v{color:#ff9142}
+body.theme-dark .srs-kpi .k{color:#7a7671}
+body.theme-dark .srs-bar .lb{color:#9a9691}
+body.theme-dark .srs-bar .tr{background:#232325}
+body.theme-dark .srs-bar .fl{background:#ff9142}
+body.theme-dark .srs-bar .vn{color:#7a7671}
+body.theme-dark .srs-chart i{background:#4a3826}
+body.theme-dark .srs-chart i.on{background:#ff9142}
+body.theme-dark .srs-xax{color:#5c5a57}
+body.theme-dark .srs-tough li{border-bottom-color:#1f1f21}
+body.theme-dark .srs-tough .w{color:#e8e6e3}
+body.theme-dark .srs-tough .m{color:#7a7671}
+body.theme-dark .srs-tough .x{background:#2a1515;color:#ff7b7b}
+body.theme-dark .srs-btn{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .srs-btn.pri{background:#8a3f10;border-color:#8a3f10;color:#fff}
+body.theme-dark .srs-note{color:#6a6661}
+body.theme-dark .srs-empty{color:#6a6661}
+
+/* 使用者專區 / 同步 / 密碼 */
+body.theme-dark #usPanel,
+body.theme-dark #gsPanel,
+body.theme-dark #pinBox{background:#161618;box-shadow:0 12px 40px rgba(0,0,0,.7)}
+body.theme-dark #usPanel .hd,
+body.theme-dark #gsPanel .hd{border-bottom-color:#242426}
+body.theme-dark #usPanel .hd h3,
+body.theme-dark #gsPanel .hd h3{color:#f2f0ed}
+body.theme-dark #usPanel .hd button,
+body.theme-dark #gsPanel .hd button{color:#8a8680}
+body.theme-dark #usPanel h4{color:#7a7671}
+body.theme-dark #usPanel .who .txt .n{color:#f2f0ed}
+body.theme-dark #usPanel .who .txt .i{color:#7a7671}
+body.theme-dark #usPanel .nameRow input,
+body.theme-dark #gsPanel input,
+body.theme-dark #gsPanel select,
+body.theme-dark #pinBox input{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark #usPanel .nameRow button{background:#14251a;border-color:#3fa85f;color:#5fd07f}
+body.theme-dark #usPanel .uItem{background:#0e0e0e;border-color:#2a2a2c}
+body.theme-dark #usPanel .uItem:active{background:#161618}
+body.theme-dark #usPanel .uItem.cur{border-color:#ff9142;background:#1f1712}
+body.theme-dark #usPanel .uItem .a{background:#3a3a3c}
+body.theme-dark #usPanel .uItem.cur .a{background:#c45c1a}
+body.theme-dark #usPanel .uItem .t b{color:#e8e6e3}
+body.theme-dark #usPanel .uItem .t s{color:#7a7671}
+body.theme-dark #usPanel .uItem .c{color:#ff9142}
+body.theme-dark #usPanel .prog{background:#0e0e0e;border-color:#242426}
+body.theme-dark #usPanel .prog .bk{color:#7a7671}
+body.theme-dark #usPanel .prog .bk b{color:#d8d5d1}
+body.theme-dark #usPanel .prog .g div .k{color:#7a7671}
+body.theme-dark #usPanel .prog .g .ok .v{color:#5fd07f}
+body.theme-dark #usPanel .prog .g .rv .v{color:#ff7b7b}
+body.theme-dark #usPanel .prog .g .nw .v{color:#8a8680}
+body.theme-dark #usPanel .tip{color:#6a6661}
+body.theme-dark #gsPanel label{color:#8a8680}
+body.theme-dark #gsPanel .stat{background:#0e0e0e;border-color:#242426;color:#a8a49f}
+body.theme-dark #gsPanel .stat b{color:#e8e6e3}
+body.theme-dark #gsPanel .btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark #gsPanel .btns button.pri{background:#14251a;border-color:#3fa85f;color:#5fd07f}
+body.theme-dark #gsPanel .btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark #gsMsg.info,
+body.theme-dark #usMsg.info{color:#8a8680}
+body.theme-dark #pinBox .t{color:#f2f0ed}
+body.theme-dark #pinBox .s{color:#8a8680}
+body.theme-dark #pinBox .s b{color:#ff9142}
+body.theme-dark #pinBox input.err{border-color:#e05050;background:#2a1515}
+body.theme-dark #pinBox .btns button{background:#1c1c1e;border-color:#3a3a3c;color:#9a9691}
+body.theme-dark #pinBox .btns button.pri{background:#c45c1a;border-color:#c45c1a;color:#fff}
+
+/* 遙控器設定 */
+body.theme-dark .rc-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .rc-sw{color:#d8d5d1}
+body.theme-dark .rc-map{border-top-color:#242426}
+body.theme-dark .rc-row .act{color:#8a8680}
+body.theme-dark .rc-row .keys kbd{background:#1c1c1e;border-color:#3a3a3c;color:#d8d5d1}
+body.theme-dark .rc-detect{background:#1c1c1e;border-color:#ff9142;color:#ff9142}
+body.theme-dark .rc-detect.on{background:#8a3f10;color:#fff;border-color:#8a3f10}
+body.theme-dark .rc-pad{background:#141416;border-color:#2a2a2c;color:#7a7671}
+body.theme-dark .rc-pad.on{background:#14251a;border-color:#3fa85f;color:#5fd07f}
+body.theme-dark .rc-result{color:#9a9691}
+body.theme-dark .rc-result b{color:#ff9142}
+body.theme-dark .rc-assign button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .rc-assign button.rm{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+
+/* 提示與說明 */
+body.theme-dark .audio-hint{background:#2a1515;border-color:#e05050;color:#ff9b9b}
+body.theme-dark .audio-hint code{background:#3a1c1c}
+body.theme-dark .hotkey-help{background:rgba(24,24,26,.96)}
+body.theme-dark .hotkey-help kbd{background:#3a3a3c;color:#e8e6e3}
+body.theme-dark .gesture-guide,
+body.theme-dark .hotkey-toast{background:rgba(24,24,26,.94)}
+body.theme-dark #rcToast{background:rgba(24,24,26,.94)}
+body.theme-dark #rcToast.ok{background:rgba(46,140,72,.96)}
+body.theme-dark #rcToast.rev{background:rgba(190,60,60,.96)}
+
+/* 外觀切換 */
+.ap-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.ap-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
+.ap-sw input{width:20px;height:20px;accent-color:#c45c1a;flex:0 0 auto}
+.ap-note{font-size:11px;color:#a09a94;line-height:1.7;margin-top:6px}
+body.theme-dark .ap-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .ap-sw{color:#d8d5d1}
+body.theme-dark .ap-note{color:#6a6661}
 </style>
 </head>
 <body class="mode-study">
+<script>
+/* 在畫面繪製前套用主題，避免深色模式開場閃白 */
+(function(){
+  try{
+    var v = localStorage.getItem('kinTheme');
+    var dark = (v === 'dark') || (v === null && window.matchMedia &&
+               window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if(dark){
+      document.body.classList.add('theme-dark');
+      var m = document.querySelector('meta[name="theme-color"]');
+      if(!m){ m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+      m.content = '#000000';
+    }
+  }catch(e){}
+})();
+</script>
 
 <!-- ===== 選書畫面 ===== -->
 <div id="screen-books" class="hide">
@@ -3046,6 +3315,19 @@ function srsBadge(){
     <h4>切換使用者</h4>
     <div class="uList" id="usList"></div>
 
+    <h4>外觀</h4>
+    <div class="ap-box">
+      <label class="ap-sw">
+        <span>深黑模式</span>
+        <input type="checkbox" id="apDark" onchange="apToggleDark()">
+      </label>
+      <label class="ap-sw">
+        <span>跟隨系統設定</span>
+        <input type="checkbox" id="apAuto" onchange="apToggleAuto()">
+      </label>
+      <div class="ap-note" id="apNote"></div>
+    </div>
+
     <h4>藍牙遙控器</h4>
     <div class="rc-box">
       <label class="rc-sw">
@@ -3617,6 +3899,81 @@ function srsBadge(){
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderMap);
   else renderMap();
+})();
+</script>
+
+<script>
+/* ===== 深黑模式 ===== */
+(function(){
+  'use strict';
+  var KEY = 'kinTheme';   // 'dark' | 'light' | null（跟隨系統）
+
+  function pref(){
+    try{ return localStorage.getItem(KEY); }catch(e){ return null; }
+  }
+  function systemDark(){
+    return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }
+  function isDark(){
+    var v = pref();
+    return v === 'dark' || (v === null && systemDark());
+  }
+  function paint(){
+    var dark = isDark();
+    document.body.classList.toggle('theme-dark', dark);
+    var m = document.querySelector('meta[name="theme-color"]');
+    if(!m){ m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+    m.content = dark ? '#000000' : '#ffffff';
+  }
+  function render(){
+    var d = document.getElementById('apDark');
+    var a = document.getElementById('apAuto');
+    var n = document.getElementById('apNote');
+    var auto = (pref() === null);
+    if(d){ d.checked = isDark(); d.disabled = auto; }
+    if(a){ a.checked = auto; }
+    if(n){
+      n.textContent = auto
+        ? ('目前跟隨系統，系統為' + (systemDark() ? '深色' : '淺色') + '。取消跟隨即可手動切換。')
+        : ('已手動設定為' + (isDark() ? '深黑' : '淺色') + '模式，此裝置獨立記憶。');
+    }
+  }
+
+  window.apToggleDark = function(){
+    var d = document.getElementById('apDark');
+    try{ localStorage.setItem(KEY, d && d.checked ? 'dark' : 'light'); }catch(e){}
+    paint(); render();
+  };
+  window.apToggleAuto = function(){
+    var a = document.getElementById('apAuto');
+    try{
+      if(a && a.checked) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, isDark() ? 'dark' : 'light');
+    }catch(e){}
+    paint(); render();
+  };
+
+  // 跟隨系統時，系統切換要即時反映
+  if(window.matchMedia){
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    var onChange = function(){ if(pref() === null){ paint(); render(); } };
+    if(mq.addEventListener) mq.addEventListener('change', onChange);
+    else if(mq.addListener) mq.addListener(onChange);
+  }
+
+  // 開啟使用者專區時刷新外觀設定
+  if(typeof window.usOpen === 'function'){
+    var _open = window.usOpen;
+    window.usOpen = function(){
+      var r = _open.apply(this, arguments);
+      render();
+      return r;
+    };
+  }
+
+  paint();
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+  else render();
 })();
 </script>
 
