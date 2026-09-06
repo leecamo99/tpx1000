@@ -189,12 +189,15 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#fff;border-top:1px solid #eee;display:flex;padding:8px 0 calc(8px + env(safe-area-inset-bottom));z-index:60}
 .bottom-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:#999;padding:4px}
 .bottom-nav button.active{color:#c45c1a}
-.bottom-nav .ico{font-size:20px}
+/* 三個項目等高，圖示才會對齊在同一條基線上 */
+.bottom-nav .ico{
+  font-size:19px;height:22px;line-height:22px;
+  display:flex;align-items:center;justify-content:center;
+}
 .bottom-nav .progress-ico{
   color:#999;
-  font-size:22px;
+  font-size:20px;
   font-weight:800;
-  line-height:1;
   filter:none;
 }
 .bottom-nav #navSrs.active .progress-ico{
@@ -229,7 +232,7 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 
 /* audio player */
 .player-bar{
-  position:fixed;bottom:56px;left:50%;transform:translateX(-50%);
+  position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   width:100%;max-width:480px;z-index:9999;
   background:#fff;border-top:1px solid #eee;padding:10px 14px;
   display:none;align-items:center;gap:10px;
@@ -2355,8 +2358,9 @@ body.mode-srs .screen-list,body.mode-srs #playerBar{display:none!important}
 .srs-btn.pri{background:#c45c1a;color:#fff;border-color:#c45c1a}
 .srs-note{font-size:11px;color:#a09a94;line-height:1.6;margin-top:8px}
 .srs-empty{text-align:center;color:#a09a94;font-size:13px;padding:18px 0}
-#navSrs .badge{position:absolute;top:0;margin-left:15px;background:#d04545;color:#fff;
-  font-size:9px;font-weight:700;border-radius:9px;padding:1px 5px;min-width:15px}
+#navSrs .badge{position:absolute;top:2px;left:50%;margin-left:6px;background:#d04545;color:#fff;
+  font-size:9px;font-weight:700;line-height:14px;border-radius:9px;padding:0 5px;min-width:15px;
+  text-align:center;pointer-events:none}
 .bottom-nav button{position:relative}
 
 
@@ -3512,6 +3516,8 @@ function srsBadge(){
       wrongCount = 0;
       pinClose();
       window.KIN_USER.switchTo(target.id);
+      window.__kinUserSwitched = true;
+      if(typeof window.__kinResetBackTarget === 'function') window.__kinResetBackTarget();
       if(typeof window.__kinReapplyBook === 'function') window.__kinReapplyBook();
       render();
       msg('已切換到「' + target.name + '」。','ok');
@@ -4037,6 +4043,102 @@ function srsBadge(){
 })();
 </script>
 
+<style>
+/* 返回解說：離開解說後才亮起，平時為淺灰不可按 */
+#navBack{opacity:.32;pointer-events:none;transition:opacity .18s}
+#navBack.ready{opacity:1;pointer-events:auto}
+#navBack .ico{font-size:18px;font-weight:900}
+#navBack.ready{color:#c45c1a}
+#navBack.ready .ico{color:#c45c1a}
+body.theme-dark #navBack.ready,
+body.theme-dark #navBack.ready .ico{color:#ff9142}
+</style>
+<script>
+/* ===== 返回剛才的解說 =====
+   離開解說畫面後亮起，點一下直接回到最後查看的單字。 */
+(function(){
+  'use strict';
+  var KEY = 'kinBackTarget';
+  var target = null;   // {id, studyQueue}
+
+  try{
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if(saved && saved.id) target = saved;
+  }catch(e){}
+
+  function $(id){ return document.getElementById(id); }
+  function detailActive(){
+    var s = $('screen-detail');
+    return !!(s && s.classList.contains('active'));
+  }
+
+  function paint(){
+    var b = $('navBack');
+    if(!b) return;
+    var ready = !!(target && target.id) && !detailActive();
+    b.classList.toggle('ready', ready);
+    b.disabled = !ready;
+    b.title = ready ? ('回到剛才查看的 ' + target.id) : '離開解說後才能使用';
+    b.setAttribute('aria-disabled', ready ? 'false' : 'true');
+  }
+
+  // 切換書籍或使用者後，舊的解說目標已無意義，一律重置為淺灰不可按。
+  window.__kinResetBackTarget = function(){
+    target = null;
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    paint();
+  };
+
+  function remember(){
+    try{
+      var e = currentList && currentList[currentIdx];
+      if(!e || !e.id) return;
+      target = { id: String(e.id), studyQueue: !!window._kinStudyQueueActive };
+      localStorage.setItem(KEY, JSON.stringify(target));
+    }catch(e){}
+  }
+
+  window.navBackGo = function(){
+    if(!target || !target.id || detailActive()) return;
+    try{
+      if(target.studyQueue && typeof openStudyDetail === 'function') openStudyDetail(target.id);
+      else if(typeof openDetail === 'function') openDetail(target.id);
+      if(typeof window.__kinToast === 'function') window.__kinToast('回到 ' + target.id);
+    }catch(e){}
+  };
+
+  function boot(){
+    var nav = document.querySelector('.bottom-nav');
+    if(!nav || $('navBack')) return;
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'navBack';
+    b.innerHTML = '<span class="ico">↩</span>解說';
+    b.onclick = window.navBackGo;
+    nav.appendChild(b);
+
+    // 解說畫面顯示中就持續記錄；一離開就亮起按鈕。
+    var det = $('screen-detail');
+    if(det && window.MutationObserver){
+      var wasActive = detailActive();
+      new MutationObserver(function(){
+        var now = detailActive();
+        if(now) remember();
+        else if(wasActive) remember();   // 離開的瞬間記下最後一筆
+        wasActive = now;
+        paint();
+      }).observe(det, {attributes:true, attributeFilter:['class']});
+    }
+    // 解說內按上一個／下一個也要更新目標
+    setInterval(function(){ if(detailActive()) remember(); }, 700);
+    paint();
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -4108,6 +4210,7 @@ function srsBadge(){
   }
 
   function applyBook(meta, payload){
+    var prev = window.CURRENT_BOOK;
     // 資料
     DATA = payload.data || [];
     CLIP_MAP = payload.clipMap || {};
@@ -4121,8 +4224,14 @@ function srsBadge(){
     var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
     STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
     SRS_KEY    = 'book:' + meta.id + ':' + uid + ':srs';
+    var switched = !prev || prev.id !== meta.id;
     window.CURRENT_BOOK = meta;
     if(typeof window.__kinPaintUser === 'function') window.__kinPaintUser();
+    // 換書或換人後，返回解說的目標必須重置。
+    if(switched || window.__kinUserSwitched){
+      window.__kinUserSwitched = false;
+      if(typeof window.__kinResetBackTarget === 'function') window.__kinResetBackTarget();
+    }
 
     // 重新讀取這本書的紀錄
     if(typeof loadStatus === 'function') loadStatus();
