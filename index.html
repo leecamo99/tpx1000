@@ -2986,6 +2986,9 @@ function srsBadge(){
 .rc-detect{width:100%;margin-top:8px;padding:10px;border-radius:9px;font-size:13px;font-weight:700;
   border:1.5px solid #c45c1a;background:#fff;color:#c45c1a}
 .rc-detect.on{background:#c45c1a;color:#fff}
+.rc-pad{margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:#fff;border:1px solid #e2e2e2;
+  font-size:11px;line-height:1.6;color:#999}
+.rc-pad.on{border-color:#2a9d4a;background:#eef8f0;color:#22863a;font-weight:700}
 .rc-result{font-size:12px;color:#666;line-height:1.8;margin-top:8px;min-height:16px}
 .rc-result b{color:#c45c1a;font-size:13px}
 .rc-assign{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
@@ -3053,10 +3056,11 @@ function srsBadge(){
         <span>標記後自動下一個</span>
         <input type="checkbox" id="rcAutoNext" onchange="rcToggleAuto()">
       </label>
+      <div class="rc-pad" id="rcPadStatus">尚未偵測到手把</div>
       <div class="rc-map" id="rcMap"></div>
       <button type="button" class="rc-detect" id="rcDetectBtn" onclick="rcDetect()">按鍵偵測</button>
       <div class="rc-result" id="rcResult"></div>
-      <div class="tip">遙控器需為「藍牙鍵盤」模式。iPhone 無法攔截音量鍵，只送音量訊號的自拍遙控器不適用。主畫面與解說頁都可操作，標記時不會中斷播放。</div>
+      <div class="tip">支援兩種裝置：藍牙鍵盤模式的翻頁器，以及遊戲手把。手把需先與手機配對，配對後點一下畫面再按手把任一鍵即可喚醒。主畫面與解說頁都可操作，標記時不會中斷播放。iPhone 無法攔截音量鍵，只送音量訊號的自拍遙控器不適用。</div>
     </div>
 
     <div id="usMsg" class="info"></div>
@@ -3273,10 +3277,11 @@ function srsBadge(){
     enabled: true,
     autoNext: false,
     keys: {
-      prev:   ['ArrowLeft','PageUp'],
-      next:   ['ArrowRight','PageDown'],
-      ok:     ['ArrowUp','Enter'],
-      review: ['ArrowDown']
+      // 鍵盤與手把共用同一組設定，手把按鈕以 pad: 前綴表示。
+      prev:   ['ArrowLeft','PageUp','pad:14','pad:2'],
+      next:   ['ArrowRight','PageDown','pad:15','pad:0'],
+      ok:     ['ArrowUp','Enter','pad:12','pad:3'],
+      review: ['ArrowDown','pad:13','pad:1']
     }
   };
   var LABEL = { prev:'上一個', next:'下一個', ok:'標記習得', review:'標記要複習' };
@@ -3287,6 +3292,17 @@ function srsBadge(){
       var o = JSON.parse(localStorage.getItem(KEY) || 'null');
       if(o && o.keys) {
         ORDER.forEach(function(a){ if(!Array.isArray(o.keys[a])) o.keys[a] = DEF.keys[a].slice(); });
+        // 舊設定沒有手把綁定時補上預設值，不覆蓋既有鍵盤設定。
+        var hasPad = ORDER.some(function(a){
+          return o.keys[a].some(function(k){ return String(k).indexOf('pad:') === 0; });
+        });
+        if(!hasPad){
+          ORDER.forEach(function(a){
+            DEF.keys[a].forEach(function(k){
+              if(String(k).indexOf('pad:') === 0 && o.keys[a].indexOf(k) < 0) o.keys[a].push(k);
+            });
+          });
+        }
         return o;
       }
     }catch(e){}
@@ -3401,14 +3417,127 @@ function srsBadge(){
     ev.stopImmediatePropagation();
     if(ev.repeat) return;
 
+    doAction(act);
+  }, true);
+
+  /* ---------- 遊戲手把（Gamepad API） ----------
+     手把送出的不是鍵盤事件，必須輪詢按鈕狀態並自行偵測按下的瞬間。 */
+  var padState = {};      // 按鈕 id -> 上一次是否按下
+  var padRAF = 0;
+  var padLastAt = 0;      // 去彈跳，避免一次按壓觸發多次
+  var padName = '';
+
+  function doAction(act){
     if(act === 'prev') move(-1);
     else if(act === 'next') move(1);
     else if(act === 'ok') mark('ok');
     else if(act === 'review') mark('review');
-  }, true);
+  }
+
+  function onPadDown(id){
+    if(detecting){
+      lastKey = id;
+      showDetected(id, 'gamepad');
+      return;
+    }
+    if(!cfg.enabled || panelOpen()) return;
+    var now = Date.now();
+    if(now - padLastAt < 220) return;
+    var act = actionFor(id);
+    if(!act) return;
+    padLastAt = now;
+    doAction(act);
+  }
+
+  function edge(id, pressed){
+    var was = !!padState[id];
+    padState[id] = pressed;
+    if(pressed && !was) onPadDown(id);
+  }
+
+  function pollPads(){
+    padRAF = requestAnimationFrame(pollPads);
+    if(!navigator.getGamepads) return;
+    var pads;
+    try{ pads = navigator.getGamepads(); }catch(e){ return; }
+    if(!pads) return;
+    var live = null;
+    for(var i = 0; i < pads.length; i++){
+      var p = pads[i];
+      if(!p || !p.connected) continue;
+      live = p;
+      for(var b = 0; b < p.buttons.length && b < 20; b++){
+        var btn = p.buttons[b];
+        edge('pad:' + b, !!(btn && (btn.pressed || btn.value > 0.5)));
+      }
+      // 搖桿與十字鍵都當成方向按鈕，泛用型手把常把十字鍵送成軸。
+      for(var a = 0; a < p.axes.length && a < 4; a++){
+        var v = p.axes[a];
+        edge('pad:axis' + a + '-', v < -0.55);
+        edge('pad:axis' + a + '+', v > 0.55);
+      }
+    }
+    var nm = live ? (live.id || '手把') : '';
+    if(nm !== padName){ padName = nm; renderPadStatus(); }
+  }
+
+  function startPoll(){
+    if(padRAF) return;
+    padRAF = requestAnimationFrame(pollPads);
+  }
+
+  function renderPadStatus(){
+    var el = $('rcPadStatus'); if(!el) return;
+    if(padName){
+      el.className = 'rc-pad on';
+      el.textContent = '手把已連線：' + padName.replace(/\s*\([^)]*\)\s*/g, ' ').trim().slice(0, 34);
+    }else{
+      el.className = 'rc-pad';
+      el.textContent = navigator.getGamepads
+        ? '尚未偵測到手把。配對後請先按一下畫面，再按手把任一鍵喚醒。'
+        : '此瀏覽器不支援 Gamepad，請改用藍牙鍵盤模式的遙控器。';
+    }
+  }
+
+  window.addEventListener('gamepadconnected', function(ev){
+    padName = (ev.gamepad && ev.gamepad.id) || '手把';
+    padState = {};
+    startPoll();
+    renderPadStatus();
+    toast('手把已連線');
+  });
+  window.addEventListener('gamepaddisconnected', function(){
+    padName = '';
+    padState = {};
+    renderPadStatus();
+    toast('手把已中斷');
+  });
+
+  // iOS Safari 需要先與頁面互動，手把才會被回報。
+  ['touchend','click','keydown'].forEach(function(evt){
+    window.addEventListener(evt, startPoll, {once:false, passive:true});
+  });
+  startPoll();
 
   /* ---------- 設定介面 ---------- */
+  var PAD_NAMES = {
+    '0':'A / ✕','1':'B / ○','2':'X / □','3':'Y / △',
+    '4':'L1','5':'R1','6':'L2','7':'R2',
+    '8':'Select','9':'Start','10':'L3','11':'R3',
+    '12':'D↑','13':'D↓','14':'D←','15':'D→','16':'Home'
+  };
+  var AXIS_NAMES = {'0-':'左搖桿←','0+':'左搖桿→','1-':'左搖桿↑','1+':'左搖桿↓',
+                    '2-':'右搖桿←','2+':'右搖桿→','3-':'右搖桿↑','3+':'右搖桿↓'};
   function keyName(k){
+    var s = String(k);
+    if(s.indexOf('pad:') === 0){
+      var id = s.slice(4);
+      if(id.indexOf('axis') === 0){
+        var a = id.slice(4);
+        return '手把 ' + (AXIS_NAMES[a] || ('軸' + a));
+      }
+      return '手把 ' + (PAD_NAMES[id] || ('鍵' + id));
+    }
     var m = {'ArrowUp':'↑','ArrowDown':'↓','ArrowLeft':'←','ArrowRight':'→',
              ' ':'Space','Enter':'Enter','PageUp':'PageUp','PageDown':'PageDown','Escape':'Esc'};
     return m[k] || k;
@@ -3424,6 +3553,7 @@ function srsBadge(){
     }).join('');
     var en = $('rcEnable'); if(en) en.checked = !!cfg.enabled;
     var an = $('rcAutoNext'); if(an) an.checked = !!cfg.autoNext;
+    renderPadStatus();
   }
   function showDetected(k, code){
     var r = $('rcResult'); if(!r) return;
@@ -3456,9 +3586,10 @@ function srsBadge(){
   window.rcDetect = function(){
     if(detecting){ stopDetect(); return; }
     detecting = true; lastKey = '';
+    startPoll();
     var b = $('rcDetectBtn');
-    if(b){ b.classList.add('on'); b.textContent = '偵測中…按遙控器任一鍵（再點一次取消）'; }
-    var r = $('rcResult'); if(r) r.textContent = '請按下遙控器上的按鍵。';
+    if(b){ b.classList.add('on'); b.textContent = '偵測中…按遙控器或手把任一鍵（再點一次取消）'; }
+    var r = $('rcResult'); if(r) r.textContent = '請按下遙控器或手把上的按鍵。';
   };
   window.rcToggle = function(){
     cfg.enabled = !!$('rcEnable').checked; save();
