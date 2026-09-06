@@ -2947,6 +2947,32 @@ function srsBadge(){
 #usMsg.err{color:#e05050}
 #usMsg.info{color:#666}
 #usPanel .tip{font-size:11px;color:#a09a94;line-height:1.7;margin-top:10px}
+/* 切換使用者密碼，避免誤觸把紀錄寫到別人身上 */
+#pinMask{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10010;display:none}
+#pinMask.show{display:block}
+#pinBox{
+  position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(88vw,300px);background:#fff;border-radius:14px;z-index:10011;display:none;
+  padding:20px 18px 16px;box-shadow:0 12px 40px rgba(0,0,0,.3);text-align:center;
+}
+#pinBox.show{display:block}
+#pinBox .t{font-size:15px;font-weight:800;color:#111;margin-bottom:4px}
+#pinBox .s{font-size:12px;color:#888;margin-bottom:14px;line-height:1.6}
+#pinBox .s b{color:#c45c1a}
+#pinBox input{
+  width:100%;box-sizing:border-box;padding:12px;border:1.5px solid #ccc;border-radius:10px;
+  font-size:22px;font-weight:700;text-align:center;letter-spacing:.5em;
+  color:#111;background:#fff;font-family:inherit;
+}
+#pinBox input.err{border-color:#e05050;background:#fdf0f0}
+#pinBox .msg{font-size:12px;color:#e05050;min-height:17px;margin-top:8px;line-height:1.5}
+#pinBox .btns{display:flex;gap:8px;margin-top:12px}
+#pinBox .btns button{
+  flex:1;padding:11px;border-radius:9px;font-size:14px;font-weight:700;
+  border:1.5px solid #ccc;background:#fff;color:#666;
+}
+#pinBox .btns button.pri{border-color:#c45c1a;background:#c45c1a;color:#fff}
+#pinBox .btns button:disabled{opacity:.45}
 /* 藍牙遙控器設定 */
 .rc-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
 .rc-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
@@ -2976,6 +3002,19 @@ function srsBadge(){
 #rcToast.ok{background:rgba(42,157,74,.94)}
 #rcToast.rev{background:rgba(224,80,80,.94)}
 </style>
+
+<div id="pinMask" onclick="pinCancel()"></div>
+<div id="pinBox" role="dialog" aria-label="輸入切換密碼">
+  <div class="t">切換使用者</div>
+  <div class="s">即將切換到 <b id="pinTarget">—</b><br>請輸入 4 位數密碼</div>
+  <input id="pinInput" type="tel" inputmode="numeric" maxlength="4" placeholder="••••"
+         autocomplete="off" aria-label="4 位數密碼">
+  <div class="msg" id="pinMsg"></div>
+  <div class="btns">
+    <button type="button" onclick="pinCancel()">取消</button>
+    <button type="button" class="pri" id="pinOk" onclick="pinConfirm()">確認</button>
+  </div>
+</div>
 
 <div id="usMask" onclick="usClose()"></div>
 <div id="usPanel" role="dialog" aria-label="使用者專區">
@@ -3146,16 +3185,75 @@ function srsBadge(){
     }
   };
 
+  /* ---------- 切換使用者需輸入密碼，避免誤觸 ---------- */
+  var PIN = '0000';
+  var pendingUser = null, wrongCount = 0, lockUntil = 0;
+
+  function pinMsg(t){ var m = $('pinMsg'); if(m) m.textContent = t || ''; }
+  function pinClose(){
+    $('pinMask').classList.remove('show');
+    $('pinBox').classList.remove('show');
+    var i = $('pinInput'); if(i){ i.value = ''; i.classList.remove('err'); }
+    pinMsg(''); pendingUser = null;
+  }
+  window.pinCancel = pinClose;
+
+  window.pinConfirm = function(){
+    if(!pendingUser) return;
+    if(Date.now() < lockUntil){
+      pinMsg('嘗試次數過多，請等 ' + Math.ceil((lockUntil - Date.now())/1000) + ' 秒。');
+      return;
+    }
+    var input = $('pinInput');
+    if(input.value === PIN){
+      var target = pendingUser;
+      wrongCount = 0;
+      pinClose();
+      window.KIN_USER.switchTo(target.id);
+      if(typeof window.__kinReapplyBook === 'function') window.__kinReapplyBook();
+      render();
+      msg('已切換到「' + target.name + '」。','ok');
+      return;
+    }
+    wrongCount++;
+    input.value = '';
+    input.classList.add('err');
+    setTimeout(function(){ input.classList.remove('err'); }, 500);
+    if(wrongCount >= 5){
+      lockUntil = Date.now() + 30000;
+      wrongCount = 0;
+      pinMsg('連續錯誤 5 次，請等 30 秒後再試。');
+      var ok = $('pinOk'); if(ok) ok.disabled = true;
+      setTimeout(function(){ if(ok) ok.disabled = false; pinMsg(''); }, 30000);
+    }else{
+      pinMsg('密碼不正確，還可以再試 ' + (5 - wrongCount) + ' 次。');
+      input.focus();
+    }
+  };
+
   window.usSwitch = function(id){
     if(id === window.KIN_USER.id()){ msg('已經是目前使用者。','info'); return; }
     var target = null;
     window.KIN_USER.list().forEach(function(u){ if(u.id === id) target = u; });
     if(!target) return;
-    if(!confirm('切換到「' + target.name + '」？\n\n兩人的學習紀錄分開儲存，不會互相覆蓋。')) return;
-    window.KIN_USER.switchTo(id);
-    if(typeof window.__kinReapplyBook === 'function') window.__kinReapplyBook();
-    render();
-    msg('已切換到「' + target.name + '」。','ok');
+    pendingUser = target;
+    $('pinTarget').textContent = target.name;
+    $('pinMask').classList.add('show');
+    $('pinBox').classList.add('show');
+    pinMsg('');
+    var input = $('pinInput');
+    input.value = '';
+    input.onkeydown = function(ev){
+      ev.stopPropagation();
+      if(ev.key === 'Enter'){ ev.preventDefault(); window.pinConfirm(); }
+      else if(ev.key === 'Escape'){ ev.preventDefault(); pinClose(); }
+    };
+    // 輸滿 4 碼直接驗證，不必再按確認
+    input.oninput = function(){
+      input.value = input.value.replace(/\D/g,'').slice(0,4);
+      if(input.value.length === 4) setTimeout(window.pinConfirm, 120);
+    };
+    setTimeout(function(){ try{ input.focus(); }catch(e){} }, 120);
   };
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintChip);
@@ -3216,6 +3314,7 @@ function srsBadge(){
   function panelOpen(){
     var books = $('screen-books');
     if(books && !books.classList.contains('hide') && books.style.display !== 'none') return true;
+    if(($('pinBox')||{}).classList && $('pinBox').classList.contains('show')) return true;
     if(($('usPanel')||{}).classList && $('usPanel').classList.contains('show')) return true;
     if(($('gsPanel')||{}).classList && $('gsPanel').classList.contains('show')) return true;
     var fm = $('filterModal');
