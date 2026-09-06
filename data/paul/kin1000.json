@@ -2,8 +2,8 @@
   "version": 1,
   "userId": "paul",
   "userName": "Paul",
-  "updatedAt": "2026-09-06T15:22:14.015Z",
-  "deviceId": "dev-0rf2s3",
+  "updatedAt": "2026-09-06T15:23:54.325Z",
+  "deviceId": "dev-4zl46m",
   "keys": {
     "book:kin1000:paul:status": "{\"002\":\"ok\",\"003\":\"ok\",\"004\":\"ok\"}",
     "book:kin1000:paul:srs": "{\"cards\":{\"002\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"003\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"004\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"}},\"log\":{\"2026-09-06\":3},\"v\":1}",
