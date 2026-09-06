@@ -1,7 +1,8 @@
 {
   "version": 1,
   "userId": "paul",
-  "updatedAt": "2026-09-06T14:54:26.814Z",
+  "userName": "Paul",
+  "updatedAt": "2026-09-06T14:54:49.197Z",
   "deviceId": "dev-0rf2s3",
   "keys": {
     "kinLevels": "[\"all\"]",
