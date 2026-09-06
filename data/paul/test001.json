@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "userId": "paul",
+  "userName": "Paul",
+  "updatedAt": "2026-09-06T17:06:42.936Z",
+  "deviceId": "dev-4zl46m",
+  "keys": {
+    "kinLevels": "[\"730\",\"600\"]",
+    "kinPlayMode": "once",
+    "kinSpeed": "1.75",
+    "kin_phrase_times": "1",
+    "kinReturnContext": "{\"id\":\"022\",\"levels\":[\"730\",\"600\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788713704886}"
+  }
+}
