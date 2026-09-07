@@ -2,16 +2,16 @@
   "version": 1,
   "userId": "paul",
   "userName": "Paul",
-  "updatedAt": "2026-09-07T04:55:48.205Z",
+  "updatedAt": "2026-09-07T05:37:32.569Z",
   "deviceId": "dev-4zl46m",
   "keys": {
-    "book:custom:paul:status": "{\"X-001\":\"review\"}",
-    "book:custom:paul:srs": "{\"cards\":{\"X-001\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-08\",\"last\":\"2026-09-07\"}},\"log\":{\"2026-09-07\":1},\"v\":1}",
-    "kinCollect:paul": "[{\"id\":\"X-001\",\"word\":\"product\",\"mean\":\"產品\",\"from\":\"007 provide\",\"at\":\"2026-09-07\",\"srcId\":\"007\",\"srcWord\":\"provide\",\"srcNote\":\"記住 provide X with Y 句型。 名 provision（提供、條款） 關 provider（供應商）\",\"srcEx\":\"provide information about a product\",\"srcExZh\":\"提供關於產品的資訊\",\"srcBook\":\"kin1000\",\"byMT\":true},{\"id\":\"X-002\",\"word\":\"creature\",\"mean\":\"生物\",\"from\":\"041 create\",\"at\":\"2026-09-07\",\"srcId\":\"041\",\"srcWord\":\"create\",\"srcNote\":\"及物動詞，主動語態需接受詞。 形 creative（有創意的） 名 creation（創作）、creativity（創造力）、creature（生物） 副 creatively\",\"srcEx\":\"create a Web site\",\"srcExZh\":\"建立網站\",\"srcBook\":\"kin1000\",\"gm\":{\"phon\":\"/ˈkriːtʃər/\",\"pos\":\"名\",\"mean\":\"任何有生命的實體，包括人類或動物。\",\"ex\":\"As social creatures, employees often thrive in a collaborative work environment.\",\"exZh\":\"作為社會性生物，員工通常在協作的工作環境中表現出色。\",\"syn\":\"being, animal, organism\",\"ant\":\"object, thing, inanimate object\",\"tip\":\"Creature 指生物，與 creation（創作）和 creative（有創意的）不同。\",\"at\":\"2026-09-07\"}}]",
+    "book:custom:paul:status": "{\"X-001\":\"review\",\"X-002\":\"review\"}",
+    "book:custom:paul:srs": "{\"cards\":{\"X-001\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-08\",\"last\":\"2026-09-07\"},\"X-002\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-08\",\"last\":\"2026-09-07\"}},\"log\":{\"2026-09-07\":2},\"v\":1}",
+    "kinCollect:paul": "[{\"id\":\"X-001\",\"word\":\"agreeable\",\"mean\":\"令人愉快的\",\"from\":\"221 agreement\",\"at\":\"2026-09-07\",\"srcId\":\"221\",\"srcWord\":\"agreement\",\"srcNote\":\"彼此 agree 後簽訂的契約。「合意」意思也會出現。 例 reach an agreement（達成協議） 動 agree（同意） 形 agreeable（令人愉快的）\",\"srcEx\":\"a rental agreement\",\"srcExZh\":\"租賃契約\",\"srcBook\":\"kin1000\",\"gm\":{\"phon\":\"[əˈɡriːəbl]\",\"pos\":\"形\",\"mean\":\"令人愉快的\",\"ex\":\"The agreeable atmosphere in the office contributed to a positive work environment.\",\"exZh\":\"辦公室裡令人愉快的氛圍有助於營造積極的工作環境。\",\"syn\":\"pleasant, likable, charming\",\"ant\":\"disagreeable, unpleasant, offensive\",\"tip\":\"除了「令人愉快的」，在商務上也可指「可接受的」或「符合期望的」，與 agreement 相關。\",\"at\":\"2026-09-07\"}}]",
     "kinLevels": "[\"all\"]",
     "kinPlayMode": "once",
     "kinSpeed": "1.75",
     "kin_phrase_times": "1",
-    "kinReturnContext": "{\"id\":\"X-002\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788756474204}"
+    "kinReturnContext": "{\"id\":\"X-001\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788759417069}"
   }
 }
