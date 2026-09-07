@@ -3368,6 +3368,44 @@ body.theme-dark .tts-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#
 body.theme-dark .tts-btns button.pri{background:#14251a;border-color:#3fa85f;color:#5fd07f}
 body.theme-dark .tts-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
 body.theme-dark .tts-msg{color:#8a8680}
+/* 閃卡管理 */
+.dk-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.dk-hd{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#8a8580;
+  font-weight:700;margin-bottom:8px}
+.dk-hd button{padding:5px 11px;border:1.5px solid #ccc;border-radius:7px;background:#fff;
+  color:#655f5a;font-size:11px;font-weight:700;font-family:inherit}
+.dk-hd button:active{transform:scale(.96)}
+.dk-list{max-height:210px;overflow-y:auto;border:1px solid #ececec;border-radius:8px;background:#fff}
+.dk-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-bottom:1px solid #f4f2ef}
+.dk-item:last-child{border-bottom:0}
+.dk-item input{width:19px;height:19px;accent-color:#c45c1a;flex:0 0 auto;margin:0}
+.dk-item .tx{flex:1;min-width:0}
+.dk-item .w{font-size:13px;font-weight:700;color:#222;word-break:break-word;line-height:1.35}
+.dk-item .m{font-size:11px;color:#8a8580;margin-top:2px;line-height:1.4}
+.dk-item .m.none{color:#d08a2a}
+.dk-item .sr{font-size:10px;color:#b0aaa4;margin-top:1px}
+.dk-empty{padding:18px 10px;text-align:center;font-size:12px;color:#a09a94}
+.dk-btns{display:flex;gap:7px;margin-top:9px}
+.dk-btns button{flex:1;padding:10px 6px;border-radius:9px;font-size:12px;font-weight:700;
+  border:1.5px solid #ccc;background:#fff;color:#444;font-family:inherit}
+.dk-btns button.warn{border-color:#e05050;background:#fdf0f0;color:#e05050}
+.dk-btns button:active{transform:scale(.97)}
+.dk-msg{font-size:12px;line-height:1.7;margin-top:8px;min-height:17px;color:#666}
+.dk-msg.ok{color:#2a9d4a}
+.dk-msg.err{color:#e05050}
+body.theme-dark .dk-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .dk-hd{color:#7a7671}
+body.theme-dark .dk-hd button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .dk-list{background:#141416;border-color:#2a2a2c}
+body.theme-dark .dk-item{border-bottom-color:#1f1f21}
+body.theme-dark .dk-item .w{color:#e8e6e3}
+body.theme-dark .dk-item .m{color:#8f8b86}
+body.theme-dark .dk-item .m.none{color:#e0a860}
+body.theme-dark .dk-item .sr{color:#5c5a57}
+body.theme-dark .dk-empty{color:#6a6661}
+body.theme-dark .dk-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .dk-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark .dk-msg{color:#8a8680}
 /* 藍牙遙控器設定 */
 .rc-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
 .rc-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
@@ -3489,6 +3527,21 @@ body.theme-dark .tts-msg{color:#8a8680}
         <button type="button" class="warn" onclick="gmClearKey()">清除 Gemini 金鑰</button>
       </div>
       <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，捕獲沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
+    </div>
+
+    <h4>管理閃卡</h4>
+    <div class="dk-box">
+      <div class="dk-hd">
+        <span id="dkCount">尚未捕獲任何單字</span>
+        <button type="button" id="dkAll" onclick="dkToggleAll()">全選</button>
+      </div>
+      <div class="dk-list" id="dkList"></div>
+      <div class="dk-btns">
+        <button type="button" class="warn" onclick="dkRemoveSelected()">刪除勾選</button>
+        <button type="button" onclick="dkRemoveEmpty()">清除沒有中文的卡</button>
+      </div>
+      <div class="dk-msg" id="dkMsg"></div>
+      <div class="tip">勾選後可一次刪除多張。「沒有中文的卡」是指未取得中文語意的卡片，通常是早期收藏或翻譯失敗的項目。刪除後無法復原。</div>
     </div>
 
     <h4>藍牙遙控器</h4>
@@ -4378,6 +4431,9 @@ body.cap-mode.theme-dark #detailBook .nw:not(.cap):not(.inbook){
 .cx-btn:active{background:#fdf5ee;transform:scale(.98)}
 .cx-btn:disabled{opacity:.5}
 .cx-btn.done{border-color:#ddd;color:#8a8580}
+.cx-btn.del{border-color:#e05050;color:#e05050}
+.cx-btn.del:active{background:#fdf0f0}
+body.theme-dark .cx-btn.del{background:#1c1c1e;border-color:#e05050;color:#ff7b7b}
 .cx-msg{font-size:12px;line-height:1.6;color:#8a8580;margin:-2px 0 8px;text-align:center;min-height:16px}
 .cx-msg.err{color:#e05050}
 body.theme-dark .cx-row{background:#0e0e0e;border-color:#2a2a2c}
@@ -4764,6 +4820,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
         var has = !!(g.mean || g.ex);
         html += '<button type="button" class="cx-btn' + (has ? ' done' : '') + '" id="cxGmBtn" onclick="gmEnrich()">'
              +  (has ? '重新補充資料' : '用 Gemini 補充資料') + '</button>'
+             +  '<button type="button" class="cx-btn del" onclick="cardRemove(\'' + jsq(card.id) + '\')">移除此卡</button>'
              +  '<div class="cx-msg" id="cxMsg"></div>';
       }
     }
@@ -4791,6 +4848,98 @@ body.theme-dark #nwBox .note{color:#6a6661}
     try{ id = sessionStorage.getItem('kinFromCard') || ''; sessionStorage.removeItem('kinFromCard'); }catch(e){}
     if(id) window.__kinPendingOpen = id;
     if(typeof loadBookById === 'function') loadBookById('custom');
+  };
+
+  /* ---------- 批次管理閃卡 ---------- */
+  function dkMsg(t, cls){
+    var m = document.getElementById('dkMsg');
+    if(m){ m.textContent = t || ''; m.className = 'dk-msg ' + (cls || ''); }
+  }
+  function dkRender(){
+    var box = document.getElementById('dkList');
+    if(!box) return;
+    var list = load();
+    var cnt = document.getElementById('dkCount');
+    if(cnt) cnt.textContent = list.length ? ('共 ' + list.length + ' 張') : '尚未捕獲任何單字';
+    var all = document.getElementById('dkAll');
+    if(all) all.style.display = list.length ? '' : 'none';
+    if(!list.length){
+      box.innerHTML = '<div class="dk-empty">尚未捕獲任何單字</div>';
+      return;
+    }
+    box.innerHTML = list.map(function(c){
+      var mean = c.mean || (c.gm && c.gm.mean) || '';
+      var src  = c.srcId ? ('來源 ' + c.srcId + ' ' + (c.srcWord || '')) : '';
+      return '<label class="dk-item">' +
+             '<input type="checkbox" value="' + esc(c.id) + '">' +
+             '<span class="tx"><span class="w">' + esc(c.word) + '</span>' +
+             '<span class="m' + (mean ? '' : ' none') + '">' + esc(mean || '（沒有中文）') + '</span>' +
+             (src ? ('<span class="sr">' + esc(src) + '</span>') : '') +
+             '</span></label>';
+    }).join('');
+  }
+  window.__kinRenderDeckManager = dkRender;
+
+  function dkChecked(){
+    return Array.prototype.slice.call(
+      document.querySelectorAll('#dkList input[type=checkbox]:checked')
+    ).map(function(i){ return i.value; });
+  }
+
+  window.dkToggleAll = function(){
+    var boxes = document.querySelectorAll('#dkList input[type=checkbox]');
+    if(!boxes.length) return;
+    var anyOff = Array.prototype.some.call(boxes, function(b){ return !b.checked; });
+    Array.prototype.forEach.call(boxes, function(b){ b.checked = anyOff; });
+    var btn = document.getElementById('dkAll');
+    if(btn) btn.textContent = anyOff ? '全不選' : '全選';
+    dkMsg(anyOff ? ('已勾選 ' + boxes.length + ' 張') : '已取消全部勾選');
+  };
+
+  function dkDeleteByIds(ids, label){
+    if(!ids.length){ dkMsg('請先勾選要刪除的卡片。','err'); return; }
+    var list = load();
+    var words = list.filter(function(c){ return ids.indexOf(c.id) >= 0; })
+                    .map(function(c){ return c.word; });
+    var preview = words.slice(0,5).join('、') + (words.length > 5 ? ' 等' : '');
+    if(!confirm('確定刪除 ' + ids.length + ' 張' + (label || '') + '閃卡嗎？\n\n' + preview + '\n\n此動作無法復原。')) return;
+    save(list.filter(function(c){ return ids.indexOf(c.id) < 0; }));
+    dkRender();
+    paintDeck();
+    if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
+    try{ paintNoteWords(); }catch(e){}
+    dkMsg('已刪除 ' + ids.length + ' 張，剩餘 ' + load().length + ' 張。','ok');
+    var btn = document.getElementById('dkAll');
+    if(btn) btn.textContent = '全選';
+  }
+
+  window.dkRemoveSelected = function(){ dkDeleteByIds(dkChecked(), ''); };
+
+  window.dkRemoveEmpty = function(){
+    var ids = load().filter(function(c){
+      return !(c.mean || (c.gm && c.gm.mean));
+    }).map(function(c){ return c.id; });
+    if(!ids.length){ dkMsg('沒有缺少中文的卡片。','ok'); return; }
+    dkDeleteByIds(ids, '沒有中文的');
+  };
+
+  window.cardRemove = function(cardId){
+    var card = load().filter(function(c){ return c.id === cardId; })[0];
+    if(!card) return;
+    if(!confirm('確定要把「' + card.word + '」從閃卡移除嗎？\n\n此動作無法復原。')) return;
+    remove(card.word);
+    if(typeof window.__kinToast === 'function') window.__kinToast('已移除 ' + card.word);
+    var rest = load();
+    if(!rest.length){
+      // 全部刪光就回到書籍清單，避免停在空白的閃卡頁。
+      if(typeof openBookPicker === 'function') openBookPicker();
+      paintDeck();
+      return;
+    }
+    // 刪除後留在閃卡內，自動顯示相鄰的下一張。
+    var at = Math.min(currentIdx, rest.length - 1);
+    window.__kinPendingOpen = rest[at] ? rest[at].id : rest[0].id;
+    if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
   };
 
   window.gmEnrich = function(){
@@ -5161,6 +5310,8 @@ body.theme-dark #nwBox .note{color:#6a6661}
       ttsPaint(); ttsMsg('');
       if(typeof window.__kinPaintTrans === 'function') window.__kinPaintTrans();
       if(typeof window.__kinPaintGemini === 'function') window.__kinPaintGemini();
+      if(typeof window.__kinRenderDeckManager === 'function') window.__kinRenderDeckManager();
+      dkMsg('');
       return r;
     };
   }
