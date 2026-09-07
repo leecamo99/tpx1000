@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "userId": "paul",
+  "userName": "Paul",
+  "updatedAt": "2026-09-07T02:48:58.105Z",
+  "deviceId": "dev-4zl46m",
+  "keys": {
+    "kinCollect:paul": "[{\"id\":\"X-001\",\"word\":\"reference\",\"mean\":\"推薦信、照會、參照\",\"from\":\"003 refer\",\"at\":\"2026-09-07\"},{\"id\":\"X-002\",\"word\":\"soar\",\"mean\":\"翱翔\",\"from\":\"026 increase\",\"at\":\"2026-09-07\"},{\"id\":\"X-003\",\"word\":\"surge\",\"mean\":\"激增\",\"from\":\"026 increase\",\"at\":\"2026-09-07\"}]",
+    "kinLevels": "[\"all\"]",
+    "kinPlayMode": "once",
+    "kinSpeed": "1.75",
+    "kin_phrase_times": "1",
+    "kinReturnContext": "{\"id\":\"X-002\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788749320520}"
+  }
+}
