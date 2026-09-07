@@ -236,10 +236,12 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
   position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   width:100%;max-width:480px;z-index:9999;
   background:#fff;border-top:1px solid #eee;padding:10px 14px;
-  display:none;align-items:center;gap:10px;
+  display:flex;align-items:center;gap:10px;
   box-shadow:0 -2px 16px rgba(0,0,0,.12);
 }
 .player-bar.show{display:flex}
+/* 儀表板與短文區等全螢幕畫面出現時才隱藏 */
+body.mode-srs .player-bar{display:none}
 .player-bar .play-btn{
   width:42px;height:42px;border:0;border-radius:0;background:transparent;color:#111;
   font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -512,7 +514,7 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 
 
 /* screens */
-.screen{display:none;min-height:100vh;padding-bottom:88px;background:#f7f7f7}
+.screen{display:none;min-height:100vh;padding-bottom:calc(152px + env(safe-area-inset-bottom,0px));background:#f7f7f7}
 .screen.active{display:block !important}
 
 /* 習得 / 一覽 panes */
@@ -1013,6 +1015,7 @@ body.theme-dark .ap-note{color:#6a6661}
         <option value="COL">Column 1–4</option>
       </select>
     </div>
+    <button type="button" id="rdEntry" onclick="rdOpen()"><span class="ic"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 5.5h6a2.5 2.5 0 0 1 2.5 2.5v11a2 2 0 0 0-2-2H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M20 5.5h-6A2.5 2.5 0 0 0 11.5 8v11a2 2 0 0 1 2-2H20z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="t"><b>AI 教練</b><s id="rdEntrySub">用收藏的單字生成短文與測驗</s></span><span class="ch">›</span></button>
     <div id="itemList"></div>
   </div>
 </div>
@@ -1028,7 +1031,6 @@ body.theme-dark .ap-note{color:#6a6661}
       <button type="button" id="modeCap" onclick="nwSetMode('cap')">收藏</button>
     </div>
     <div class="topbar-right">
-      <button type="button" class="icon-btn play-top" id="topPlayBtn" onclick="try{window._kinListPlayback=false;playCurrent()}catch(e){alert(e)}return false;" title="播放">▶</button>
       <button type="button" class="icon-btn" onclick="cycleDetailMark()" id="markBtn" title="切換狀態">○</button>
     </div>
   </div>
@@ -4661,7 +4663,10 @@ body.theme-dark #nwBox .note{color:#6a6661}
     b.classList.toggle('empty', n === 0);
     b.title = n ? ('我的閃卡　已收藏 ' + n + ' 個') : '我的閃卡　尚未收藏';
   }
-  window.__kinPaintDeck = paintDeck;
+  window.__kinPaintDeck = function(){
+    paintDeck();
+    if(typeof window.__kinPaintReadEntry === 'function') window.__kinPaintReadEntry();
+  };
 
   function paintNoteWords(){
     var isCap = mode() === 'cap';
@@ -5431,6 +5436,539 @@ body.theme-dark #nwBox .note{color:#6a6661}
 })();
 </script>
 
+
+<style>
+/* ===== AI 教練：短文與測驗 ===== */
+#rdEntry{
+  display:none;align-items:center;gap:9px;width:calc(100% - 24px);
+  margin:10px 12px 2px;padding:12px 13px;
+  border:1.5px solid #c45c1a;border-radius:11px;background:#fdf6f0;
+  font-family:inherit;text-align:left;touch-action:manipulation;
+}
+body.in-deck #rdEntry{display:flex}
+#rdEntry .ic{flex:0 0 auto;display:flex;color:#c45c1a}
+#rdEntry .t{flex:1;min-width:0}
+#rdEntry .t b{display:block;font-size:14px;font-weight:800;color:#c45c1a;line-height:1.35}
+#rdEntry .t s{display:block;font-size:11px;color:#8a8580;text-decoration:none;margin-top:2px}
+#rdEntry .ch{flex:0 0 auto;color:#d8c3b0;font-size:20px;line-height:1}
+#rdEntry:active{background:#fbeee2;transform:scale(.99)}
+body.theme-dark #rdEntry{background:#2a1c10;border-color:#ff9142}
+body.theme-dark #rdEntry .ic,body.theme-dark #rdEntry .t b{color:#ff9142}
+body.theme-dark #rdEntry .t s{color:#8f8b86}
+body.theme-dark #rdEntry .ch{color:#5c4a3a}
+
+#screen-read{
+  display:none;position:fixed;inset:0;z-index:80;background:#f7f7f7;overflow-y:auto;
+  max-width:480px;margin:0 auto;left:50%;transform:translateX(-50%);
+  padding-bottom:calc(40px + env(safe-area-inset-bottom,0px));
+}
+#screen-read.show{display:block}
+#screen-read .topbar{position:sticky;top:0;z-index:5}
+#screen-read h1{flex:1;font-size:16px;text-align:left;margin:0}
+.rd-body{padding:12px}
+.rd-gen{background:#fff;border:1px solid #eee;border-radius:12px;padding:13px;margin-bottom:12px}
+.rd-gen h3{margin:0 0 9px;font-size:12px;color:#8a8580;font-weight:700;letter-spacing:.03em}
+.rd-pick{display:flex;gap:7px;margin-bottom:9px}
+.rd-pick button{
+  flex:1;padding:9px 4px;border:1.5px solid #ddd;border-radius:9px;background:#fff;
+  color:#655f5a;font-size:12px;font-weight:700;font-family:inherit;
+}
+.rd-pick button.on{border-color:#c45c1a;background:#fdf6f0;color:#c45c1a}
+.rd-gen .go{
+  width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:800;
+  border:1.5px solid #c45c1a;background:#c45c1a;color:#fff;font-family:inherit;
+}
+.rd-gen .go.alt{background:#fff;color:#c45c1a}
+.rd-gen .go:disabled{opacity:.5}
+.rd-gen .go+.go{margin-top:7px}
+.rd-msg{font-size:12px;line-height:1.6;color:#8a8580;margin-top:9px;min-height:16px;text-align:center}
+.rd-msg.err{color:#e05050}
+.rd-note{font-size:11px;color:#a09a94;line-height:1.7;margin-top:8px}
+
+.rd-item{
+  display:block;width:100%;text-align:left;background:#fff;border:1px solid #eee;
+  border-radius:12px;padding:13px;margin-bottom:9px;font-family:inherit;touch-action:manipulation;
+}
+.rd-item:active{background:#fafafa;transform:scale(.995)}
+.rd-item .hd{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.rd-item .kind{
+  flex:0 0 auto;font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;
+  background:#f0e6da;color:#8a5a2a;
+}
+.rd-item .kind.q{background:#e6eef0;color:#2a6a7a}
+.rd-item .dt{flex:1;font-size:10px;color:#b0aaa4;text-align:right}
+.rd-item .ti{font-size:14px;font-weight:700;color:#222;line-height:1.4;margin-bottom:4px}
+.rd-item .pv{font-size:12px;color:#8a8580;line-height:1.55;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rd-item .wc{font-size:11px;color:#c45c1a;font-weight:700;margin-top:6px}
+.rd-empty{text-align:center;color:#a09a94;font-size:13px;padding:26px 10px;line-height:1.7}
+
+.rd-doc{background:#fff;border:1px solid #eee;border-radius:12px;padding:15px;margin-bottom:12px}
+.rd-doc .ti{font-size:17px;font-weight:800;color:#222;line-height:1.4;margin-bottom:3px}
+.rd-doc .sc{font-size:11px;color:#a09a94;margin-bottom:12px}
+.rd-doc .en{font-size:15.5px;line-height:1.95;color:#222}
+.rd-doc .zh{font-size:13px;line-height:1.85;color:#655f5a;margin-top:13px;
+  padding-top:12px;border-top:1px dashed #e6e2dd}
+.rd-doc .zh.hide{display:none}
+.rd-tools{display:flex;gap:7px;margin-top:12px}
+.rd-tools button{
+  flex:1;padding:10px 5px;border:1.5px solid #ddd;border-radius:9px;background:#fff;
+  color:#655f5a;font-size:12px;font-weight:700;font-family:inherit;
+}
+.rd-tools button.warn{border-color:#e05050;color:#e05050;background:#fdf0f0}
+.rd-used{background:#fff;border:1px solid #eee;border-radius:12px;padding:13px;margin-bottom:12px}
+.rd-used h3{margin:0 0 8px;font-size:12px;color:#8a8580;font-weight:700}
+.rd-used .tags{display:flex;flex-wrap:wrap;gap:6px}
+.rd-used .tg{font-size:12px;padding:4px 9px;border-radius:999px;background:#fdf6f0;
+  color:#c45c1a;border:1px solid #eddcc9;font-weight:600}
+
+.rd-doc .rw{
+  display:inline;padding:0;margin:0;border:0;background:transparent;
+  color:inherit;font:inherit;cursor:pointer;border-radius:3px;touch-action:manipulation;
+}
+.rd-doc .rw:active{background:rgba(0,0,0,.08)}
+.rd-doc .rw.key{color:#c45c1a;font-weight:700}
+.rd-doc .rw.got{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px}
+
+.rd-q{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-bottom:10px}
+.rd-q .qn{font-size:11px;color:#a09a94;font-weight:700;margin-bottom:6px}
+.rd-q .qt{font-size:14.5px;line-height:1.75;color:#222;margin-bottom:11px}
+.rd-q .op{
+  display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:7px;
+  border:1.5px solid #e4e0db;border-radius:9px;background:#fff;
+  font-size:13.5px;color:#333;font-family:inherit;line-height:1.5;
+}
+.rd-q .op:active{background:#faf8f5}
+.rd-q .op.ok{border-color:#2a9d4a;background:#eef8f0;color:#22863a;font-weight:700}
+.rd-q .op.no{border-color:#e05050;background:#fdf0f0;color:#d64545}
+.rd-q .ex{font-size:12.5px;line-height:1.7;color:#655f5a;background:#faf7f2;
+  border-radius:8px;padding:9px 11px;margin-top:8px;display:none}
+.rd-q .ex.show{display:block}
+.rd-score{background:#c45c1a;color:#fff;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px}
+.rd-score .n{font-size:32px;font-weight:800;line-height:1.1}
+.rd-score .k{font-size:12px;opacity:.9;margin-top:3px}
+
+body.theme-dark #screen-read{background:#000}
+body.theme-dark .rd-gen,body.theme-dark .rd-item,body.theme-dark .rd-doc,
+body.theme-dark .rd-used,body.theme-dark .rd-q{background:#0e0e0e;border-color:#242426}
+body.theme-dark .rd-gen h3,body.theme-dark .rd-used h3{color:#7a7671}
+body.theme-dark .rd-pick button{background:#1c1c1e;border-color:#3a3a3c;color:#a8a49f}
+body.theme-dark .rd-pick button.on{background:#2a1c10;border-color:#ff9142;color:#ff9142}
+body.theme-dark .rd-gen .go{background:#c45c1a;border-color:#c45c1a}
+body.theme-dark .rd-gen .go.alt{background:#1c1c1e;color:#ff9142;border-color:#ff9142}
+body.theme-dark .rd-msg,body.theme-dark .rd-note{color:#7a7671}
+body.theme-dark .rd-item .ti{color:#e8e6e3}
+body.theme-dark .rd-item .pv{color:#8f8b86}
+body.theme-dark .rd-item .kind{background:#3a2a18;color:#e0a860}
+body.theme-dark .rd-item .kind.q{background:#1a3038;color:#7ec4d6}
+body.theme-dark .rd-item .dt{color:#5c5a57}
+body.theme-dark .rd-item .wc{color:#ff9142}
+body.theme-dark .rd-empty{color:#6a6661}
+body.theme-dark .rd-doc .ti{color:#f2f0ed}
+body.theme-dark .rd-doc .sc{color:#7a7671}
+body.theme-dark .rd-doc .en{color:#e8e6e3}
+body.theme-dark .rd-doc .zh{color:#a8a49f;border-top-color:#2a2a2c}
+body.theme-dark .rd-doc .rw:active{background:rgba(255,255,255,.12)}
+body.theme-dark .rd-doc .rw.key{color:#ff9142}
+body.theme-dark .rd-tools button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .rd-tools button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark .rd-used .tg{background:#2a1c10;border-color:#5c4530;color:#ff9142}
+body.theme-dark .rd-q .qt{color:#e8e6e3}
+body.theme-dark .rd-q .op{background:#1c1c1e;border-color:#3a3a3c;color:#d8d5d1}
+body.theme-dark .rd-q .op.ok{background:#14251a;border-color:#3fa85f;color:#5fd07f}
+body.theme-dark .rd-q .op.no{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark .rd-q .ex{background:#161618;color:#a8a49f}
+body.theme-dark .rd-q .qn{color:#6a6661}
+</style>
+
+<div id="screen-read">
+  <div class="topbar">
+    <button class="back" onclick="rdClose()" aria-label="返回"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M15 4.5 8 12l7 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h1 id="rdTitle">AI 教練</h1>
+  </div>
+  <div class="rd-body" id="rdBody"></div>
+</div>
+
+<script>
+/* ===== AI 教練：用收藏的單字生成 TOEIC 短文與測驗 ===== */
+(function(){
+  'use strict';
+
+  var GM_KEY = 'kinGeminiKey';
+  var MAX_KEEP = 30;
+  var view = 'list', openId = '', pickN = 10, busy = false, answers = {};
+
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function key(){ return 'kinRead:' + uid(); }
+  function gmKey(){ try{ return localStorage.getItem(GM_KEY) || ''; }catch(e){ return ''; } }
+  function esc(t){ return (typeof escapeHtml === 'function') ? escapeHtml(t) : String(t || ''); }
+  function $(id){ return document.getElementById(id); }
+
+  function load(){
+    try{ var a = JSON.parse(localStorage.getItem(key()) || '[]'); return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  function save(list){
+    if(list.length > MAX_KEEP) list = list.slice(0, MAX_KEEP);
+    try{ localStorage.setItem(key(), JSON.stringify(list)); }catch(e){}
+  }
+  window.KIN_READ = { load:load, save:save };
+
+  /* 挑字：沒複習過的最優先，其次是常忘的 */
+  function pickWords(n){
+    var cards = (window.KIN_COLLECT ? window.KIN_COLLECT.load() : []);
+    if(!cards.length) return [];
+    var scored = cards.map(function(c){
+      var s = 100;
+      try{
+        var r = (typeof srsMap !== 'undefined') ? srsMap[c.id] : null;
+        if(r) s = 60 - Math.min(50, (+r.ivl || 0)) + (+r.lapses || 0) * 12;
+      }catch(e){}
+      return { c:c, s:s };
+    });
+    scored.sort(function(a,b){ return b.s - a.s; });
+    return scored.slice(0, n).map(function(x){ return x.c; });
+  }
+
+  function msg(t, err){
+    var m = $('rdMsg');
+    if(m){ m.textContent = t || ''; m.className = 'rd-msg' + (err ? ' err' : ''); }
+  }
+  function lock(on){
+    busy = on;
+    Array.prototype.forEach.call(document.querySelectorAll('.rd-gen .go'), function(b){ b.disabled = on; });
+  }
+
+  function callGemini(prompt){
+    var k = gmKey();
+    if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰，請到使用者專區填入'));
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text: prompt }] }],
+        generationConfig:{ temperature:0.65, responseMimeType:'application/json' }
+      })
+    })
+    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP ' + r.status + '\u3000' + t.slice(0,140)); }); })
+    .then(function(j){
+      var c0 = j && j.candidates && j.candidates[0];
+      var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
+      if(!txt) throw new Error('回應沒有內容');
+      return JSON.parse(txt);
+    });
+  }
+
+  function wordList(words){
+    return words.map(function(c){ return c.word + (c.mean ? ('（' + c.mean + '）') : ''); }).join('\n');
+  }
+
+  window.rdSetN = function(n){
+    pickN = n;
+    Array.prototype.forEach.call(document.querySelectorAll('.rd-pick button'), function(b){
+      b.classList.toggle('on', +b.getAttribute('data-n') === n);
+    });
+  };
+
+  window.rdGenPassage = function(){
+    if(busy) return;
+    var words = pickWords(pickN);
+    if(!words.length){ msg('還沒有收藏任何單字，先到解說頁用收藏模式加幾個。', true); return; }
+    lock(true);
+    msg('正在用 ' + words.length + ' 個單字生成短文\u2026');
+
+    var prompt = '你是 TOEIC 教學專家。請用下列單字寫一篇 TOEIC 風格的英文短文。\n\n單字清單：\n'
+      + wordList(words)
+      + '\n\n要求：\n'
+      + '1. 場景必須是 TOEIC 常見的商務情境，例如公司公告、電子郵件、會議通知、產品說明、徵才啟事、客訴回覆。\n'
+      + '2. 長度 110 到 160 個英文單字，難度接近 TOEIC Part 6 或 Part 7。\n'
+      + '3. 盡量自然地用上清單裡的每個單字，語意要符合括號中的中文定義。\n'
+      + '4. 不要用罕見字或文學性修辭，保持商務文件的語氣。\n\n'
+      + '只回覆 JSON，不要加任何說明文字。欄位：\n'
+      + 'title：英文標題，10 字以內\n'
+      + 'scene：中文說明這是什麼文件，15 字以內\n'
+      + 'en：英文短文本身\n'
+      + 'zh：整篇的繁體中文翻譯\n'
+      + 'used：實際用到的單字，字串陣列，只放清單裡出現過的字';
+
+    callGemini(prompt).then(function(g){
+      var item = {
+        id: 'R-' + Date.now().toString(36),
+        kind: 'doc',
+        title: g.title || 'Reading',
+        scene: g.scene || '',
+        en: g.en || '',
+        zh: g.zh || '',
+        used: Array.isArray(g.used) ? g.used : words.map(function(c){ return c.word; }),
+        at: new Date().toISOString()
+      };
+      var all = load(); all.unshift(item); save(all);
+      msg('');
+      openId = item.id; view = 'doc'; render(); window.scrollTo(0,0);
+    }).catch(function(err){
+      msg('生成失敗：' + err.message, true);
+    }).then(function(){ lock(false); });
+  };
+
+  window.rdGenQuiz = function(){
+    if(busy) return;
+    var words = pickWords(pickN);
+    if(!words.length){ msg('還沒有收藏任何單字，先到解說頁用收藏模式加幾個。', true); return; }
+    lock(true);
+    msg('正在用 ' + words.length + ' 個單字出題\u2026');
+
+    var prompt = '你是 TOEIC 命題老師。請針對下列單字出 TOEIC Part 5 風格的單選題。\n\n單字清單：\n'
+      + wordList(words)
+      + '\n\n要求：\n'
+      + '1. 每個單字出一題，題目是一句商務情境的英文句子，中間挖空。\n'
+      + '2. 四個選項都要是同詞性的英文單字，其中三個是合理的干擾項。\n'
+      + '3. 正確答案必須是清單裡的那個字。\n'
+      + '4. 解析用繁體中文，說明為什麼選這個字，30 字內。\n\n'
+      + '只回覆 JSON，不要加任何說明文字。欄位：\n'
+      + 'items：陣列，每個元素包含\n'
+      + '  q：題目句子，挖空處用 ______ 表示\n'
+      + '  options：四個選項的字串陣列\n'
+      + '  answer：正確選項的索引，0 到 3\n'
+      + '  zh：題目句子的繁體中文翻譯\n'
+      + '  tip：繁體中文解析';
+
+    callGemini(prompt).then(function(g){
+      var items = Array.isArray(g.items) ? g.items : [];
+      if(!items.length) throw new Error('沒有產生題目');
+      var item = {
+        id: 'Q-' + Date.now().toString(36),
+        kind: 'quiz',
+        title: '單字測驗 ' + items.length + ' 題',
+        scene: '涵蓋 ' + words.length + ' 個收藏單字',
+        items: items,
+        used: words.map(function(c){ return c.word; }),
+        at: new Date().toISOString()
+      };
+      var all = load(); all.unshift(item); save(all);
+      msg('');
+      openId = item.id; view = 'quiz'; render(); window.scrollTo(0,0);
+    }).catch(function(err){
+      msg('出題失敗：' + err.message, true);
+    }).then(function(){ lock(false); });
+  };
+
+  /* 短文裡的英文可點擊，目標單字用橘色標出 */
+  function docHtml(en, used){
+    var raw = String(en || ''), keys = {};
+    (used || []).forEach(function(w){
+      String(w).toLowerCase().split(/\s+/).forEach(function(t){ if(t.length >= 3) keys[t] = 1; });
+    });
+    var out = '', last = 0, re = /[A-Za-z][A-Za-z'\-]*/g, m;
+    while((m = re.exec(raw))){
+      var w = m[0];
+      out += esc(raw.slice(last, m.index));
+      if(w.replace(/[^A-Za-z]/g,'').length >= 3){
+        var lw = w.toLowerCase(), isKey = !!keys[lw];
+        // soar 要能對上 soared、appoint 要能對上 appointing
+        if(!isKey){
+          for(var kk in keys){
+            if(kk.length < 4) continue;
+            if(lw.indexOf(kk) === 0 || kk.indexOf(lw) === 0){ isKey = true; break; }
+          }
+        }
+        out += '<button type="button" class="rw' + (isKey ? ' key' : '') +
+               '" data-w="' + esc(w) + '">' + esc(w) + '</button>';
+      }else{
+        out += esc(w);
+      }
+      last = m.index + w.length;
+    }
+    return out + esc(raw.slice(last));
+  }
+
+  function bindWords(){
+    document.querySelectorAll('#rdBody .rw').forEach(function(b){
+      var w = b.getAttribute('data-w');
+      try{ if(window.KIN_COLLECT && window.KIN_COLLECT.find(w)) b.classList.add('got'); }catch(e){}
+      b.onclick = function(ev){
+        ev.stopPropagation();
+        if(typeof nwOpen === 'function') nwOpen(w);
+      };
+    });
+  }
+
+  window.rdToggleZh = function(){
+    var z = document.querySelector('.rd-doc .zh'), b = $('rdZhBtn');
+    if(!z) return;
+    var hidden = z.classList.toggle('hide');
+    if(b) b.textContent = hidden ? '顯示翻譯' : '隱藏翻譯';
+  };
+
+  window.rdSpeakDoc = function(){
+    var it = load().filter(function(x){ return x.id === openId; })[0];
+    if(!it || !it.en) return;
+    if(typeof kinSpeak === 'function' && kinSpeak(it.en)){
+      if(typeof window.__kinToast === 'function') window.__kinToast('朗讀中');
+    }
+  };
+
+  window.rdDelete = function(id){
+    var it = load().filter(function(x){ return x.id === id; })[0];
+    if(!it) return;
+    if(!confirm('確定刪除「' + it.title + '」嗎？此動作無法復原。')) return;
+    save(load().filter(function(x){ return x.id !== id; }));
+    view = 'list'; openId = ''; render();
+  };
+
+  window.rdView = function(id){
+    var it = load().filter(function(x){ return x.id === id; })[0];
+    if(!it) return;
+    openId = id; view = (it.kind === 'quiz') ? 'quiz' : 'doc';
+    render(); window.scrollTo(0,0);
+  };
+
+  window.rdBack = function(){ view = 'list'; openId = ''; render(); window.scrollTo(0,0); };
+
+  window.rdAnswer = function(qi, oi){
+    var it = load().filter(function(x){ return x.id === openId; })[0];
+    if(!it || answers[qi] != null) return;
+    answers[qi] = oi;
+    var q = it.items[qi];
+    var box = document.querySelector('.rd-q[data-q="' + qi + '"]');
+    if(!box) return;
+    Array.prototype.forEach.call(box.querySelectorAll('.op'), function(b, i){
+      if(i === q.answer) b.classList.add('ok');
+      else if(i === oi) b.classList.add('no');
+    });
+    var ex = box.querySelector('.ex');
+    if(ex) ex.classList.add('show');
+
+    if(Object.keys(answers).length !== it.items.length) return;
+
+    var right = 0;
+    it.items.forEach(function(x, i){ if(answers[i] === x.answer) right++; });
+    var sc = $('rdScore');
+    if(sc){
+      sc.style.display = '';
+      sc.innerHTML = '<div class="n">' + right + ' / ' + it.items.length + '</div>' +
+        '<div class="k">' + (right === it.items.length ? '全對，這批單字掌握得很好' : '答錯的字已排進複習') + '</div>';
+    }
+    // 答錯的字自動標記要複習，並更新 SM-2
+    it.items.forEach(function(x, i){
+      if(answers[i] === x.answer) return;
+      var w = (x.options && x.options[x.answer]) || '';
+      try{
+        var card = window.KIN_COLLECT && window.KIN_COLLECT.find(w);
+        if(card && typeof statusMap !== 'undefined'){
+          statusMap[card.id] = 'review';
+          if(typeof saveStatus === 'function') saveStatus();
+          if(typeof srsGrade === 'function') srsGrade(card.id, false);
+        }
+      }catch(e){}
+    });
+    try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
+  };
+
+  function render(){
+    var body = $('rdBody'), title = $('rdTitle');
+    if(!body) return;
+    var all = load();
+
+    if(view === 'list'){
+      if(title) title.textContent = 'AI 教練';
+      var n = (window.KIN_COLLECT ? window.KIN_COLLECT.load().length : 0);
+      var opts = [5,10,20].map(function(v){
+        return '<button type="button" data-n="' + v + '" class="' + (v === pickN ? 'on' : '') +
+               '" onclick="rdSetN(' + v + ')">' + v + ' 字</button>';
+      }).join('');
+      body.innerHTML =
+        '<div class="rd-gen">' +
+        '<h3>用收藏的單字練習</h3>' +
+        '<div class="rd-pick">' + opts + '</div>' +
+        '<button type="button" class="go" onclick="rdGenPassage()">生成 TOEIC 短文</button>' +
+        '<button type="button" class="go alt" onclick="rdGenQuiz()">出一份單字測驗</button>' +
+        '<div class="rd-msg" id="rdMsg"></div>' +
+        '<div class="rd-note">目前收藏 ' + n + ' 個單字。系統會優先挑還沒複習過、或曾經答錯的字。短文裡的英文一樣可以點，發音或再加入閃卡。</div>' +
+        '</div>' +
+        (all.length
+          ? all.map(function(it){
+              var d = new Date(it.at), dt = (d.getMonth()+1) + '/' + d.getDate();
+              var pv = it.kind === 'quiz'
+                ? ((it.items && it.items[0] && it.items[0].q) || '')
+                : (it.en || '');
+              return '<button type="button" class="rd-item" onclick="rdView(\'' + it.id + '\')">' +
+                '<div class="hd"><span class="kind' + (it.kind === 'quiz' ? ' q' : '') + '">' +
+                (it.kind === 'quiz' ? '測驗' : '短文') + '</span><span class="dt">' + dt + '</span></div>' +
+                '<div class="ti">' + esc(it.title) + '</div>' +
+                '<div class="pv">' + esc(pv) + '</div>' +
+                '<div class="wc">' + ((it.used||[]).length) + ' 個單字</div></button>';
+            }).join('')
+          : '<div class="rd-empty">還沒有生成過內容<br>選好字數後按上面的按鈕開始</div>');
+      return;
+    }
+
+    var it = all.filter(function(x){ return x.id === openId; })[0];
+    if(!it){ view = 'list'; render(); return; }
+
+    if(view === 'doc'){
+      if(title) title.textContent = '短文';
+      body.innerHTML =
+        '<div class="rd-doc">' +
+        '<div class="ti">' + esc(it.title) + '</div>' +
+        '<div class="sc">' + esc(it.scene || '') + '</div>' +
+        '<div class="en">' + docHtml(it.en, it.used) + '</div>' +
+        '<div class="zh">' + esc(it.zh || '') + '</div>' +
+        '<div class="rd-tools">' +
+        '<button type="button" id="rdZhBtn" onclick="rdToggleZh()">隱藏翻譯</button>' +
+        '<button type="button" onclick="rdSpeakDoc()">朗讀</button>' +
+        '<button type="button" class="warn" onclick="rdDelete(\'' + it.id + '\')">刪除</button>' +
+        '</div></div>' +
+        '<div class="rd-used"><h3>本篇使用的單字</h3><div class="tags">' +
+        (it.used||[]).map(function(w){ return '<span class="tg">' + esc(w) + '</span>'; }).join('') +
+        '</div></div>' +
+        '<div class="rd-tools"><button type="button" onclick="rdBack()">\u2039 回到清單</button></div>';
+      bindWords();
+      return;
+    }
+
+    if(title) title.textContent = '測驗';
+    answers = {};
+    body.innerHTML =
+      '<div class="rd-score" id="rdScore" style="display:none"></div>' +
+      (it.items||[]).map(function(q, i){
+        return '<div class="rd-q" data-q="' + i + '">' +
+          '<div class="qn">第 ' + (i+1) + ' 題 / ' + it.items.length + '</div>' +
+          '<div class="qt">' + esc(q.q || '') + '</div>' +
+          (q.options||[]).map(function(o, oi){
+            return '<button type="button" class="op" onclick="rdAnswer(' + i + ',' + oi + ')">' +
+              String.fromCharCode(65+oi) + '.\u3000' + esc(o) + '</button>';
+          }).join('') +
+          '<div class="ex">' + esc(q.zh || '') + (q.tip ? ('<br>' + esc(q.tip)) : '') + '</div></div>';
+      }).join('') +
+      '<div class="rd-tools" style="margin-top:12px">' +
+      '<button type="button" onclick="rdBack()">\u2039 回到清單</button>' +
+      '<button type="button" class="warn" onclick="rdDelete(\'' + it.id + '\')">刪除</button></div>';
+  }
+
+  window.rdOpen = function(){
+    view = 'list'; openId = '';
+    var sc = $('screen-read');
+    if(sc) sc.classList.add('show');
+    render(); window.scrollTo(0,0);
+  };
+  window.rdClose = function(){
+    var sc = $('screen-read');
+    if(sc) sc.classList.remove('show');
+  };
+
+  // 只有在「我的收藏」才顯示入口
+  window.__kinPaintReadEntry = function(){
+    var inDeck = !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom');
+    document.body.classList.toggle('in-deck', inDeck);
+    var sub = $('rdEntrySub');
+    if(sub && inDeck){
+      var n = (window.KIN_COLLECT ? window.KIN_COLLECT.load().length : 0);
+      sub.textContent = n ? ('用這 ' + n + ' 個收藏單字生成短文與測驗') : '先收藏幾個單字再開始';
+    }
+  };
+})();
+</script>
+
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -5575,6 +6113,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     if(typeof window.__kinPaintUser === 'function') window.__kinPaintUser();
     if(typeof window.__kinPaintDeck === 'function') window.__kinPaintDeck();
+    if(typeof window.__kinPaintReadEntry === 'function') window.__kinPaintReadEntry();
     // 換書或換人後，返回解說的目標必須重置。
     if(switched || window.__kinUserSwitched){
       window.__kinUserSwitched = false;
