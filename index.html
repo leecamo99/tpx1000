@@ -5346,21 +5346,43 @@ body.theme-dark #nwBox .note{color:#6a6661}
   window.__kinTtsCacheCount = function(){ return Object.keys(ttsCache()).length; };
 
   function ttsStop(){
-    if(ttsAudio){ try{ ttsAudio.pause(); ttsAudio.src=''; }catch(e){} ttsAudio = null; }
+    if(ttsAudio){
+      try{
+        // 先解除事件再清 src，否則 src='' 會觸發 error 事件而誤判成播放結束
+        ttsAudio.onended = null;
+        ttsAudio.onerror = null;
+        ttsAudio.oncanplay = null;
+        ttsAudio.pause();
+        ttsAudio.removeAttribute('src');
+        ttsAudio.load();
+      }catch(e){}
+      ttsAudio = null;
+    }
     try{ window.speechSynthesis.cancel(); }catch(e){}
+    ttsGen++;
   }
   window.__kinTtsStop = ttsStop;
 
+  var ttsGen = 0;
   function ttsPlayB64(b64, onend){
     ttsStop();
+    var gen = ++ttsGen;
     var a = new Audio('data:audio/mp3;base64,' + b64);
     ttsAudio = a;
     try{
       var r = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined') ? SPEEDS[speedIdx] : 1;
       a.playbackRate = r || 1;
     }catch(e){}
-    if(typeof onend === 'function'){ a.onended = onend; a.onerror = onend; }
-    a.play().catch(function(){ if(typeof onend === 'function') onend(); });
+    var fired = false;
+    function done(){
+      // 只認自己這一代、且只觸發一次，避免 ended 與 error 重複進來
+      if(fired || gen !== ttsGen) return;
+      fired = true;
+      if(typeof onend === 'function') onend();
+    }
+    a.onended = done;
+    a.onerror = function(){ if(gen === ttsGen) done(); };
+    a.play().catch(function(){ if(gen === ttsGen) done(); });
   }
 
   function speakSystem(text, onend){
@@ -5373,7 +5395,11 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var vs = window.speechSynthesis.getVoices() || [];
       for(var i=0;i<vs.length;i++){ if(/^en[-_]?US/i.test(vs[i].lang)){ u.voice = vs[i]; break; } }
       if(!u.voice){ for(var j=0;j<vs.length;j++){ if(/^en/i.test(vs[j].lang)){ u.voice = vs[j]; break; } } }
-      if(typeof onend === 'function'){ u.onend = onend; u.onerror = onend; }
+      if(typeof onend === 'function'){
+        var fired = false;
+        var once = function(){ if(fired) return; fired = true; onend(); };
+        u.onend = once; u.onerror = once;
+      }
       window.speechSynthesis.speak(u);
       return true;
     }catch(e){ return false; }
@@ -5701,12 +5727,24 @@ body.theme-dark #rdEntry .ch{color:#5c4a3a}
 .rd-pl-n{font-size:11.5px;color:#655f5a;font-weight:700;line-height:1.3;
   overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .rd-pl-n b{color:#c45c1a}
+/* 分段進度條：一句一格，中間留縫，像 YouTube 的章節條 */
 .rd-pl-track{
-  height:6px;margin-top:5px;border-radius:3px;background:#ece8e3;
-  position:relative;overflow:hidden;cursor:pointer;touch-action:manipulation;
+  display:flex;gap:2px;height:7px;margin-top:6px;
+  position:relative;cursor:pointer;touch-action:manipulation;
 }
-.rd-pl-fill{height:100%;background:#c45c1a;border-radius:3px;width:0;transition:width .18s}
-.rd-pl-ab{position:absolute;top:0;bottom:0;background:rgba(196,92,26,.20)}
+.rd-pl-seg{
+  flex:1 1 0;min-width:2px;height:100%;border-radius:2px;
+  background:#e4dfd9;position:relative;overflow:hidden;
+}
+.rd-pl-seg.done{background:#e0b894}
+.rd-pl-seg.cur{background:#eccdae}
+.rd-pl-seg.inAB{box-shadow:inset 0 0 0 1px rgba(196,92,26,.55)}
+/* 系統語音才有逐字進度，這條在目前句子內線性推進 */
+.rd-pl-seg .sub{
+  position:absolute;left:0;top:0;bottom:0;width:0;
+  background:#c45c1a;border-radius:2px;transition:width .12s linear;
+}
+.rd-pl-seg.cur.block .sub{width:100%;transition:none}
 .rd-pl-btns{display:flex;gap:6px;margin-top:8px}
 .rd-pl-btns button{
   flex:1;height:30px;padding:0 6px;border:1.5px solid #ddd;border-radius:8px;background:#fff;
@@ -5735,9 +5773,11 @@ body.theme-dark .rd-player{background:rgba(14,14,14,.97);border-top-color:#24242
 body.theme-dark .rd-pl-btn svg{fill:#f2f0ed}
 body.theme-dark .rd-pl-n{color:#a8a49f}
 body.theme-dark .rd-pl-n b{color:#ff9142}
-body.theme-dark .rd-pl-track{background:#2a2a2c}
-body.theme-dark .rd-pl-fill{background:#ff9142}
-body.theme-dark .rd-pl-ab{background:rgba(255,145,66,.22)}
+body.theme-dark .rd-pl-seg{background:#2f2b27}
+body.theme-dark .rd-pl-seg.done{background:#7a4a20}
+body.theme-dark .rd-pl-seg.cur{background:#5c3a1c}
+body.theme-dark .rd-pl-seg.inAB{box-shadow:inset 0 0 0 1px rgba(255,145,66,.6)}
+body.theme-dark .rd-pl-seg .sub{background:#ff9142}
 body.theme-dark .rd-pl-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#a8a49f}
 body.theme-dark .rd-pl-btns button.on{background:#2a1c10;border-color:#ff9142;color:#ff9142}
 body.theme-dark .rd-doc .sn.on{background:rgba(255,145,66,.16)}
@@ -6150,21 +6190,14 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   }
   function rdPaintBar(){
     var n = rdSn.length;
-    var lab = $('rdPlN'), fill = $('rdPlFill'), ab = $('rdPlAB');
+    var lab = $('rdPlN');
     if(lab){
       lab.innerHTML = n
         ? ('第 <b>' + (rdIdx + 1) + '</b> 句 / 共 ' + n + ' 句' +
            (rdA !== null ? ('　A' + (rdA + 1) + (rdB !== null ? ('–B' + (rdB + 1)) : '')) : ''))
         : '沒有可朗讀的內容';
     }
-    if(fill) fill.style.width = n ? (((rdIdx + 1) / n) * 100) + '%' : '0';
-    if(ab){
-      if(rdA !== null && rdB !== null && n){
-        ab.style.display = '';
-        ab.style.left  = ((rdA / n) * 100) + '%';
-        ab.style.width = (((rdB - rdA + 1) / n) * 100) + '%';
-      }else ab.style.display = 'none';
-    }
+    rdPaintTrack();
     var mb = $('rdPlMode');
     if(mb){ mb.textContent = rdModeLabel(); mb.classList.toggle('on', rdMode() !== 'cont'); }
     var abb = $('rdPlABBtn');
@@ -6209,11 +6242,43 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     }
   };
 
+  /* 分段進度條：每句一格。系統語音會在目前這格內線性推進，
+     雲端語音拿不到逐字時間，改成整格填滿。 */
+  var rdSubW = 0;          // 目前句子的逐字進度 0~1
+  var rdBlockMode = false; // true 代表整格填滿
+  function rdPaintTrack(){
+    var track = $('rdPlTrack');
+    if(!track) return;
+    var n = rdSn.length;
+    if(!n){ track.innerHTML = ''; return; }
+    if(track.children.length !== n){
+      var html = '';
+      for(var i = 0; i < n; i++) html += '<div class="rd-pl-seg"><div class="sub"></div></div>';
+      track.innerHTML = html;
+    }
+    for(var k = 0; k < n; k++){
+      var seg = track.children[k];
+      if(!seg) continue;
+      var inAB = (rdA !== null && rdB !== null && k >= rdA && k <= rdB);
+      seg.className = 'rd-pl-seg'
+        + (k < rdIdx ? ' done' : '')
+        + (k === rdIdx ? ' cur' : '')
+        + (k === rdIdx && rdBlockMode ? ' block' : '')
+        + (inAB ? ' inAB' : '');
+      var sub = seg.firstChild;
+      if(sub){
+        if(k < rdIdx) sub.style.width = '100%';
+        else if(k > rdIdx) sub.style.width = '0';
+        else sub.style.width = rdBlockMode ? '100%' : (Math.round(rdSubW * 100) + '%');
+      }
+    }
+  }
   function rdPaint(){ rdPaintSn(); rdPaintBar(); }
 
   function rdStop(){
     rdGen++;
     rdOn = false;
+    rdSubW = 0;
     try{ window.speechSynthesis.cancel(); }catch(e){}
     if(typeof window.__kinTtsStop === 'function') window.__kinTtsStop();
     rdClearWord();
@@ -6231,6 +6296,10 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     // 雲端語音音質好但沒有逐字時間，只能句子級高亮；系統語音才有 boundary 事件。
     var cloud = (typeof window.__kinVoiceSrc === 'function') && window.__kinVoiceSrc() === 'cloud'
                 && (typeof window.__kinHasTtsKey === 'function') && window.__kinHasTtsKey();
+    // 雲端沒有逐字時間，整格填滿；系統語音則線性推進
+    rdBlockMode = cloud || !('speechSynthesis' in window);
+    rdSubW = 0;
+    rdPaintTrack();
     if(cloud || !('speechSynthesis' in window)){
       if(typeof kinSpeak === 'function' && kinSpeak(text, function(){ if(gen === rdGen) onend(); })) return;
       if(!('speechSynthesis' in window)){ onend(); return; }
@@ -6258,6 +6327,9 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         if(gen !== rdGen) return;
         var ci = ev.charIndex;
         if(ci == null) return;
+        // 同步推進這一格的線性進度
+        rdSubW = Math.max(0, Math.min(1, ci / Math.max(1, text.length)));
+        rdPaintTrack();
         rdClearWord();
         for(var k = 0; k < marks.length; k++){
           if(ci >= marks[k].at && ci < marks[k].end + 1){ marks[k].el.classList.add('wnow'); break; }
@@ -6273,6 +6345,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     var gen = rdGen;
     if(!rdOn || gen !== rdGen) return;
     if(rdIdx >= rdSn.length){ rdStop(); return; }
+    rdSubW = 0;
     rdPaint();
     rdSpeakWithHighlight(rdIdx, gen, function(){
       if(gen !== rdGen || !rdOn) return;
@@ -6312,8 +6385,15 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(!track) return;
     var r = track.getBoundingClientRect();
     var x = ((ev.touches && ev.touches[0]) ? ev.touches[0].clientX : ev.clientX) - r.left;
-    var i = Math.floor((x / r.width) * rdSn.length);
+    // 優先用點到的那一格，落在間隙時才用比例換算
+    var i = -1;
+    for(var k = 0; k < track.children.length; k++){
+      var sr = track.children[k].getBoundingClientRect();
+      if(ev.clientX >= sr.left && ev.clientX <= sr.right){ i = k; break; }
+    }
+    if(i < 0) i = Math.floor((x / Math.max(1, r.width)) * rdSn.length);
     rdIdx = Math.max(0, Math.min(rdSn.length - 1, i));
+    rdSubW = 0;
     if(rdOn){ rdGen++; rdOn = true; rdStep(); }
     else rdPaint();
   };
@@ -6497,9 +6577,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 4L27 16L7 28Z"/></svg></button>' +
         '<div class="rd-pl-info">' +
         '<div class="rd-pl-n" id="rdPlN">—</div>' +
-        '<div class="rd-pl-track" id="rdPlTrack" onclick="rdSeekTo(event)">' +
-        '<div class="rd-pl-ab" id="rdPlAB" style="display:none"></div>' +
-        '<div class="rd-pl-fill" id="rdPlFill"></div></div>' +
+        '<div class="rd-pl-track" id="rdPlTrack" onclick="rdSeekTo(event)"></div>' +
         '</div></div>' +
         '<div class="rd-pl-btns">' +
         '<button type="button" id="rdPlMode" onclick="rdCycleMode()">連續播放</button>' +
