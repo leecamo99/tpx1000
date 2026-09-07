@@ -1251,6 +1251,27 @@ function noteWordsHtml(text){
   }
   return out+escapeHtml(raw.slice(last));
 }
+/* 例句中的英文可點擊。依需求只辨識單字，不整句捕獲。 */
+function exWordsHtml(en, word){
+  var raw = String(en || '');
+  if(!raw) return '';
+  var hw = String(word || '').trim().toLowerCase();
+  var out = '', last = 0, re = /[A-Za-z][A-Za-z'\-]*/g, m;
+  while((m = re.exec(raw))){
+    var w = m[0];
+    out += escapeHtml(raw.slice(last, m.index));
+    if(w.replace(/[^A-Za-z]/g,'').length >= 3){
+      var lw = w.toLowerCase();
+      var isHw = hw && (lw === hw || lw.indexOf(hw) === 0 || hw.indexOf(lw) === 0);
+      out += '<button type="button" class="nw' + (isHw ? ' hl' : '') +
+             '" data-w="' + escapeHtml(w) + '">' + escapeHtml(w) + '</button>';
+    }else{
+      out += escapeHtml(w);
+    }
+    last = m.index + w.length;
+  }
+  return out + escapeHtml(raw.slice(last));
+}
 function highlightWord(en, word){
   if(!en||!word) return escapeHtml(en);
   const re = new RegExp('('+word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
@@ -1640,7 +1661,7 @@ function showDetail(){
   if(senses.length){
     senses.forEach(function(s){
       html += '<div class="db-sense">';
-      html += '<div class="db-ex-en tap-play">'+highlightWord(s.en||'', e.word)+'</div>';
+      html += '<div class="db-ex-en tap-play">'+exWordsHtml(s.en||'', e.word)+'</div>';
       html += '<div class="db-ex-zh">';
       if(s.pos) html += '<span class="db-pos">'+escapeHtml(s.pos)+'</span> ';
       if(s.mean) html += '<span style="color:#c45c1a">'+escapeHtml(s.mean)+'</span>　';
@@ -1649,7 +1670,7 @@ function showDetail(){
     });
   } else {
     html += '<div class="db-ex">';
-    html += '<div class="db-ex-en tap-play" id="dbExEn">'+highlightWord(e.en||'', e.word)+'</div>';
+    html += '<div class="db-ex-en tap-play" id="dbExEn">'+exWordsHtml(e.en||'', e.word)+'</div>';
     html += '<div class="db-ex-zh" id="dbExZh">'+escapeHtml(e.ja||'')+'</div>';
     html += '</div>';
   }
@@ -1659,6 +1680,10 @@ function showDetail(){
   // 註解英文：依目前模式決定是發音還是加入閃卡
   host.querySelectorAll('.nw').forEach(function(b){
     b.onclick=function(ev){
+      var inEx = !!(b.closest && b.closest('.db-ex-en'));
+      var capMode = (typeof nwMode === 'function') && nwMode() === 'cap';
+      // 發音模式的例句交還原本的整句錄音播放，不攔截。
+      if(inEx && !capMode) return;
       ev.stopPropagation();
       if(typeof nwTap==='function') nwTap(b.getAttribute('data-w'), b);
     };
@@ -4296,30 +4321,33 @@ body.theme-dark .mode-bar button.on{border-color:#ff9142;color:#ff9142;backgroun
 body.theme-dark #screen-list > .topbar #deckBtn{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
 body.theme-dark #screen-list > .topbar #deckBtn .ct{background:#ff9142;color:#141414}
 /* 註解裡的可點英文：維持原書排版，不加色不加底線 */
-.db-note .nw{
+#detailBook .nw{
   display:inline;padding:0;margin:0;border:0;background:transparent;
   color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;
   border-radius:3px;
 }
-.db-note .nw:active{background:rgba(0,0,0,.07)}
-body.theme-dark .db-note .nw:active{background:rgba(255,255,255,.10)}
+#detailBook .nw:active{background:rgba(0,0,0,.07)}
+body.theme-dark #detailBook .nw:active{background:rgba(255,255,255,.10)}
 /* 已捕獲：以字重與明暗表示熟悉度，越不熟越深越粗 */
-.db-note .nw.cap{font-weight:700}
-.db-note .nw.cap-5{color:#8a8580;font-weight:600}
-.db-note .nw.cap-4{color:#6b6560}
-.db-note .nw.cap-3{color:#4a453f}
-.db-note .nw.cap-2{color:#2b2723}
-.db-note .nw.cap-1{color:#000;font-weight:800}
-body.theme-dark .db-note .nw.cap-5{color:#6a6661}
-body.theme-dark .db-note .nw.cap-4{color:#8f8b86}
-body.theme-dark .db-note .nw.cap-3{color:#b8b4af}
-body.theme-dark .db-note .nw.cap-2{color:#dcd9d5}
-body.theme-dark .db-note .nw.cap-1{color:#fff;font-weight:800}
+#detailBook .nw.cap{font-weight:700}
+#detailBook .nw.cap-5{color:#8a8580;font-weight:600}
+#detailBook .nw.cap-4{color:#6b6560}
+#detailBook .nw.cap-3{color:#4a453f}
+#detailBook .nw.cap-2{color:#2b2723}
+#detailBook .nw.cap-1{color:#000;font-weight:800}
+body.theme-dark #detailBook .nw.cap-5{color:#6a6661}
+body.theme-dark #detailBook .nw.cap-4{color:#8f8b86}
+body.theme-dark #detailBook .nw.cap-3{color:#b8b4af}
+body.theme-dark #detailBook .nw.cap-2{color:#dcd9d5}
+body.theme-dark #detailBook .nw.cap-1{color:#fff;font-weight:800}
+/* 例句裡的標題字維持橘色，不被熟悉度色階蓋掉 */
+#detailBook .db-ex-en .nw.hl{color:#c45c1a}
+body.theme-dark #detailBook .db-ex-en .nw.hl{color:#ff9142}
 /* 捕獲模式下，未捕獲的英文用細虛線提示可點 */
-body.cap-mode .db-note .nw:not(.cap){
+body.cap-mode #detailBook .nw:not(.cap):not(.inbook){
   box-shadow:inset 0 -1px 0 rgba(0,0,0,.22);
 }
-body.cap-mode.theme-dark .db-note .nw:not(.cap){
+body.cap-mode.theme-dark #detailBook .nw:not(.cap):not(.inbook){
   box-shadow:inset 0 -1px 0 rgba(255,255,255,.28);
 }
 /* 閃卡的來源與補充資料 */
@@ -4479,6 +4507,40 @@ body.theme-dark #nwBox .note{color:#6a6661}
 
   window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, update:update, key:key };
 
+  /* ========== 跨書單字索引 ==========
+     每次載入書籍就記下它的標題字，之後捕獲時可比對所有讀過的書。 */
+  var WIDX_KEY = 'kinWordIndex';
+  function widxLoad(){
+    try{ return JSON.parse(localStorage.getItem(WIDX_KEY) || '{}') || {}; }catch(e){ return {}; }
+  }
+  window.__kinIndexBook = function(bookId, bookTitle, data){
+    if(!bookId || bookId === 'custom' || !data || !data.length) return;
+    var words = {};
+    data.forEach(function(e){
+      var w = String(e.word || '').trim().toLowerCase();
+      if(!w) return;
+      // 一個條目可能收錄多個寫法，例如 perfume / fragrance
+      w.split(/\s*\/\s*/).forEach(function(part){
+        part = part.replace(/\([^)]*\)/g,'').trim();
+        if(part) words[part] = e.id;
+      });
+    });
+    var idx = widxLoad();
+    idx[bookId] = { title: bookTitle || bookId, words: words };
+    try{ localStorage.setItem(WIDX_KEY, JSON.stringify(idx)); }catch(e){}
+  };
+  function findInBooks(word){
+    var n = String(word||'').trim().toLowerCase();
+    if(!n) return null;
+    var idx = widxLoad();
+    for(var bid in idx){
+      var b = idx[bid];
+      if(b && b.words && b.words[n]) return { book:bid, title:b.title, id:b.words[n] };
+    }
+    return null;
+  }
+  window.__kinFindInBooks = findInBooks;
+
   /* ========== 捕獲模式：點英文直接進閃卡 ========== */
   var MODE_KEY = 'kinNoteMode';       // 'speak' | 'cap'
   var TR_KEY   = 'kinTransKey';       // Cloud Translation 金鑰，只存本機
@@ -4516,14 +4578,22 @@ body.theme-dark #nwBox .note{color:#6a6661}
   window.__kinPaintDeck = paintDeck;
 
   function paintNoteWords(){
-    document.querySelectorAll('.db-note .nw').forEach(function(el){
-      var card = find(el.getAttribute('data-w'));
-      el.classList.remove('cap','cap-1','cap-2','cap-3','cap-4','cap-5');
+    var isCap = mode() === 'cap';
+    document.querySelectorAll('#detailBook .nw').forEach(function(el){
+      var w = el.getAttribute('data-w');
+      var card = find(w);
+      el.classList.remove('cap','cap-1','cap-2','cap-3','cap-4','cap-5','inbook');
       if(card){
         el.classList.add('cap', 'cap-' + famLevel(card.id));
         el.title = '已在閃卡中';
+        return;
+      }
+      var inBook = isCap ? findInBooks(w) : null;
+      if(inBook){
+        el.classList.add('inbook');
+        el.title = '已是《' + inBook.title + '》第 ' + inBook.id + ' 課的單字';
       }else{
-        el.title = mode() === 'cap' ? '點一下加入閃卡' : '點一下發音';
+        el.title = isCap ? '點一下加入閃卡' : '點一下發音';
       }
     });
     paintDeck();
@@ -4539,6 +4609,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     paintNoteWords();
   }
 
+  window.nwMode = mode;
   window.nwSetMode = function(m){
     try{ localStorage.setItem(MODE_KEY, m === 'cap' ? 'cap' : 'speak'); }catch(e){}
     paintMode();
@@ -4595,6 +4666,22 @@ body.theme-dark #nwBox .note{color:#6a6661}
 
     if(find(text)){
       if(typeof window.__kinToast === 'function') window.__kinToast('已在閃卡中：' + text);
+      return;
+    }
+
+    // 已經是任一本書的標題字就不重複收錄，改為提示並可直接前往。
+    var inBook = findInBooks(text);
+    if(inBook){
+      var here = !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === inBook.book);
+      var go = confirm('「' + text + '」已是《' + inBook.title + '》第 ' + inBook.id +
+                       ' 課的單字，不需另外收藏。\n\n要前往查看嗎？');
+      if(go){
+        if(here){ if(typeof openDetail === 'function') openDetail(inBook.id); }
+        else{
+          window.__kinPendingOpen = inBook.id;
+          if(typeof loadBookById === 'function') loadBookById(inBook.book);
+        }
+      }
       return;
     }
     var src = e ? {
@@ -5228,6 +5315,10 @@ body.theme-dark #nwBox .note{color:#6a6661}
     SRS_KEY    = 'book:' + meta.id + ':' + uid + ':srs';
     var switched = !prev || prev.id !== meta.id;
     window.CURRENT_BOOK = meta;
+    // 建立這本書的標題字索引，供捕獲時跨書比對。
+    if(!meta.virtual && typeof window.__kinIndexBook === 'function'){
+      try{ window.__kinIndexBook(meta.id, meta.title, DATA); }catch(e){}
+    }
     if(typeof window.__kinPaintUser === 'function') window.__kinPaintUser();
     if(typeof window.__kinPaintDeck === 'function') window.__kinPaintDeck();
     // 換書或換人後，返回解說的目標必須重置。
