@@ -242,6 +242,8 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 .player-bar.show{display:flex}
 /* 儀表板與短文區等全螢幕畫面出現時才隱藏 */
 body.mode-srs .player-bar{display:none}
+/* 進入短文朗讀時收起單字播放器，避免兩組控制項疊在一起 */
+body.rd-open .player-bar{display:none !important}
 .player-bar .play-btn{
   width:42px;height:42px;border:0;border-radius:0;background:transparent;color:#111;
   font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -6440,12 +6442,16 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   window.rdOpen = function(){
     view = 'list'; openId = '';
+    // 單字播放器即將隱藏，先停掉正在播的音訊，否則會變成看不見卻仍在響
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
+    document.body.classList.add('rd-open');
     var sc = $('screen-read');
     if(sc) sc.classList.add('show');
     render(); window.scrollTo(0,0);
   };
   window.rdClose = function(){
     if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
+    document.body.classList.remove('rd-open');
     var sc = $('screen-read');
     if(sc) sc.classList.remove('show');
   };
