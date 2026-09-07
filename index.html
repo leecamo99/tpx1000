@@ -258,8 +258,18 @@ body.mode-srs .player-bar{display:none}
   box-shadow:none !important;
   font-variant-emoji:text;
 }
-.player-bar .info{flex:1;min-width:0;font-size:12px;color:#111}
-.player-bar .info .t{font-size:13px;color:#111;font-weight:700}
+.player-bar .info{
+  flex:1;min-width:0;font-size:12px;color:#111;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+/* 標題與副標題都固定單行，長例句不會把播放列撐成好幾行 */
+.player-bar .info .t{
+  font-size:13px;color:#111;font-weight:700;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
+.player-bar .info #playSub{
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+}
 .player-bar .speed{
   color:#111;font-size:12px;padding:6px 10px;border:1px solid #bbb;border-radius:8px;background:#fff;
   white-space:nowrap;
@@ -2253,7 +2263,12 @@ function speakEntry(e, times, onDone){
   var t = (times == null) ? 1 : Math.max(0, times|0);
   if(ex && t > 0){
     for(var i = 0; i < t; i++){
-      seq.push({ text: ex, title: e.word + '（例句）', sub: ex });
+      // 只顯示第幾次，長句不會把播放列撐開
+      seq.push({
+        text: ex,
+        title: e.word + '（例句）',
+        sub: (t > 1) ? ('例句 ' + (i + 1) + '/' + t) : '例句'
+      });
     }
   }
   var bar = document.getElementById('playerBar');
@@ -5596,13 +5611,79 @@ body.theme-dark #rdEntry .ch{color:#5c4a3a}
 .rd-doc.fs-s .zh,.rd-doc.fs-s .pp .pz{font-size:12.5px}
 .rd-doc.fs-l .zh,.rd-doc.fs-l .pp .pz{font-size:14.5px}
 /* 字級調整鈕 */
-.rd-fs{display:flex;align-items:center;gap:6px;margin-bottom:12px}
-.rd-fs span{font-size:11px;color:#a09a94;font-weight:700;margin-right:2px}
+.rd-fs{display:flex;align-items:center;gap:5px;margin-bottom:12px;flex-wrap:wrap}
+.rd-fs .lb{font-size:11px;color:#a09a94;font-weight:700;margin-right:1px}
 .rd-fs button{
-  width:32px;height:28px;border:1.5px solid #ddd;border-radius:8px;background:#fff;
-  color:#655f5a;font-size:13px;font-weight:800;font-family:inherit;line-height:1;
+  height:28px;padding:0 9px;border:1.5px solid #ddd;border-radius:8px;background:#fff;
+  color:#655f5a;font-size:12px;font-weight:800;font-family:inherit;line-height:1;
+  touch-action:manipulation;
 }
+.rd-fs button.sz{width:30px;padding:0;font-size:13px}
 .rd-fs button.on{border-color:#c45c1a;background:#fdf6f0;color:#c45c1a}
+.rd-fs button.warn{border-color:#e8c4c4;color:#c47070}
+.rd-fs button:active{transform:scale(.95)}
+.rd-fs .gap{flex:1;min-width:4px}
+
+/* 短文播放器：句子進度、模式、A-B 區間 */
+.rd-player{
+  position:sticky;bottom:0;z-index:6;margin:0 -12px -12px;
+  padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px));
+  background:rgba(255,255,255,.97);border-top:1px solid #e8e4df;
+  backdrop-filter:saturate(180%) blur(12px);
+}
+.rd-pl-top{display:flex;align-items:center;gap:9px}
+.rd-pl-btn{
+  flex:0 0 auto;width:38px;height:38px;padding:0;border:0;background:transparent;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+}
+.rd-pl-btn svg{display:block;width:24px;height:24px;fill:#111}
+.rd-pl-btn:active{transform:scale(.9)}
+.rd-pl-info{flex:1;min-width:0}
+.rd-pl-n{font-size:11.5px;color:#655f5a;font-weight:700;line-height:1.3;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rd-pl-n b{color:#c45c1a}
+.rd-pl-track{
+  height:6px;margin-top:5px;border-radius:3px;background:#ece8e3;
+  position:relative;overflow:hidden;cursor:pointer;touch-action:manipulation;
+}
+.rd-pl-fill{height:100%;background:#c45c1a;border-radius:3px;width:0;transition:width .18s}
+.rd-pl-ab{position:absolute;top:0;bottom:0;background:rgba(196,92,26,.20)}
+.rd-pl-btns{display:flex;gap:6px;margin-top:8px}
+.rd-pl-btns button{
+  flex:1;height:30px;padding:0 6px;border:1.5px solid #ddd;border-radius:8px;background:#fff;
+  color:#655f5a;font-size:11.5px;font-weight:700;font-family:inherit;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:manipulation;
+}
+.rd-pl-btns button.on{border-color:#c45c1a;background:#fdf6f0;color:#c45c1a}
+.rd-pl-btns button:active{transform:scale(.96)}
+
+/* 播放高亮：句子淡底，單字反白 */
+.rd-doc .sn{border-radius:4px;transition:background .15s}
+.rd-doc .sn.on{background:rgba(196,92,26,.11)}
+.rd-doc .rw.wnow{background:#c45c1a;color:#fff;border-radius:3px;
+  box-shadow:0 0 0 2px #c45c1a}
+.rd-doc .sn.aMark{box-shadow:inset 3px 0 0 #c45c1a}
+.rd-doc .sn.bMark{box-shadow:inset -3px 0 0 #c45c1a}
+.rd-doc .sn.aMark.bMark{box-shadow:inset 3px 0 0 #c45c1a,inset -3px 0 0 #c45c1a}
+
+body.theme-dark .rd-fs .lb{color:#6a6661}
+body.theme-dark .rd-fs button{background:#1c1c1e;border-color:#3a3a3c;color:#a8a49f}
+body.theme-dark .rd-fs button.on{background:#2a1c10;border-color:#ff9142;color:#ff9142}
+body.theme-dark .rd-fs button.warn{border-color:#5c3535;color:#d08a8a}
+body.theme-dark .rd-player{background:rgba(14,14,14,.97);border-top-color:#242426}
+body.theme-dark .rd-pl-btn svg{fill:#f2f0ed}
+body.theme-dark .rd-pl-n{color:#a8a49f}
+body.theme-dark .rd-pl-n b{color:#ff9142}
+body.theme-dark .rd-pl-track{background:#2a2a2c}
+body.theme-dark .rd-pl-fill{background:#ff9142}
+body.theme-dark .rd-pl-ab{background:rgba(255,145,66,.22)}
+body.theme-dark .rd-pl-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#a8a49f}
+body.theme-dark .rd-pl-btns button.on{background:#2a1c10;border-color:#ff9142;color:#ff9142}
+body.theme-dark .rd-doc .sn.on{background:rgba(255,145,66,.16)}
+body.theme-dark .rd-doc .rw.wnow{background:#ff9142;color:#141414;box-shadow:0 0 0 2px #ff9142}
+body.theme-dark .rd-doc .sn.aMark{box-shadow:inset 3px 0 0 #ff9142}
+body.theme-dark .rd-doc .sn.bMark{box-shadow:inset -3px 0 0 #ff9142}
+body.theme-dark .rd-doc .sn.aMark.bMark{box-shadow:inset 3px 0 0 #ff9142,inset -3px 0 0 #ff9142}
 body.theme-dark .rd-doc .ti{color:#f5f3f0}
 body.theme-dark .rd-doc .sc{border-bottom-color:#242426}
 body.theme-dark .rd-doc .en,body.theme-dark .rd-doc .pp .pe{color:#e8e6e3}
@@ -5628,6 +5709,8 @@ body.theme-dark .rd-fs button.on{background:#2a1c10;border-color:#ff9142;color:#
   color:inherit;font:inherit;cursor:pointer;border-radius:3px;touch-action:manipulation;
 }
 .rd-doc .rw:active{background:rgba(0,0,0,.08)}
+.rd-doc .rw.nb{cursor:default;pointer-events:none}
+.rd-doc .rw.nb:active{background:transparent}
 .rd-doc .rw.key{color:#c45c1a;font-weight:700}
 .rd-doc .rw.got{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:4px}
 
@@ -5805,6 +5888,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       };
       var all = load(); all.unshift(item); save(all);
       msg('');
+      rdIdx = 0; rdA = rdB = null;
       openId = item.id; view = 'doc'; render(); window.scrollTo(0,0);
     }).catch(function(err){
       msg('生成失敗：' + err.message, true);
@@ -5858,18 +5942,30 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     return String(t || '').split(/\n+/).map(function(x){ return x.trim(); })
                           .filter(function(x){ return x.length; });
   }
+  // 以句為單位包起來，播放時才能逐句高亮、逐句循環、設定 A-B 區間
+  var _snSeq = 0;
+  function sentencesHtml(text, used){
+    var raw = String(text || '');
+    var parts = raw.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [raw];
+    return parts.map(function(p){
+      if(!p.trim()) return esc(p);
+      return '<span class="sn" data-si="' + (_snSeq++) + '">' + inlineHtml(p, used) + '</span>';
+    }).join('');
+  }
+
   // 英文與中文段數相同時採段落對照，最適合精讀
   function docBodyHtml(it){
+    _snSeq = 0;
     var en = paras(it.en), zh = paras(it.zh);
     if(en.length >= 2 && en.length === zh.length){
       return en.map(function(p, i){
-        return '<div class="pp"><p class="pe">' + inlineHtml(p, it.used) + '</p>' +
+        return '<div class="pp"><p class="pe">' + sentencesHtml(p, it.used) + '</p>' +
                '<p class="pz">' + esc(zh[i]) + '</p></div>';
       }).join('');
     }
     return '<div class="en">' +
-           en.map(function(p){ return '<p>' + inlineHtml(p, it.used) + '</p>'; }).join('') +
-           '</div><div class="zh' + '">' +
+           en.map(function(p){ return '<p>' + sentencesHtml(p, it.used) + '</p>'; }).join('') +
+           '</div><div class="zh">' +
            zh.map(function(p){ return '<p>' + esc(p) + '</p>'; }).join('') + '</div>';
   }
   function inlineHtml(en, used){
@@ -5893,7 +5989,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         out += '<button type="button" class="rw' + (isKey ? ' key' : '') +
                '" data-w="' + esc(w) + '">' + esc(w) + '</button>';
       }else{
-        out += esc(w);
+        // a、to、we 這類短詞不做成可點按鈕，但仍要能被朗讀高亮，否則高亮會一直斷掉
+        out += '<span class="rw nb">' + esc(w) + '</span>';
       }
       last = m.index + w.length;
     }
@@ -5901,7 +5998,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   }
 
   function bindWords(){
-    document.querySelectorAll('#rdBody .rw').forEach(function(b){
+    document.querySelectorAll('#rdBody .rw:not(.nb)').forEach(function(b){
       var w = b.getAttribute('data-w');
       try{ if(window.KIN_COLLECT && window.KIN_COLLECT.find(w)) b.classList.add('got'); }catch(e){}
       b.onclick = function(ev){
@@ -5911,37 +6008,269 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     });
   }
 
-  // 段落對照與段末翻譯兩種版型共用同一顆開關
-  window.rdToggleZh = function(){
-    var doc = $('rdDoc'), b = $('rdZhBtn');
-    if(!doc) return;
-    var hidden = doc.classList.toggle('zh-off');
-    var z = doc.querySelector('.zh');
-    if(z) z.classList.toggle('hide', hidden);
-    if(b) b.textContent = hidden ? '顯示翻譯' : '隱藏翻譯';
-  };
-
   var FS_KEY = 'kinReadFs';
+  var ZH_KEY = 'kinReadZh';   // '1' 代表翻譯已隱藏
   function readFs(){
     try{ var v = localStorage.getItem(FS_KEY); return (v==='s'||v==='l') ? v : 'm'; }
     catch(e){ return 'm'; }
   }
+  function readZhHidden(){
+    try{ return localStorage.getItem(ZH_KEY) === '1'; }catch(e){ return false; }
+  }
+  // 統一套用字級與翻譯狀態，避免其中一項覆寫另一項
+  function applyDocState(){
+    var doc = $('rdDoc');
+    if(!doc) return;
+    var fs = readFs(), hidden = readZhHidden();
+    doc.className = 'rd-doc fs-' + fs + (hidden ? ' zh-off' : '');
+    var z = doc.querySelector('.zh');
+    if(z) z.classList.toggle('hide', hidden);
+    var b = $('rdZhBtn');
+    if(b) b.textContent = hidden ? '顯示翻譯' : '隱藏翻譯';
+    Array.prototype.forEach.call(document.querySelectorAll('.rd-fs button.sz'), function(el){
+      el.classList.toggle('on', el.getAttribute('data-fs') === fs);
+    });
+  }
+
+  // 段落對照與段末翻譯兩種版型共用同一顆開關
+  window.rdToggleZh = function(){
+    try{ localStorage.setItem(ZH_KEY, readZhHidden() ? '0' : '1'); }catch(e){}
+    applyDocState();
+  };
   window.rdSetFs = function(v){
     try{ localStorage.setItem(FS_KEY, v); }catch(e){}
-    var doc = $('rdDoc');
-    if(doc) doc.className = 'rd-doc fs-' + v;
-    Array.prototype.forEach.call(document.querySelectorAll('.rd-fs button'), function(b){
-      b.classList.toggle('on', b.textContent === {s:'小',m:'中',l:'大'}[v]);
-    });
+    applyDocState();   // 不再整個覆寫 className，翻譯狀態得以保留
   };
 
-  window.rdSpeakDoc = function(){
-    var it = load().filter(function(x){ return x.id === openId; })[0];
-    if(!it || !it.en) return;
-    if(typeof kinSpeak === 'function' && kinSpeak(it.en)){
-      if(typeof window.__kinToast === 'function') window.__kinToast('朗讀中');
+  /* ---------- 短文朗讀播放器 ----------
+     系統語音有 boundary 事件，可做到單字級高亮；
+     Cloud TTS 回傳單一 MP3 沒有逐字時間，只能到句子級。 */
+  var RD_MODE_KEY = 'kinReadMode';
+  var RD_MODES = ['once','sent','cont','ab'];
+  var rdSn = [];          // 句子元素
+  var rdIdx = 0;
+  var rdOn = false;       // 是否正在播放
+  var rdGen = 0;          // 世代編號，切換時讓舊佇列失效
+  var rdA = null, rdB = null;
+
+  function rdMode(){
+    try{ var v = localStorage.getItem(RD_MODE_KEY); return RD_MODES.indexOf(v) >= 0 ? v : 'cont'; }
+    catch(e){ return 'cont'; }
+  }
+  function rdModeLabel(){
+    var m = rdMode();
+    return m === 'once' ? '單次' : (m === 'sent' ? '單句循環' : (m === 'ab' ? 'A-B 循環' : '連續播放'));
+  }
+  function rdCollect(){
+    rdSn = Array.prototype.slice.call(document.querySelectorAll('#rdDoc .sn'));
+    if(rdIdx >= rdSn.length) rdIdx = 0;
+  }
+  function rdText(i){
+    var el = rdSn[i];
+    return el ? String(el.textContent || '').trim() : '';
+  }
+  function rdClearWord(){
+    document.querySelectorAll('#rdDoc .rw.wnow').forEach(function(el){ el.classList.remove('wnow'); });
+  }
+  function rdPaintSn(){
+    rdSn.forEach(function(el, i){
+      el.classList.toggle('on', i === rdIdx && rdOn);
+      el.classList.toggle('aMark', rdA !== null && i === rdA);
+      el.classList.toggle('bMark', rdB !== null && i === rdB);
+    });
+    var cur = rdSn[rdIdx];
+    if(cur && rdOn){
+      var r = cur.getBoundingClientRect();
+      // 句子跑到畫面外才捲動，避免每句都跳動
+      if(r.top < 70 || r.bottom > window.innerHeight - 150){
+        cur.scrollIntoView({block:'center', behavior:'smooth'});
+      }
     }
+  }
+  function rdPaintBar(){
+    var n = rdSn.length;
+    var lab = $('rdPlN'), fill = $('rdPlFill'), ab = $('rdPlAB');
+    if(lab){
+      lab.innerHTML = n
+        ? ('第 <b>' + (rdIdx + 1) + '</b> 句 / 共 ' + n + ' 句' +
+           (rdA !== null ? ('　A' + (rdA + 1) + (rdB !== null ? ('–B' + (rdB + 1)) : '')) : ''))
+        : '沒有可朗讀的內容';
+    }
+    if(fill) fill.style.width = n ? (((rdIdx + 1) / n) * 100) + '%' : '0';
+    if(ab){
+      if(rdA !== null && rdB !== null && n){
+        ab.style.display = '';
+        ab.style.left  = ((rdA / n) * 100) + '%';
+        ab.style.width = (((rdB - rdA + 1) / n) * 100) + '%';
+      }else ab.style.display = 'none';
+    }
+    var mb = $('rdPlMode');
+    if(mb){ mb.textContent = rdModeLabel(); mb.classList.toggle('on', rdMode() !== 'cont'); }
+    var abb = $('rdPlABBtn');
+    if(abb){
+      abb.textContent = rdA === null ? '設 A' : (rdB === null ? '設 B' : '清除 A-B');
+      abb.classList.toggle('on', rdA !== null);
+    }
+    var pb = $('rdPlBtn');
+    if(pb){
+      pb.innerHTML = rdOn
+        ? '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 5H13V27H7ZM19 5H25V27H19Z"/></svg>'
+        : '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 4L27 16L7 28Z"/></svg>';
+      pb.setAttribute('aria-label', rdOn ? '暫停' : '朗讀');
+    }
+  }
+  function rdPaint(){ rdPaintSn(); rdPaintBar(); }
+
+  function rdStop(){
+    rdGen++;
+    rdOn = false;
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+    if(typeof window.__kinTtsStop === 'function') window.__kinTtsStop();
+    rdClearWord();
+    rdPaint();
+  }
+  window.__kinRdStop = rdStop;
+
+  // 用系統語音朗讀並依 boundary 事件標出正在唸的單字
+  function rdSpeakWithHighlight(i, gen, onend){
+    var text = rdText(i);
+    if(!text){ onend(); return; }
+    var el = rdSn[i];
+    var words = el ? Array.prototype.slice.call(el.querySelectorAll('.rw')) : [];
+
+    if(!('speechSynthesis' in window)){
+      // 沒有系統語音就退回 Cloud TTS 或其他來源，僅句子級高亮
+      if(typeof kinSpeak === 'function' && kinSpeak(text, function(){ if(gen === rdGen) onend(); })) return;
+      onend(); return;
+    }
+    try{
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined')
+               ? Math.min(2, Math.max(.5, (SPEEDS[speedIdx] || 1) * 0.92)) : 0.92;
+      var vs = window.speechSynthesis.getVoices() || [];
+      for(var v = 0; v < vs.length; v++){ if(/^en[-_]?US/i.test(vs[v].lang)){ u.voice = vs[v]; break; } }
+      if(!u.voice){ for(var v2 = 0; v2 < vs.length; v2++){ if(/^en/i.test(vs[v2].lang)){ u.voice = vs[v2]; break; } } }
+
+      // 依 charIndex 找出對應的第幾個單字
+      var marks = [], pos = 0;
+      words.forEach(function(w){
+        var t = w.textContent;
+        var at = text.indexOf(t, pos);
+        if(at < 0) at = pos;
+        marks.push({ el:w, at:at, end:at + t.length });
+        pos = at + t.length;
+      });
+      u.onboundary = function(ev){
+        if(gen !== rdGen) return;
+        var ci = ev.charIndex;
+        if(ci == null) return;
+        rdClearWord();
+        for(var k = 0; k < marks.length; k++){
+          if(ci >= marks[k].at && ci < marks[k].end + 1){ marks[k].el.classList.add('wnow'); break; }
+        }
+      };
+      u.onend = function(){ if(gen === rdGen){ rdClearWord(); onend(); } };
+      u.onerror = function(){ if(gen === rdGen){ rdClearWord(); onend(); } };
+      window.speechSynthesis.speak(u);
+    }catch(e){ onend(); }
+  }
+
+  function rdStep(){
+    var gen = rdGen;
+    if(!rdOn || gen !== rdGen) return;
+    if(rdIdx >= rdSn.length){ rdStop(); return; }
+    rdPaint();
+    rdSpeakWithHighlight(rdIdx, gen, function(){
+      if(gen !== rdGen || !rdOn) return;
+      var m = rdMode();
+      if(m === 'once'){ rdStop(); return; }
+      if(m === 'sent'){ setTimeout(rdStep, 320); return; }
+      if(m === 'ab' && rdA !== null && rdB !== null){
+        rdIdx = (rdIdx >= rdB) ? rdA : rdIdx + 1;
+        setTimeout(rdStep, 240);
+        return;
+      }
+      if(rdIdx + 1 >= rdSn.length){
+        var sub = $('rdPlN');
+        if(sub) sub.textContent = '已朗讀完畢';
+        rdStop();
+        return;
+      }
+      rdIdx++;
+      setTimeout(rdStep, 240);
+    });
+  }
+
+  window.rdPlayToggle = function(){
+    rdCollect();
+    if(!rdSn.length){ if(typeof window.__kinToast === 'function') window.__kinToast('沒有可朗讀的內容'); return; }
+    if(rdOn){ rdStop(); return; }
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
+    rdGen++;
+    rdOn = true;
+    if(rdMode() === 'ab' && rdA !== null && (rdIdx < rdA || (rdB !== null && rdIdx > rdB))) rdIdx = rdA;
+    rdStep();
   };
+  window.rdSeekTo = function(ev){
+    rdCollect();
+    if(!rdSn.length) return;
+    var track = $('rdPlTrack');
+    if(!track) return;
+    var r = track.getBoundingClientRect();
+    var x = ((ev.touches && ev.touches[0]) ? ev.touches[0].clientX : ev.clientX) - r.left;
+    var i = Math.floor((x / r.width) * rdSn.length);
+    rdIdx = Math.max(0, Math.min(rdSn.length - 1, i));
+    if(rdOn){ rdGen++; rdOn = true; rdStep(); }
+    else rdPaint();
+  };
+  window.rdCycleMode = function(){
+    var i = RD_MODES.indexOf(rdMode());
+    var next = RD_MODES[(i + 1) % RD_MODES.length];
+    if(next === 'ab' && (rdA === null || rdB === null)){
+      if(typeof window.__kinToast === 'function') window.__kinToast('先用「設 A」「設 B」框出區間');
+      next = RD_MODES[(i + 2) % RD_MODES.length];
+    }
+    try{ localStorage.setItem(RD_MODE_KEY, next); }catch(e){}
+    rdPaintBar();
+    if(typeof window.__kinToast === 'function') window.__kinToast(rdModeLabel());
+  };
+  window.rdSetAB = function(){
+    rdCollect();
+    if(!rdSn.length) return;
+    if(rdA === null){
+      rdA = rdIdx;
+      if(typeof window.__kinToast === 'function') window.__kinToast('A 點：第 ' + (rdA + 1) + ' 句');
+    }else if(rdB === null){
+      if(rdIdx < rdA){ rdB = rdA; rdA = rdIdx; }
+      else rdB = rdIdx;
+      try{ localStorage.setItem(RD_MODE_KEY, 'ab'); }catch(e){}
+      if(typeof window.__kinToast === 'function'){
+        window.__kinToast('A-B 區間：第 ' + (rdA + 1) + '–' + (rdB + 1) + ' 句');
+      }
+    }else{
+      rdA = rdB = null;
+      if(rdMode() === 'ab'){ try{ localStorage.setItem(RD_MODE_KEY, 'cont'); }catch(e){} }
+      if(typeof window.__kinToast === 'function') window.__kinToast('已清除 A-B 區間');
+    }
+    rdPaint();
+  };
+  // 點句子直接跳到該句
+  function rdBindSn(){
+    rdCollect();
+    rdSn.forEach(function(el, i){
+      el.addEventListener('click', function(ev){
+        if(ev.target && ev.target.classList && ev.target.classList.contains('rw')) return;
+        rdIdx = i;
+        if(rdOn){ rdGen++; rdOn = true; rdStep(); } else rdPaint();
+      });
+    });
+    rdPaint();
+  }
+  window.__kinRdBind = rdBindSn;
+
+  window.rdSpeakDoc = function(){ window.rdPlayToggle(); };
 
   window.rdDelete = function(id){
     var it = load().filter(function(x){ return x.id === id; })[0];
@@ -5954,11 +6283,16 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   window.rdView = function(id){
     var it = load().filter(function(x){ return x.id === id; })[0];
     if(!it) return;
+    if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
+    rdIdx = 0; rdA = rdB = null;
     openId = id; view = (it.kind === 'quiz') ? 'quiz' : 'doc';
     render(); window.scrollTo(0,0);
   };
 
-  window.rdBack = function(){ view = 'list'; openId = ''; render(); window.scrollTo(0,0); };
+  window.rdBack = function(){
+    if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
+    view = 'list'; openId = ''; render(); window.scrollTo(0,0);
+  };
 
   window.rdAnswer = function(qi, oi){
     var it = load().filter(function(x){ return x.id === openId; })[0];
@@ -6046,26 +6380,42 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       var fs = readFs();
       body.innerHTML =
         '<div class="rd-fs">' +
-        '<span>字級</span>' +
+        '<span class="lb">字級</span>' +
         [['s','小'],['m','中'],['l','大']].map(function(x){
-          return '<button type="button" class="' + (fs === x[0] ? 'on' : '') +
+          return '<button type="button" class="sz" data-fs="' + x[0] +
                  '" onclick="rdSetFs(\'' + x[0] + '\')">' + x[1] + '</button>';
         }).join('') +
-        '</div>' +
-        '<div class="rd-doc fs-' + fs + '" id="rdDoc">' +
-        '<div class="ti">' + esc(it.title) + '</div>' +
-        '<div class="sc">' + esc(it.scene || '') + '</div>' +
-        docBodyHtml(it) +
-        '<div class="rd-tools">' +
+        '<span class="gap"></span>' +
         '<button type="button" id="rdZhBtn" onclick="rdToggleZh()">隱藏翻譯</button>' +
         '<button type="button" onclick="rdSpeakDoc()">朗讀</button>' +
         '<button type="button" class="warn" onclick="rdDelete(\'' + it.id + '\')">刪除</button>' +
-        '</div></div>' +
+        '</div>' +
+        '<div class="rd-doc" id="rdDoc">' +
+        '<div class="ti">' + esc(it.title) + '</div>' +
+        '<div class="sc">' + esc(it.scene || '') + '</div>' +
+        docBodyHtml(it) +
+        '</div>' +
         '<div class="rd-used"><h3>本篇使用的單字</h3><div class="tags">' +
         (it.used||[]).map(function(w){ return '<span class="tg">' + esc(w) + '</span>'; }).join('') +
         '</div></div>' +
-        '<div class="rd-tools"><button type="button" onclick="rdBack()">\u2039 回到清單</button></div>';
+        '<div class="rd-tools"><button type="button" onclick="rdBack()">\u2039 回到清單</button></div>' +
+        '<div class="rd-player">' +
+        '<div class="rd-pl-top">' +
+        '<button type="button" class="rd-pl-btn" id="rdPlBtn" onclick="rdPlayToggle()" aria-label="朗讀">' +
+        '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 4L27 16L7 28Z"/></svg></button>' +
+        '<div class="rd-pl-info">' +
+        '<div class="rd-pl-n" id="rdPlN">—</div>' +
+        '<div class="rd-pl-track" id="rdPlTrack" onclick="rdSeekTo(event)">' +
+        '<div class="rd-pl-ab" id="rdPlAB" style="display:none"></div>' +
+        '<div class="rd-pl-fill" id="rdPlFill"></div></div>' +
+        '</div></div>' +
+        '<div class="rd-pl-btns">' +
+        '<button type="button" id="rdPlMode" onclick="rdCycleMode()">連續播放</button>' +
+        '<button type="button" id="rdPlABBtn" onclick="rdSetAB()">設 A</button>' +
+        '</div></div>';
       bindWords();
+      applyDocState();
+      if(typeof window.__kinRdBind === 'function') window.__kinRdBind();
       return;
     }
 
@@ -6095,6 +6445,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     render(); window.scrollTo(0,0);
   };
   window.rdClose = function(){
+    if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
     var sc = $('screen-read');
     if(sc) sc.classList.remove('show');
   };
