@@ -236,9 +236,9 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 }
 
 /* filter modal */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:flex-end;justify-content:center}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10030;align-items:flex-end;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;padding:16px 16px 32px}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom,0px))}
 .modal h2{font-size:16px;text-align:center;margin-bottom:16px}
 .modal .opt{display:flex;align-items:center;padding:12px 4px;border-bottom:1px solid #f0f0f0;font-size:14px}
 .modal .opt input{width:20px;height:20px;margin-left:auto;accent-color:#c45c1a}
@@ -274,6 +274,8 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 body.mode-srs .player-bar{display:none}
 /* 進入短文朗讀時收起單字播放器，避免兩組控制項疊在一起 */
 body.rd-open .player-bar{display:none !important}
+/* 選書畫面浮在最上層，播放列一併收起 */
+body.books-open .player-bar{display:none !important}
 .player-bar .play-btn{
   width:42px;height:42px;border:0;border-radius:0;background:transparent;color:#111;
   font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -2321,8 +2323,12 @@ function speakEntry(e, times, onDone){
     if(pt) pt.textContent = it.title;
     if(ps) ps.textContent = it.sub;
     if(typeof setPlayerButtonState === 'function') setPlayerButtonState('pause');
-    // 單字與例句之間留一點間隔，聽起來才不會黏在一起
-    if(!kinSpeak(it.text, function(){ setTimeout(step, 260); })) step();
+    // 單字與例句之間留一點間隔，聽起來才不會黏在一起。
+    // 回呼要再檢查一次世代，否則中途換書仍會唸出下一段。
+    if(!kinSpeak(it.text, function(){
+        if(myGen !== window._kinSpeakSeq) return;
+        setTimeout(step, 260);
+    })) step();
   }
   step();
   return true;
@@ -7211,6 +7217,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   function applyBook(meta, payload){
     var prev = window.CURRENT_BOOK;
+    // 換書等於離開目前這批單字，朗讀佇列必須中止，不然會繼續唸上一本的字
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
     // 資料
     DATA = payload.data || [];
     CLIP_MAP = payload.clipMap || {};
@@ -7253,6 +7261,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(title) title.textContent = meta.title + ' 全集合';
 
     pickerOpen = false;
+    document.body.classList.remove('books-open');
     var screen = document.getElementById('screen-books');
     if(screen){ screen.classList.add('hide'); screen.style.display = 'none'; }
 
@@ -7275,6 +7284,9 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   window.openBookPicker = function(){
     var screen = document.getElementById('screen-books');
     if(!screen){ alert('選書畫面尚未載入，請重新整理頁面。'); return; }
+    // 播放列即將被收起，先停掉正在唸的語音，否則會變成看不見卻仍在響
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
+    document.body.classList.add('books-open');
     pickerOpen = true;
     var loading = document.getElementById('bkLoading');
     if(loading) loading.style.display = 'none';
@@ -7294,6 +7306,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   window.closeBookPicker = function(){
     if(!window.CURRENT_BOOK) return;
+    document.body.classList.remove('books-open');
     pickerOpen = false;
     var screen = document.getElementById('screen-books');
     if(screen){ screen.classList.add('hide'); screen.style.display = 'none'; }
