@@ -2,7 +2,7 @@
   "version": 1,
   "userId": "paul",
   "userName": "Paul",
-  "updatedAt": "2026-09-07T05:57:01.491Z",
+  "updatedAt": "2026-09-07T05:59:34.215Z",
   "deviceId": "dev-4zl46m",
   "keys": {
     "book:custom:paul:status": "{\"X-001\":\"review\",\"X-002\":\"review\"}",
@@ -12,6 +12,6 @@
     "kinPlayMode": "once",
     "kinSpeed": "1.75",
     "kin_phrase_times": "1",
-    "kinReturnContext": "{\"id\":\"047\",\"levels\":[\"600\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788760478881}"
+    "kinReturnContext": "{\"id\":\"052\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788760655459}"
   }
 }
