@@ -4776,6 +4776,31 @@ body.cap-mode.theme-dark #detailBook .nw:not(.cap):not(.inbook){
 body.theme-dark .cx-row .lv{color:#6a6661}
 .cx-box{border:1px solid #eee;border-radius:10px;background:#fff;padding:11px 13px;margin-bottom:8px}
 .cx-box h5{margin:0 0 7px;font-size:11px;color:#8a8580;font-weight:700;letter-spacing:.04em}
+/* 學習歷程：平時收起，只留一行摘要，點「⋯」才展開 */
+.cx-hist{padding:0;overflow:hidden}
+.cx-hh{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:10px 13px;background:transparent;border:0;
+  font-family:inherit;text-align:left;touch-action:manipulation;
+}
+.cx-hh:active{background:#faf7f2}
+.cx-hh .hl{flex:0 0 auto;font-size:11px;color:#8a8580;font-weight:700;letter-spacing:.04em}
+.cx-hh .hs{
+  flex:1;min-width:0;font-size:12px;color:#655f5a;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.cx-hh .hs b{color:#c45c1a;font-weight:700}
+.cx-hh .hs .wk{color:#c45c1a;font-weight:700}
+.cx-hh .hd{flex:0 0 auto;font-size:17px;line-height:1;color:#b0aaa4;letter-spacing:.06em}
+.cx-hist .cx-hb{display:none;padding:0 13px 11px}
+.cx-hist.open .cx-hb{display:block}
+.cx-hist.open .cx-hh .hd{color:#c45c1a}
+body.theme-dark .cx-hh:active{background:#161618}
+body.theme-dark .cx-hh .hl{color:#7a7671}
+body.theme-dark .cx-hh .hs{color:#a8a49f}
+body.theme-dark .cx-hh .hs b,body.theme-dark .cx-hh .hs .wk{color:#ff9142}
+body.theme-dark .cx-hh .hd{color:#5c5a57}
+body.theme-dark .cx-hist.open .cx-hh .hd{color:#ff9142}
 .cx-note{font-size:12.5px;line-height:1.65;color:#555}
 .cx-src-en{font-size:14px;line-height:1.7;color:#333;font-weight:600}
 .cx-src-zh{font-size:12.5px;line-height:1.7;color:#7d7770;margin-top:3px}
@@ -4861,6 +4886,18 @@ body.theme-dark #nwBox .nwx{background:#1c1c1e;border-color:#3a3a3c;color:#8a868
 #nwBox .btns .add{border-color:#2a9d4a;color:#2a9d4a;background:#eef8f0}
 #nwBox .btns .add.on{border-color:#e05050;color:#e05050;background:#fdf0f0}
 #nwBox .cl{width:100%;margin-top:9px;padding:11px;border:0;background:transparent;color:#999;font-size:13px}
+/* 已收藏的字才出現，一鍵跳到那張閃卡 */
+#nwBox .card-go{
+  display:none;width:100%;margin-top:9px;padding:12px;border-radius:11px;
+  font-size:13.5px;font-weight:700;font-family:inherit;
+  border:1.5px solid #ddd6cc;background:#fff;color:#8a7f72;
+  align-items:center;justify-content:center;gap:7px;touch-action:manipulation;
+}
+#nwBox .card-go.show{display:flex}
+#nwBox .card-go:active{background:#faf7f2;transform:scale(.98)}
+#nwBox .card-go .ch{color:#c9c3bc;font-size:17px;line-height:1}
+body.theme-dark #nwBox .card-go{background:#1c1c1e;border-color:#3a3a3c;color:#a8a49f}
+body.theme-dark #nwBox .card-go .ch{color:#5c5a57}
 #nwBox .note{font-size:11px;color:#a09a94;line-height:1.7;margin-top:10px;text-align:center}
 body.theme-dark #nwBox{background:#161618;box-shadow:0 -6px 30px rgba(0,0,0,.7)}
 body.theme-dark #nwBox .w{color:#f2f0ed}
@@ -4882,6 +4919,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     <button type="button" class="spk" onclick="nwSpeak()">發音</button>
     <button type="button" class="add" id="nwAddBtn" onclick="nwToggle()">加入收藏</button>
   </div>
+  <button type="button" class="card-go" id="nwCardBtn" onclick="nwGoCard()">看這張閃卡<span class="ch">›</span></button>
   <div class="note" id="nwNote"></div>
 </div>
 
@@ -5232,6 +5270,18 @@ body.theme-dark #nwBox .note{color:#6a6661}
     if(typeof window.__kinToast === 'function') window.__kinToast('回到 ' + back.id);
   };
 
+  /* 學習歷程展開狀態，跨單字沿用同一個偏好 */
+  var HIST_KEY = 'kinHistOpen';
+  function histOpen(){
+    try{ return localStorage.getItem(HIST_KEY) === '1'; }catch(e){ return false; }
+  }
+  window.cxToggleHist = function(){
+    var next = !histOpen();
+    try{ localStorage.setItem(HIST_KEY, next ? '1' : '0'); }catch(e){}
+    var box = document.getElementById('cxHist');
+    if(box) box.classList.toggle('open', next);
+  };
+
   function esc(t){ return (typeof escapeHtml === 'function') ? escapeHtml(t) : String(t || ''); }
   function jsq(t){ return String(t || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
@@ -5253,6 +5303,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
            +  '</span><span class="ch">\u203a</span></button>';
     }
 
+    // 從短文點字跳過來時，一鍵回到那篇短文的原句
+    var fromRead = null;
+    try{ fromRead = JSON.parse(sessionStorage.getItem('kinFromRead') || 'null'); }catch(err){}
+    if(inCustom && fromRead && fromRead.id){
+      html += '<button type="button" class="cx-row" onclick="cardBackToRead()">'
+           +  '<span class="ic">' + ICON_BACK + '</span>'
+           +  '<span class="t">回到短文 <b>' + esc(fromRead.title || '短文') + '</b>'
+           +  (fromRead.si >= 0 ? ('<span class="lv">第 ' + (fromRead.si + 1) + ' 句</span>') : '')
+           +  '</span><span class="ch">\u203a</span></button>';
+    }
+
     // 從閃卡跳到來源時，提供一鍵回閃卡
     var backCard = '';
     try{ backCard = sessionStorage.getItem('kinFromCard') || ''; }catch(err){}
@@ -5269,9 +5330,15 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var ws = window.KIN_STRENGTH.stats(e.id, bk);
       if(ws.views || ws.ok || ws.review || ws.wrong){
         var lvName = ['','很不熟','不熟','普通','偏熟','已鞏固'][ws.level];
-        html += '<div class="cx-box"><h5>學習歷程'
-             +  (ws.relapse ? '　<span style="color:#c45c1a">高度弱點</span>' : '')
-             +  '</h5>'
+        // 收合狀態只留一行摘要，需要細節才展開，畫面比較清爽
+        var sum = '<b>' + lvName + '</b>　看過 ' + ws.views + ' 次'
+                + (ws.relapse ? ('　<span class="wk">高度弱點</span>') : '');
+        html += '<div class="cx-box cx-hist' + (histOpen() ? ' open' : '') + '" id="cxHist">'
+             +  '<button type="button" class="cx-hh" onclick="cxToggleHist()" aria-label="學習歷程">'
+             +  '<span class="hl">學習歷程</span>'
+             +  '<span class="hs">' + sum + '</span>'
+             +  '<span class="hd">\u22ef</span></button>'
+             +  '<div class="cx-hb">'
              +  '<div class="cx-kv"><span>強度</span><span><b>' + lvName + '</b>　'
              +  ws.score + ' 分</span></div>'
              +  '<div class="cx-kv"><span>次數</span><span>看過 ' + ws.views
@@ -5282,7 +5349,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
              +  '<div class="cx-kv"><span>間隔</span><span>'
              +  (ws.idle != null ? (ws.idle + ' 天沒複習') : '尚未複習')
              +  (ws.ivl ? ('　排程 ' + ws.ivl + ' 天') : '') + '</span></div>'
-             +  '</div>';
+             +  '</div></div>';
       }
     }
 
@@ -5348,6 +5415,20 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     window.__kinPendingOpen = srcId;
     if(typeof loadBookById === 'function') loadBookById(book);
+  };
+
+  window.cardBackToRead = function(){
+    var ctx = null;
+    try{
+      ctx = JSON.parse(sessionStorage.getItem('kinFromRead') || 'null');
+      sessionStorage.removeItem('kinFromRead');
+    }catch(e){}
+    if(!ctx || !ctx.id) return;
+    if(typeof window.__kinReadOpenAt === 'function'){
+      if(!window.__kinReadOpenAt(ctx.id, ctx.si) && typeof window.__kinToast === 'function'){
+        window.__kinToast('這篇短文已經刪除了');
+      }
+    }
   };
 
   window.cardBackToDeck = function(){
@@ -5821,11 +5902,27 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var saved = !!find(cur);
     b.textContent = saved ? '移除收藏' : '加入收藏';
     b.classList.toggle('on', saved);
+
+    // 已收藏且目前不在閃卡本身時，才提供「看這張閃卡」
+    var inCustom = !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom');
+    var go = $('nwCardBtn');
+    if(go) go.classList.toggle('show', saved && !inCustom);
+
     var note = $('nwNote');
     if(note) note.textContent = saved
-      ? '已在「我的收藏」中，可從書名列切換過去複習。'
+      ? '已在「我的收藏」中，看完閃卡可以直接返回這裡。'
       : '收藏後會出現在「我的收藏」，並跟著 GitHub 同步。';
   }
+
+  // 從任何地方跳到這個字的閃卡；短文的返回位置已在點字時記下。
+  window.nwGoCard = function(){
+    var card = find(cur);
+    if(!card) return;
+    window.nwClose();
+    if(typeof window.rdClose === 'function') window.rdClose();
+    window.__kinPendingOpen = card.id;
+    if(typeof loadBookById === 'function') loadBookById('custom');
+  };
   window.nwOpen = function(word){
     if(!word) return;
     cur = String(word);
@@ -6049,6 +6146,16 @@ body.theme-dark #rdEntry .ch{color:#5c4a3a}
 .rd-doc .rw.wnow{
   background:#c45c1a;color:#fff !important;border-radius:3px;
   padding:1px 2px;margin:0 -2px;box-shadow:none;
+}
+/* 從閃卡返回時，短暫標出當初點字的那一句 */
+.rd-doc .sn.back{
+  background:rgba(196,92,26,.15);
+  box-shadow:0 0 0 3px rgba(196,92,26,.15);
+  transition:background .3s,box-shadow .3s;
+}
+body.theme-dark .rd-doc .sn.back{
+  background:rgba(255,145,66,.20);
+  box-shadow:0 0 0 3px rgba(255,145,66,.18);
 }
 .rd-doc .sn.aMark{box-shadow:inset 3px 0 0 #c45c1a}
 .rd-doc .sn.bMark{box-shadow:inset -3px 0 0 #c45c1a}
@@ -6388,11 +6495,22 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   }
 
   function bindWords(){
+    var it = load().filter(function(x){ return x.id === openId; })[0];
     document.querySelectorAll('#rdBody .rw:not(.nb)').forEach(function(b){
       var w = b.getAttribute('data-w');
       try{ if(window.KIN_COLLECT && window.KIN_COLLECT.find(w)) b.classList.add('got'); }catch(e){}
       b.onclick = function(ev){
         ev.stopPropagation();
+        // 記下是從哪篇短文的哪一句點出去的，之後才能原位返回
+        try{
+          var sn = b.closest ? b.closest('.sn') : null;
+          sessionStorage.setItem('kinFromRead', JSON.stringify({
+            id:    openId,
+            si:    sn ? (+sn.getAttribute('data-si')) : -1,
+            title: (it && it.title) || '短文',
+            word:  w
+          }));
+        }catch(e){}
         if(typeof nwOpen === 'function') nwOpen(w);
       };
     });
@@ -6899,7 +7017,42 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       '<button type="button" class="warn" onclick="rdDelete(\'' + it.id + '\')">刪除</button></div>';
   }
 
+  /* 由閃卡返回：直接開啟指定短文，並捲到當初點字的那一句 */
+  window.__kinReadOpenAt = function(id, si){
+    var it = load().filter(function(x){ return x.id === id; })[0];
+    if(!it) return false;
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
+    if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
+
+    document.body.classList.add('rd-open');
+    var sc = $('screen-read');
+    if(sc) sc.classList.add('show');
+
+    openId = id;
+    view = (it.kind === 'quiz') ? 'quiz' : 'doc';
+    rdA = rdB = null;
+    rdIdx = (si != null && si >= 0) ? si : 0;
+    render();
+
+    // 版面繪製完成後才捲動，並短暫標出那一句
+    setTimeout(function(){
+      rdCollect();
+      var el = rdSn[rdIdx];
+      if(el){
+        el.classList.add('back');
+        el.scrollIntoView({block:'center', behavior:'auto'});
+        setTimeout(function(){ el.classList.remove('back'); }, 2000);
+      }else{
+        window.scrollTo(0,0);
+      }
+      rdPaint();
+    }, 80);
+    return true;
+  };
+
   window.rdOpen = function(){
+    // 從入口重新進來就清掉舊的返回位置，避免殘留過期入口
+    try{ sessionStorage.removeItem('kinFromRead'); }catch(e){}
     view = 'list'; openId = '';
     // 單字播放器即將隱藏，先停掉正在播的音訊，否則會變成看不見卻仍在響
     if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
