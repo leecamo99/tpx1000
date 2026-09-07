@@ -1021,20 +1021,13 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="topbar">
     <button class="back" onclick="showList()">‹</button>
     <h1>解說 <span style="font-size:11px;color:#c45c1a;font-weight:700">S6fix2</span></h1>
+    <button type="button" id="modeToggle" onclick="nwToggleMode()">
+      <span class="ic" id="modeIcon"></span><span class="tx" id="modeText">發音</span>
+    </button>
     <div class="topbar-right">
       <button type="button" class="icon-btn play-top" id="topPlayBtn" onclick="try{window._kinListPlayback=false;playCurrent()}catch(e){alert(e)}return false;" title="播放">▶</button>
       <button type="button" class="icon-btn" onclick="cycleDetailMark()" id="markBtn" title="切換狀態">○</button>
     </div>
-  </div>
-
-  <!-- 註解英文的操作模式：發音 / 不熟 -->
-  <div class="mode-bar">
-    <button type="button" id="modeSpeak" class="on" onclick="nwSetMode('speak')">
-      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>發音
-    </button>
-    <button type="button" id="modeCap" onclick="nwSetMode('cap')">
-      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M10 12h4M12 10v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>不熟
-    </button>
   </div>
 
 <div id="detailBook" class="detail-book"></div>
@@ -3554,13 +3547,13 @@ body.theme-dark .dk-msg{color:#8a8680}
         <button type="button" class="pri" onclick="gmSave()">儲存並測試 Gemini</button>
         <button type="button" class="warn" onclick="gmClearKey()">清除 Gemini 金鑰</button>
       </div>
-      <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，捕獲沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
+      <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，收藏沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
     </div>
 
     <h4>管理閃卡</h4>
     <div class="dk-box">
       <div class="dk-hd">
-        <span id="dkCount">尚未捕獲任何單字</span>
+        <span id="dkCount">尚未收藏任何單字</span>
         <button type="button" id="dkAll" onclick="dkToggleAll()">全選</button>
       </div>
       <div class="dk-list" id="dkList"></div>
@@ -4372,19 +4365,20 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
 </script>
 
 <style>
-/* 解說頁模式切換列 */
-.mode-bar{display:flex;gap:7px;padding:9px 14px 0;max-width:560px;margin:0 auto}
-.mode-bar button{
-  flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
-  padding:8px 6px;border:1.5px solid #ddd;border-radius:9px;background:#fff;
-  color:#8a8580;font-size:12.5px;font-weight:700;font-family:inherit;
+/* 解說頂列：點字模式單顆切換，捲動時一直看得到 */
+#screen-detail .topbar h1{flex:1;min-width:0;text-align:left;font-size:15px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#screen-detail .topbar #modeToggle{
+  flex:0 0 auto;display:flex;align-items:center;gap:4px;
+  height:32px;padding:0 11px;border:1.5px solid #ddd;border-radius:999px;
+  background:#fff;color:#8a8580;font-size:12.5px;font-weight:700;font-family:inherit;
   touch-action:manipulation;transition:border-color .15s,color .15s,background .15s;
 }
-.mode-bar button svg{flex:0 0 auto}
-.mode-bar button:active{transform:scale(.97)}
-.mode-bar button.on{border-color:#c45c1a;color:#c45c1a;background:#fdf6f0}
-body.theme-dark .mode-bar button{background:#1c1c1e;border-color:#3a3a3c;color:#7a7671}
-body.theme-dark .mode-bar button.on{border-color:#ff9142;color:#ff9142;background:#2a1c10}
+#screen-detail .topbar #modeToggle .ic{display:flex;line-height:0;flex:0 0 auto}
+#screen-detail .topbar #modeToggle:active{transform:scale(.94)}
+#screen-detail .topbar #modeToggle.cap{border-color:#c45c1a;color:#c45c1a;background:#fdf6f0}
+body.theme-dark #screen-detail .topbar #modeToggle{background:#1c1c1e;border-color:#3a3a3c;color:#7a7671}
+body.theme-dark #screen-detail .topbar #modeToggle.cap{border-color:#ff9142;color:#ff9142;background:#2a1c10}
 /* 頂列閃卡入口 */
 #screen-list > .topbar #deckBtn{
   flex:0 0 auto;position:relative;display:flex;align-items:center;justify-content:center;
@@ -4659,7 +4653,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var c = document.getElementById('deckCount');
     if(c) c.textContent = n > 99 ? '99+' : String(n);
     b.classList.toggle('empty', n === 0);
-    b.title = n ? ('我的閃卡　已捕獲 ' + n + ' 個') : '我的閃卡　尚未捕獲';
+    b.title = n ? ('我的閃卡　已收藏 ' + n + ' 個') : '我的閃卡　尚未收藏';
   }
   window.__kinPaintDeck = paintDeck;
 
@@ -4686,11 +4680,30 @@ body.theme-dark #nwBox .note{color:#6a6661}
   }
   window.__kinPaintNoteWords = paintNoteWords;
 
+  var ICON_SPEAK = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">'
+    + '<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/>'
+    + '<path d="M15.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+    + '<path d="M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  var ICON_CAP = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">'
+    + '<rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/>'
+    + '<path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>'
+    + '<path d="M10 12h4M12 10v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+
+  // 單顆按鈕顯示「目前模式」，點一下即切換。
   function paintMode(){
-    var sp = document.getElementById('modeSpeak'), cp = document.getElementById('modeCap');
     var isCap = mode() === 'cap';
-    if(sp) sp.classList.toggle('on', !isCap);
-    if(cp) cp.classList.toggle('on', isCap);
+    var b  = document.getElementById('modeToggle');
+    var ic = document.getElementById('modeIcon');
+    var tx = document.getElementById('modeText');
+    if(b){
+      b.classList.toggle('cap', isCap);
+      b.title = isCap
+        ? '目前：收藏模式，點英文加入閃卡。點此切回發音'
+        : '目前：發音模式，點英文播放。點此切換為收藏';
+      b.setAttribute('aria-label', b.title);
+    }
+    if(ic) ic.innerHTML = isCap ? ICON_CAP : ICON_SPEAK;
+    if(tx) tx.textContent = isCap ? '收藏' : '發音';
     document.body.classList.toggle('cap-mode', isCap);
     paintNoteWords();
   }
@@ -4700,9 +4713,10 @@ body.theme-dark #nwBox .note{color:#6a6661}
     try{ localStorage.setItem(MODE_KEY, m === 'cap' ? 'cap' : 'speak'); }catch(e){}
     paintMode();
     if(typeof window.__kinToast === 'function'){
-      window.__kinToast(m === 'cap' ? '捕獲模式：點英文加入閃卡' : '發音模式：點英文播放');
+      window.__kinToast(m === 'cap' ? '收藏模式：點英文加入閃卡' : '發音模式：點英文播放');
     }
   };
+  window.nwToggleMode = function(){ window.nwSetMode(mode() === 'cap' ? 'speak' : 'cap'); };
 
   // 沒有中文時才呼叫翻譯，結果直接寫回卡片
   function translateLater(card, text){
@@ -4786,12 +4800,12 @@ body.theme-dark #nwBox .note{color:#6a6661}
     else if(card) translateLater(card, text);
     paintNoteWords();
     if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
-    if(typeof window.__kinToast === 'function') window.__kinToast('已捕獲　' + text);
+    if(typeof window.__kinToast === 'function') window.__kinToast('已收藏　' + text);
   };
 
   window.deckOpen = function(){
     if(!load().length){
-      if(typeof window.__kinToast === 'function') window.__kinToast('尚未捕獲任何單字');
+      if(typeof window.__kinToast === 'function') window.__kinToast('尚未收藏任何單字');
       return;
     }
     if(typeof loadBookById === 'function') loadBookById('custom');
@@ -4951,11 +4965,11 @@ body.theme-dark #nwBox .note{color:#6a6661}
     if(!box) return;
     var list = load();
     var cnt = document.getElementById('dkCount');
-    if(cnt) cnt.textContent = list.length ? ('共 ' + list.length + ' 張') : '尚未捕獲任何單字';
+    if(cnt) cnt.textContent = list.length ? ('共 ' + list.length + ' 張') : '尚未收藏任何單字';
     var all = document.getElementById('dkAll');
     if(all) all.style.display = list.length ? '' : 'none';
     if(!list.length){
-      box.innerHTML = '<div class="dk-empty">尚未捕獲任何單字</div>';
+      box.innerHTML = '<div class="dk-empty">尚未收藏任何單字</div>';
       return;
     }
     box.innerHTML = list.map(function(c){
