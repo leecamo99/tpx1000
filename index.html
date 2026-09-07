@@ -66,6 +66,36 @@ button{font-family:inherit;border:none;background:none;cursor:pointer}
 .item.done .mark{border-color:#2a9d4a;color:#2a9d4a;background:#eef8f0}
 .item.review .mark{border-color:#e05050;color:#e05050;background:#fdf0f0}
 .item .word-id{font-size:12px;color:#111;font-weight:600}
+/* ===== 弱點字重：越不熟越粗越深，已鞏固則退為細灰 ===== */
+#itemList .item .hw.st-5,
+#detailBook .nw.st-5{font-weight:400;opacity:.66}
+#itemList .item .hw.st-4,
+#detailBook .nw.st-4{font-weight:500;opacity:.82}
+#itemList .item .hw.st-3,
+#detailBook .nw.st-3{font-weight:600}
+#itemList .item .hw.st-2,
+#detailBook .nw.st-2{font-weight:800}
+#itemList .item .hw.st-1,
+#detailBook .nw.st-1{font-weight:900;letter-spacing:.01em}
+/* 主畫面清單直接吃黑階，色深代表越不熟 */
+#itemList .item .hw.st-5{color:#8f8a85 !important}
+#itemList .item .hw.st-4{color:#6b6560 !important}
+#itemList .item .hw.st-3{color:#453f39 !important}
+#itemList .item .hw.st-2{color:#241f1b !important}
+#itemList .item .hw.st-1{color:#000 !important}
+body.theme-dark #itemList .item .hw.st-5{color:#6a6661 !important}
+body.theme-dark #itemList .item .hw.st-4{color:#8f8b86 !important}
+body.theme-dark #itemList .item .hw.st-3{color:#b8b4af !important}
+body.theme-dark #itemList .item .hw.st-2{color:#dcd9d5 !important}
+body.theme-dark #itemList .item .hw.st-1{color:#fff !important}
+/* 高度弱點：曾經記住又忘掉，用實心圓點標出 */
+.st-relapse::after{
+  content:'';display:inline-block;
+  width:5px;height:5px;border-radius:50%;
+  background:currentColor;
+  vertical-align:super;margin-left:3px;
+  opacity:.85;
+}
 /* 上層清單文字統一為黑色 */
 #itemList .item .en,
 #itemList .item .word-id,
@@ -2570,6 +2600,11 @@ body.mode-srs .screen-list,body.mode-srs #playerBar{display:none!important}
   </div>
 
   <div class="srs-card">
+    <h3>高度弱點　曾經記住又忘掉</h3>
+    <ul class="srs-tough" id="srsRelapse" style="list-style:none;padding:0;margin:0"></ul>
+    <div class="srs-note">這些字在標記習得之後又被標為要複習或答錯，代表當時只是短期記住。清單依遺忘次數排序。</div>
+  </div>
+  <div class="srs-card">
     <h3>頑固單字 TOP 20</h3>
     <ul class="srs-tough" id="srsTough" style="list-style:none;padding:0;margin:0"></ul>
   </div>
@@ -2584,6 +2619,210 @@ body.mode-srs .screen-list,body.mode-srs #playerBar{display:none!important}
 </div>
 
 <script>
+/* ================= 弱點追蹤 =================
+   SM-2 只記排程，這裡另外保存完整的接觸歷程：
+   看過幾次、標記幾次、答錯幾次、多久沒碰、是否反覆遺忘。 */
+(function(){
+  'use strict';
+  var HIST_KEY = 'kinWordHist';
+  var cache = null, cacheKey = '';
+
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function key(){ return HIST_KEY + ':' + uid(); }
+  function bookOf(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
+  // 不同書可能出現相同編號，因此以「書籍/編號」為唯一鍵
+  function wk(id, book){ return (book || bookOf()) + '/' + String(id); }
+
+  function load(){
+    if(cache && cacheKey === key()) return cache;
+    try{ cache = JSON.parse(localStorage.getItem(key()) || '{}') || {}; }
+    catch(e){ cache = {}; }
+    cacheKey = key();
+    return cache;
+  }
+  var saveTimer = 0;
+  function save(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      try{ localStorage.setItem(key(), JSON.stringify(cache || {})); }catch(e){}
+    }, 400);
+  }
+  function today(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+  function dayStr(d){
+    return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+  }
+  function daysSince(str){
+    if(!str) return null;
+    var t = Date.parse(str + 'T00:00:00');
+    if(isNaN(t)) return null;
+    return Math.max(0, Math.round((+today() - t) / 864e5));
+  }
+
+  function get(id, book){
+    var h = load()[wk(id, book)];
+    return h || null;
+  }
+
+  /* 記錄一次接觸。ev: view | ok | review | wrong */
+  function record(id, ev, book){
+    if(!id) return;
+    var m = load(), k = wk(id, book);
+    var h = m[k] || { v:0, ok:0, rv:0, wr:0, rl:0, first:dayStr(today()) };
+    var d = dayStr(today());
+
+    if(ev === 'view'){
+      // 同一天重複開啟只算一次，避免翻頁灌水
+      if(h.lastView === d) return;
+      h.v = (h.v||0) + 1;
+      h.lastView = d;
+    }else if(ev === 'ok'){
+      h.ok = (h.ok||0) + 1;
+      h.lastOk = d;
+    }else if(ev === 'review' || ev === 'wrong'){
+      if(ev === 'wrong') h.wr = (h.wr||0) + 1;
+      else h.rv = (h.rv||0) + 1;
+      // 曾經標為習得、之後又忘記，才算一次「反覆遺忘」
+      if(h.ok > 0 || h.lastOk){ h.rl = (h.rl||0) + 1; h.lastRl = d; }
+    }
+    h.last = d;
+    m[k] = h;
+    save();
+  }
+
+  /* 強度 0（最弱）～ 100（最穩固） */
+  function score(id, book){
+    var h = get(id, book);
+    var srs = null;
+    try{ srs = (typeof srsMap !== 'undefined') ? srsMap[id] : null; }catch(e){}
+    if(!h && !srs) return 50;              // 完全沒碰過，維持中性不強調
+
+    var ivl    = srs ? (+srs.ivl || 0) : 0;
+    var reps   = srs ? (+srs.reps || 0) : 0;
+    var lapses = srs ? (+srs.lapses || 0) : 0;
+    var relapse = h ? (+h.rl || 0) : 0;
+    var v;
+
+    if(!srs || (!reps && !lapses)){
+      // 收藏了卻還沒複習過，本來就是生字，直接視為不熟
+      v = 28;
+    }else{
+      v = 42 + Math.min(34, ivl * 1.6) + Math.min(14, reps * 4);
+      v -= Math.min(32, lapses * 9);
+    }
+
+    // 反覆遺忘：剛忘掉時懲罰最重，之後隨時間淡化，讓重新記住的字能爬回來
+    if(relapse > 0){
+      var since = daysSince(h && h.lastRl);
+      var fade = (since == null) ? 1 : Math.max(0.3, 1 - since / 45);
+      v -= Math.min(26, relapse * 11) * fade;
+    }
+
+    // 時間衰退：超過排程間隔越久，強度掉越多
+    var days = daysSince(h && h.last);
+    if(days != null){
+      if(ivl > 0){
+        var over = days - ivl;
+        if(over > 0) v -= Math.min(55, over * 1.8);
+      }else if(days > 10){
+        v -= Math.min(30, days - 10);
+      }
+    }
+    // 目前就標記為要複習，直接壓到最低階
+    try{
+      if(typeof statusMap !== 'undefined' && statusMap[id] === 'review') v -= 20;
+    }catch(e){}
+
+    return Math.max(0, Math.min(100, v));
+  }
+
+  function level(id, book){
+    var v = score(id, book);
+    if(v >= 78) return 5;
+    if(v >= 58) return 4;
+    if(v >= 38) return 3;
+    if(v >= 18) return 2;
+    return 1;
+  }
+
+  /* 高度弱點：曾經記住又忘掉，或忘超過兩次 */
+  function isRelapse(id, book){
+    var h = get(id, book);
+    if(h && (+h.rl || 0) >= 1) return true;
+    try{
+      var c = (typeof srsMap !== 'undefined') ? srsMap[id] : null;
+      if(c && (+c.lapses || 0) >= 2 && (+c.reps || 0) >= 1) return true;
+    }catch(e){}
+    return false;
+  }
+
+  function stats(id, book){
+    var h = get(id, book) || {};
+    var srs = null;
+    try{ srs = (typeof srsMap !== 'undefined') ? srsMap[id] : null; }catch(e){}
+    return {
+      views:   +h.v  || 0,
+      ok:      +h.ok || 0,
+      review:  +h.rv || 0,
+      wrong:   +h.wr || 0,
+      relapse: +h.rl || 0,
+      lastRl:  h.lastRl || '',
+      first:   h.first || '',
+      last:    h.last  || '',
+      idle:    daysSince(h.last),
+      ivl:     srs ? (+srs.ivl || 0) : 0,
+      lapses:  srs ? (+srs.lapses || 0) : 0,
+      reps:    srs ? (+srs.reps || 0) : 0,
+      score:   Math.round(score(id, book)),
+      level:   level(id, book)
+    };
+  }
+
+  window.KIN_STRENGTH = {
+    record:record, level:level, score:score,
+    isRelapse:isRelapse, stats:stats, get:get,
+    all:function(){ return load(); }
+  };
+
+  /* 把字重套到畫面上的單字 */
+  function paintList(){
+    try{
+      document.querySelectorAll('#itemList .item[data-entry-id]').forEach(function(row){
+        var id = row.getAttribute('data-entry-id');
+        var hw = row.querySelector('.hw');
+        if(!hw || !id) return;
+        hw.classList.remove('st-1','st-2','st-3','st-4','st-5','st-relapse');
+        hw.classList.add('st-' + level(id));
+        if(isRelapse(id)) hw.classList.add('st-relapse');
+      });
+    }catch(e){}
+  }
+  window.__kinPaintStrength = paintList;
+
+  // 清單重繪後套用字重
+  ['renderList','renderStudyQueueList','refreshAllStatusUI'].forEach(function(fn){
+    if(typeof window[fn] !== 'function') return;
+    var orig = window[fn];
+    window[fn] = function(){
+      var r = orig.apply(this, arguments);
+      paintList();
+      return r;
+    };
+  });
+
+  // 開啟解說就記一次接觸
+  if(typeof window.showDetail === 'function'){
+    var _sdRec = window.showDetail;
+    window.showDetail = function(){
+      var r = _sdRec.apply(this, arguments);
+      try{
+        var e = currentList && currentList[currentIdx];
+        if(e && e.id) record(e.id, 'view');
+      }catch(err){}
+      return r;
+    };
+  }
+})();
+
 /* ================= SRS 核心 ================= */
 var SRS_KEY = 'book:kin1000:srs';  // 由所選書籍覆寫
 var srsMap = {};   // id -> {ease,ivl,due,reps,lapses,last}
@@ -2623,6 +2862,10 @@ function srsMigrate(){
 }
 /* SM-2：good=true 代表按了「習得」，false 代表按了「要複習」 */
 function srsGrade(id, good){
+  // 所有標記入口最後都會走到這裡，一併寫入弱點歷程
+  try{
+    if(window.KIN_STRENGTH) window.KIN_STRENGTH.record(id, good ? 'ok' : 'review');
+  }catch(e){}
   var t = srsToday(), c = srsMap[id] || {ease:2.5, ivl:0, reps:0, lapses:0};
   if(good){
     c.reps = (c.reps||0) + 1;
@@ -2737,6 +2980,29 @@ function srsRender(){
            '<span class="tr"><span class="fl" style="width:'+p.toFixed(1)+'%"></span></span>'+
            '<span class="vn">'+s.d+'/'+s.t+'</span></div>';
   }).join('');
+
+  // 高度弱點：曾習得又忘記
+  try{
+    var rel = DATA.filter(function(e){
+      return window.KIN_STRENGTH && window.KIN_STRENGTH.isRelapse(e.id);
+    }).map(function(e){
+      return { e:e, st:window.KIN_STRENGTH.stats(e.id) };
+    }).sort(function(a,b){
+      return (b.st.relapse - a.st.relapse) || (a.st.score - b.st.score);
+    }).slice(0,20);
+    var relBox = document.getElementById('srsRelapse');
+    if(relBox){
+      relBox.innerHTML = rel.length
+        ? rel.map(function(r){
+            var d = r.st.idle != null ? (r.st.idle + ' 天沒複習') : '';
+            return '<li><span class="w">' + r.e.word +
+                   '<span class="m">看過 ' + r.st.views + '　習得 ' + r.st.ok +
+                   '　要複習 ' + r.st.review + (d ? ('　' + d) : '') + '</span></span>' +
+                   '<span class="x">忘 ' + r.st.relapse + '</span></li>';
+          }).join('')
+        : '<div class="srs-empty">還沒有反覆遺忘的字</div>';
+    }
+  }catch(e){}
 
   // 頑固單字
   var tough = DATA.filter(function(e){
@@ -4729,19 +4995,12 @@ body.theme-dark #nwBox .note{color:#6a6661}
   }
   function trKey(){ try{ return localStorage.getItem(TR_KEY) || ''; }catch(e){ return ''; } }
 
-  // 熟悉度 1（最不熟）～ 5（最熟），未排程過的字算 3
+  // 熟悉度改由全域弱點系統計算，與主畫面清單保持一致
   function famLevel(id){
     try{
-      if(typeof srsMap === 'undefined' || !srsMap[id]) return 3;
-      var c = srsMap[id];
-      var ivl = +c.ivl || 0, lapses = +c.lapses || 0;
-      if(lapses >= 3) return 1;
-      if(ivl >= 30) return 5;
-      if(ivl >= 14) return 4;
-      if(ivl >= 4)  return 3;
-      if(ivl >= 1)  return 2;
-      return 1;
-    }catch(e){ return 3; }
+      if(window.KIN_STRENGTH) return window.KIN_STRENGTH.level(id, 'custom');
+    }catch(e){}
+    return 3;
   }
 
   function paintDeck(){
@@ -4763,10 +5022,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
     document.querySelectorAll('#detailBook .nw').forEach(function(el){
       var w = el.getAttribute('data-w');
       var card = find(w);
-      el.classList.remove('cap','cap-1','cap-2','cap-3','cap-4','cap-5','inbook');
+      el.classList.remove('cap','cap-1','cap-2','cap-3','cap-4','cap-5','inbook','st-relapse');
       if(card){
         el.classList.add('cap', 'cap-' + famLevel(card.id));
-        el.title = '已在閃卡中';
+        el.classList.toggle('st-relapse',
+          !!(window.KIN_STRENGTH && window.KIN_STRENGTH.isRelapse(card.id, 'custom')));
+        var st = window.KIN_STRENGTH ? window.KIN_STRENGTH.stats(card.id, 'custom') : null;
+        el.title = st
+          ? ('已在閃卡中　看過 ' + st.views + ' 次　習得 ' + st.ok + '　要複習 ' + st.review +
+             (st.relapse ? ('　反覆遺忘 ' + st.relapse + ' 次') : '') +
+             (st.idle != null ? ('　' + st.idle + ' 天沒複習') : ''))
+          : '已在閃卡中';
         return;
       }
       var inBook = isCap ? findInBooks(w) : null;
@@ -4995,6 +5261,29 @@ body.theme-dark #nwBox .note{color:#6a6661}
            +  '<span class="ic">' + ICON_BACK + '</span>'
            +  '<span class="t">回到閃卡 <b>' + esc(backCard) + '</b></span>'
            +  '<span class="ch">\u203a</span></button>';
+    }
+
+    // 每個字都顯示接觸歷程，方便判斷是不是長期弱點
+    if(e && window.KIN_STRENGTH){
+      var bk = (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000';
+      var ws = window.KIN_STRENGTH.stats(e.id, bk);
+      if(ws.views || ws.ok || ws.review || ws.wrong){
+        var lvName = ['','很不熟','不熟','普通','偏熟','已鞏固'][ws.level];
+        html += '<div class="cx-box"><h5>學習歷程'
+             +  (ws.relapse ? '　<span style="color:#c45c1a">高度弱點</span>' : '')
+             +  '</h5>'
+             +  '<div class="cx-kv"><span>強度</span><span><b>' + lvName + '</b>　'
+             +  ws.score + ' 分</span></div>'
+             +  '<div class="cx-kv"><span>次數</span><span>看過 ' + ws.views
+             +  '　習得 ' + ws.ok + '　要複習 ' + ws.review
+             +  (ws.wrong ? ('　答錯 ' + ws.wrong) : '') + '</span></div>'
+             +  (ws.relapse ? ('<div class="cx-kv"><span>遺忘</span><span><b>'
+             +  ws.relapse + ' 次</b>　記住後又忘掉</span></div>') : '')
+             +  '<div class="cx-kv"><span>間隔</span><span>'
+             +  (ws.idle != null ? (ws.idle + ' 天沒複習') : '尚未複習')
+             +  (ws.ivl ? ('　排程 ' + ws.ivl + ' 天') : '') + '</span></div>'
+             +  '</div>';
+      }
     }
 
     if(inCustom && e){
@@ -6500,6 +6789,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
           statusMap[card.id] = 'review';
           if(typeof saveStatus === 'function') saveStatus();
           if(typeof srsGrade === 'function') srsGrade(card.id, false);
+          if(window.KIN_STRENGTH) window.KIN_STRENGTH.record(card.id, 'wrong', 'custom');
         }
       }catch(e){}
     });
