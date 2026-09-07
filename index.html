@@ -27,9 +27,10 @@ button{font-family:inherit;border:none;background:none;cursor:pointer}
   border:2px solid #e86f00;background:transparent;color:#e86f00;
   display:flex;align-items:center;justify-content:center;
   font-size:24px;font-weight:900;line-height:1;
-  box-shadow:none;
+  box-shadow:none;padding:0;
   transition:transform .12s,border-color .15s,color .15s;
 }
+.topbar .back svg{display:block}
 .topbar .back:active{
   background:transparent;
   color:#c45c1a;border-color:#c45c1a;
@@ -1019,11 +1020,13 @@ body.theme-dark .ap-note{color:#6a6661}
 <!-- DETAIL -->
 <div id="screen-detail" class="screen">
   <div class="topbar">
-    <button class="back" onclick="showList()">‹</button>
+    <button class="back" onclick="showList()" aria-label="返回"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M15 4.5 8 12l7 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <h1>解說 <span style="font-size:11px;color:#c45c1a;font-weight:700">S6fix2</span></h1>
-    <button type="button" id="modeToggle" onclick="nwToggleMode()">
-      <span class="ic" id="modeIcon"></span><span class="tx" id="modeText">發音</span>
-    </button>
+    <div class="mode-seg">
+      <button type="button" id="modeSpeak" onclick="nwSetMode('speak')">發音</button>
+      <span class="sep">/</span>
+      <button type="button" id="modeCap" onclick="nwSetMode('cap')">收藏</button>
+    </div>
     <div class="topbar-right">
       <button type="button" class="icon-btn play-top" id="topPlayBtn" onclick="try{window._kinListPlayback=false;playCurrent()}catch(e){alert(e)}return false;" title="播放">▶</button>
       <button type="button" class="icon-btn" onclick="cycleDetailMark()" id="markBtn" title="切換狀態">○</button>
@@ -4368,17 +4371,20 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
 /* 解說頂列：點字模式單顆切換，捲動時一直看得到 */
 #screen-detail .topbar h1{flex:1;min-width:0;text-align:left;font-size:15px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#screen-detail .topbar #modeToggle{
-  flex:0 0 auto;display:flex;align-items:center;gap:4px;
-  height:32px;padding:0 11px;border:1.5px solid #ddd;border-radius:999px;
-  background:#fff;color:#8a8580;font-size:12.5px;font-weight:700;font-family:inherit;
-  touch-action:manipulation;transition:border-color .15s,color .15s,background .15s;
+#screen-detail .topbar .mode-seg{
+  flex:0 0 auto;display:flex;align-items:center;gap:2px;
 }
-#screen-detail .topbar #modeToggle .ic{display:flex;line-height:0;flex:0 0 auto}
-#screen-detail .topbar #modeToggle:active{transform:scale(.94)}
-#screen-detail .topbar #modeToggle.cap{border-color:#c45c1a;color:#c45c1a;background:#fdf6f0}
-body.theme-dark #screen-detail .topbar #modeToggle{background:#1c1c1e;border-color:#3a3a3c;color:#7a7671}
-body.theme-dark #screen-detail .topbar #modeToggle.cap{border-color:#ff9142;color:#ff9142;background:#2a1c10}
+#screen-detail .topbar .mode-seg button{
+  padding:7px 5px;border:0;background:transparent;
+  color:#b5b0aa;font-family:inherit;font-size:14px;font-weight:700;line-height:1;
+  touch-action:manipulation;transition:color .15s;
+}
+#screen-detail .topbar .mode-seg button:active{transform:scale(.94)}
+#screen-detail .topbar .mode-seg button.on{color:#c45c1a}
+#screen-detail .topbar .mode-seg .sep{color:#ddd;font-size:13px;font-weight:400}
+body.theme-dark #screen-detail .topbar .mode-seg button{color:#5c5a57}
+body.theme-dark #screen-detail .topbar .mode-seg button.on{color:#ff9142}
+body.theme-dark #screen-detail .topbar .mode-seg .sep{color:#3a3a3c}
 /* 頂列閃卡入口 */
 #screen-list > .topbar #deckBtn{
   flex:0 0 auto;position:relative;display:flex;align-items:center;justify-content:center;
@@ -4680,30 +4686,22 @@ body.theme-dark #nwBox .note{color:#6a6661}
   }
   window.__kinPaintNoteWords = paintNoteWords;
 
-  var ICON_SPEAK = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">'
-    + '<path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/>'
-    + '<path d="M15.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
-    + '<path d="M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-  var ICON_CAP = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">'
-    + '<rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/>'
-    + '<path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>'
-    + '<path d="M10 12h4M12 10v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
 
-  // 單顆按鈕顯示「目前模式」，點一下即切換。
+  // 兩顆並排，啟用的那個上色，另一個維持灰色。
   function paintMode(){
     var isCap = mode() === 'cap';
-    var b  = document.getElementById('modeToggle');
-    var ic = document.getElementById('modeIcon');
-    var tx = document.getElementById('modeText');
-    if(b){
-      b.classList.toggle('cap', isCap);
-      b.title = isCap
-        ? '目前：收藏模式，點英文加入閃卡。點此切回發音'
-        : '目前：發音模式，點英文播放。點此切換為收藏';
-      b.setAttribute('aria-label', b.title);
+    var sp = document.getElementById('modeSpeak');
+    var cp = document.getElementById('modeCap');
+    if(sp){
+      sp.classList.toggle('on', !isCap);
+      sp.title = '發音模式：點英文播放';
+      sp.setAttribute('aria-pressed', String(!isCap));
     }
-    if(ic) ic.innerHTML = isCap ? ICON_CAP : ICON_SPEAK;
-    if(tx) tx.textContent = isCap ? '收藏' : '發音';
+    if(cp){
+      cp.classList.toggle('on', isCap);
+      cp.title = '收藏模式：點英文加入閃卡';
+      cp.setAttribute('aria-pressed', String(isCap));
+    }
     document.body.classList.toggle('cap-mode', isCap);
     paintNoteWords();
   }
