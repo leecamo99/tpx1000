@@ -5903,10 +5903,12 @@ body.theme-dark #nwBox .note{color:#6a6661}
     b.textContent = saved ? '移除收藏' : '加入收藏';
     b.classList.toggle('on', saved);
 
-    // 已收藏且目前不在閃卡本身時，才提供「看這張閃卡」
-    var inCustom = !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom');
+    // 短文區是疊在收藏書上方的獨立畫面，CURRENT_BOOK 仍是 custom，
+    // 因此要看的是「現在是否正在讀短文」，而不是目前哪一本書。
+    var inRead = document.body.classList.contains('rd-open');
+    var onCard = !inRead && !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom');
     var go = $('nwCardBtn');
-    if(go) go.classList.toggle('show', saved && !inCustom);
+    if(go) go.classList.toggle('show', saved && !onCard);
 
     var note = $('nwNote');
     if(note) note.textContent = saved
@@ -5927,8 +5929,16 @@ body.theme-dark #nwBox .note{color:#6a6661}
     if(!word) return;
     cur = String(word);
     $('nwWord').textContent = cur;
-    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
-    $('nwSub').textContent = e ? ('來自 ' + e.id + '　' + (e.word||'')) : '';
+    var sub = '';
+    if(document.body.classList.contains('rd-open')){
+      var ctx = null;
+      try{ ctx = JSON.parse(sessionStorage.getItem('kinFromRead') || 'null'); }catch(err){}
+      sub = ctx ? ('來自短文　' + (ctx.title || '')) : '來自短文';
+    }else{
+      var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+      sub = e ? ('來自 ' + e.id + '　' + (e.word||'')) : '';
+    }
+    $('nwSub').textContent = sub;
     paintBtn();
     $('nwMask').classList.add('show');
     $('nwBox').classList.add('show');
