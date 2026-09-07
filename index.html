@@ -1447,7 +1447,12 @@ function openStudyDetail(id){
   prepareDetailEntry(id);
   currentList=studyQueue();
   currentIdx=currentList.findIndex(function(e){return e.id===id;});
-  if(currentIdx<0) currentIdx=0;
+  // 不在學習佇列中就改走一般清單，避免退回第一筆而跳錯單字。
+  if(currentIdx<0){
+    window._kinStudyQueueActive=false;
+    openDetail(id);
+    return;
+  }
   showDetail();
 }
 
@@ -1458,6 +1463,8 @@ function showList(){
   if(!returnId) return;
 
   hardStopAllPlayback();
+  // 回到一覽代表這段跳轉已結束，清掉堆疊避免殘留舊入口。
+  if(typeof window.__kinJumpClear === 'function') window.__kinJumpClear();
 
   // 保證目標單字包含在目前範圍中。
   var sourceEntry = DATA.find(function(e){ return String(e.id) === returnId; });
@@ -1597,7 +1604,28 @@ function openDetail(id){
   prepareDetailEntry(id);
   currentList = filtered();
   currentIdx = currentList.findIndex(e=>e.id===id);
-  if(currentIdx<0) currentIdx=0;
+
+  // 目標不在目前的學習範圍內時，自動切換到它所屬的範圍，
+  // 否則會靜靜退回清單第一筆，跳到完全不相干的單字。
+  if(currentIdx < 0){
+    var target = DATA.filter(function(x){ return x.id === id; })[0];
+    if(target && target.level){
+      currentLevels = [target.level];
+      currentLevel = target.level;
+      try{ syncLevelUI(); }catch(err){}
+      currentList = filtered();
+      currentIdx = currentList.findIndex(function(e){ return e.id === id; });
+    }
+    // 仍找不到就放寬到全部範圍，確保一定能開啟。
+    if(currentIdx < 0){
+      currentLevels = ['all'];
+      currentLevel = 'all';
+      try{ syncLevelUI(); }catch(err){}
+      currentList = filtered();
+      currentIdx = currentList.findIndex(function(e){ return e.id === id; });
+    }
+    if(currentIdx < 0) currentIdx = 0;
+  }
   showDetail();
 }
 
@@ -4416,6 +4444,8 @@ body.cap-mode.theme-dark #detailBook .nw:not(.cap):not(.inbook){
 .cx-row .t{flex:1;min-width:0;font-size:13px;color:#444;line-height:1.5}
 .cx-row .t b{color:#c45c1a;font-weight:700}
 .cx-row .ch{flex:0 0 auto;color:#c9c3bc;font-size:19px;line-height:1}
+.cx-row .lv{display:inline-block;margin-left:7px;font-size:11px;color:#a09a94;font-weight:400}
+body.theme-dark .cx-row .lv{color:#6a6661}
 .cx-box{border:1px solid #eee;border-radius:10px;background:#fff;padding:11px 13px;margin-bottom:8px}
 .cx-box h5{margin:0 0 7px;font-size:11px;color:#8a8580;font-weight:700;letter-spacing:.04em}
 .cx-note{font-size:12.5px;line-height:1.65;color:#555}
@@ -4732,6 +4762,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var go = confirm('「' + text + '」已是《' + inBook.title + '》第 ' + inBook.id +
                        ' 課的單字，不需另外收藏。\n\n要前往查看嗎？');
       if(go){
+        if(typeof window.__kinJumpPush === 'function') window.__kinJumpPush();
         if(here){ if(typeof openDetail === 'function') openDetail(inBook.id); }
         else{
           window.__kinPendingOpen = inBook.id;
@@ -4780,6 +4811,54 @@ body.theme-dark #nwBox .note{color:#6a6661}
     + '<path d="M9 7h6a4.5 4.5 0 0 1 0 9h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>'
     + '<path d="M12.4 12.4 8.6 16l3.8 3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+  /* ===== 解說互跳堆疊 =====
+     在 010 看到不熟的字跳去 020，看完能一路退回 010 繼續讀。 */
+  var JUMP_KEY = 'kinJumpStack';
+  var JUMP_MAX = 5;
+
+  function jumpLoad(){
+    try{ var a = JSON.parse(sessionStorage.getItem(JUMP_KEY) || '[]'); return Array.isArray(a) ? a : []; }
+    catch(e){ return []; }
+  }
+  function jumpSave(a){ try{ sessionStorage.setItem(JUMP_KEY, JSON.stringify(a)); }catch(e){} }
+
+  // 跳走之前，先把目前讀到的位置壓進堆疊
+  window.__kinJumpPush = function(){
+    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+    if(!e || !e.id) return;
+    var st = jumpLoad().filter(function(x){ return x.id !== String(e.id); });
+    st.push({
+      id:     String(e.id),
+      word:   e.word || '',
+      book:   (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || '',
+      levels: (typeof currentLevels !== 'undefined' && currentLevels.length) ? currentLevels.slice() : ['all']
+    });
+    if(st.length > JUMP_MAX) st = st.slice(-JUMP_MAX);
+    jumpSave(st);
+  };
+
+  window.__kinJumpClear = function(){ try{ sessionStorage.removeItem(JUMP_KEY); }catch(e){} };
+
+  window.__kinJumpBack = function(){
+    var st = jumpLoad();
+    var back = st.pop();
+    if(!back) return;
+    jumpSave(st);
+    // 先還原當時的學習範圍，避免目標不在清單裡
+    if(Array.isArray(back.levels) && back.levels.length){
+      currentLevels = back.levels.slice();
+      currentLevel = currentLevels.indexOf('all') >= 0 ? 'all' : currentLevels[0];
+      try{ syncLevelUI(); }catch(e){}
+    }
+    if(back.book && window.CURRENT_BOOK && window.CURRENT_BOOK.id !== back.book){
+      window.__kinPendingOpen = back.id;
+      if(typeof loadBookById === 'function') loadBookById(back.book);
+    }else if(typeof openDetail === 'function'){
+      openDetail(back.id);
+    }
+    if(typeof window.__kinToast === 'function') window.__kinToast('回到 ' + back.id);
+  };
+
   function esc(t){ return (typeof escapeHtml === 'function') ? escapeHtml(t) : String(t || ''); }
   function jsq(t){ return String(t || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
@@ -4789,6 +4868,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
     var inCustom = !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom');
     var html = '';
+
+    // 從別的單字跳過來時，一鍵退回原本讀到的地方
+    var jst = jumpLoad();
+    var top = jst.length ? jst[jst.length - 1] : null;
+    if(top && e && top.id !== String(e.id)){
+      html += '<button type="button" class="cx-row" onclick="__kinJumpBack()">'
+           +  '<span class="ic">' + ICON_BACK + '</span>'
+           +  '<span class="t">回到 <b>' + esc(top.id) + ' ' + esc(top.word || '') + '</b> 繼續讀'
+           +  (jst.length > 1 ? '<span class="lv">還有 ' + (jst.length - 1) + ' 層</span>' : '')
+           +  '</span><span class="ch">\u203a</span></button>';
+    }
 
     // 從閃卡跳到來源時，提供一鍵回閃卡
     var backCard = '';
@@ -4832,6 +4922,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
 
   window.cardGotoSource = function(srcId, cardId){
     if(!srcId) return;
+    if(typeof window.__kinJumpPush === 'function') window.__kinJumpPush();
     try{ sessionStorage.setItem('kinFromCard', cardId || ''); }catch(e){}
     var card = load().filter(function(c){ return c.id === cardId; })[0];
     var book = (card && card.srcBook) || 'kin1000';
