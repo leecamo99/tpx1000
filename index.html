@@ -1037,7 +1037,9 @@ body.theme-dark .ap-note{color:#6a6661}
     </button>
   </div>
 
-<div id="detailBook" class="detail-book"></div><div class="senses-block" id="dSenses" style="display:none"></div>
+<div id="detailBook" class="detail-book"></div>
+  <div id="cardExtra"></div>
+  <div class="senses-block" id="dSenses" style="display:none"></div>
   <div class="detail-actions">
     <button class="btn-skip" onclick="prevItem()">‹ 上一個</button>
     <button class="btn-ok" onclick="markStatus('ok')">習得 ✓</button>
@@ -3455,6 +3457,12 @@ body.theme-dark .tts-msg{color:#8a8680}
         <button type="button" class="pri" onclick="trSave()">儲存並測試翻譯</button>
         <button type="button" class="warn" onclick="trClearKey()">清除翻譯金鑰</button>
       </div>
+      <label class="tts-lb">Gemini API Key（選填，用於補充閃卡資料）</label>
+      <input id="gmKey" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      <div class="tts-btns" style="margin-bottom:9px">
+        <button type="button" class="pri" onclick="gmSave()">儲存並測試 Gemini</button>
+        <button type="button" class="warn" onclick="gmClearKey()">清除 Gemini 金鑰</button>
+      </div>
       <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，捕獲沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
     </div>
 
@@ -4314,6 +4322,51 @@ body.cap-mode .db-note .nw:not(.cap){
 body.cap-mode.theme-dark .db-note .nw:not(.cap){
   box-shadow:inset 0 -1px 0 rgba(255,255,255,.28);
 }
+/* 閃卡的來源與補充資料 */
+#cardExtra{max-width:640px;margin:9px auto 0;padding:0 12px;display:none}
+#cardExtra.show{display:block}
+.cx-row{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  padding:11px 13px;border:1px solid #e2ddd6;border-radius:10px;background:#fff;
+  font-family:inherit;margin-bottom:8px;touch-action:manipulation;
+}
+.cx-row:active{background:#faf7f2;transform:scale(.99)}
+.cx-row .ic{flex:0 0 auto;display:flex;color:#c45c1a}
+.cx-row .t{flex:1;min-width:0;font-size:13px;color:#444;line-height:1.5}
+.cx-row .t b{color:#c45c1a;font-weight:700}
+.cx-row .ch{flex:0 0 auto;color:#c9c3bc;font-size:19px;line-height:1}
+.cx-box{border:1px solid #eee;border-radius:10px;background:#fff;padding:11px 13px;margin-bottom:8px}
+.cx-box h5{margin:0 0 7px;font-size:11px;color:#8a8580;font-weight:700;letter-spacing:.04em}
+.cx-note{font-size:12.5px;line-height:1.65;color:#555}
+.cx-kv{display:flex;gap:7px;font-size:12.5px;line-height:1.7;color:#444;margin-bottom:3px}
+.cx-kv span:first-child{flex:0 0 42px;color:#8a8580;font-weight:700}
+.cx-kv b{color:#c45c1a;font-weight:600}
+.cx-tip{font-size:12px;line-height:1.65;color:#655f5a;background:#faf7f2;border-radius:7px;padding:8px 10px;margin-top:7px}
+.cx-btn{
+  width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;
+  border:1.5px solid #c45c1a;background:#fff;color:#c45c1a;margin-bottom:8px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.cx-btn:active{background:#fdf5ee;transform:scale(.98)}
+.cx-btn:disabled{opacity:.5}
+.cx-btn.done{border-color:#ddd;color:#8a8580}
+.cx-msg{font-size:12px;line-height:1.6;color:#8a8580;margin:-2px 0 8px;text-align:center;min-height:16px}
+.cx-msg.err{color:#e05050}
+body.theme-dark .cx-row{background:#0e0e0e;border-color:#2a2a2c}
+body.theme-dark .cx-row:active{background:#161618}
+body.theme-dark .cx-row .ic{color:#ff9142}
+body.theme-dark .cx-row .t{color:#b8b4af}
+body.theme-dark .cx-row .t b{color:#ff9142}
+body.theme-dark .cx-row .ch{color:#4a4a4c}
+body.theme-dark .cx-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .cx-box h5{color:#7a7671}
+body.theme-dark .cx-note,body.theme-dark .cx-kv{color:#b8b4af}
+body.theme-dark .cx-kv span:first-child{color:#7a7671}
+body.theme-dark .cx-kv b{color:#ff9142}
+body.theme-dark .cx-tip{background:#161618;color:#a8a49f}
+body.theme-dark .cx-btn{background:#1c1c1e;border-color:#ff9142;color:#ff9142}
+body.theme-dark .cx-btn.done{border-color:#3a3a3c;color:#7a7671}
+body.theme-dark .cx-msg{color:#7a7671}
 /* 單字彈窗 */
 #nwMask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10020;display:none}
 #nwMask.show{display:block}
@@ -4390,13 +4443,31 @@ body.theme-dark #nwBox .note{color:#6a6661}
     });
     return 'X-' + ('000' + (max + 1)).slice(-3);
   }
-  function add(word, from){
+  function add(word, from, src){
     if(find(word)) return false;
     var list = load();
-    list.push({ id: nextId(list), word: String(word).trim(), mean: '',
-                from: from || '', at: new Date().toISOString().slice(0,10) });
+    var card = { id: nextId(list), word: String(word).trim(), mean: '',
+                 from: from || '', at: new Date().toISOString().slice(0,10) };
+    // 一併保存來源語境，之後可回頭查看，也是最準的中文來源。
+    if(src){
+      card.srcId    = src.id    || '';
+      card.srcWord  = src.word  || '';
+      card.srcNote  = src.note  || '';
+      card.srcEx    = src.ex    || '';
+      card.srcExZh  = src.exZh  || '';
+      card.srcBook  = src.book  || '';
+    }
+    list.push(card);
     save(list);
     return true;
+  }
+  function update(id, patch){
+    var list = load(), hit = false;
+    for(var i=0;i<list.length;i++){
+      if(list[i].id === id){ Object.assign(list[i], patch); hit = true; break; }
+    }
+    if(hit) save(list);
+    return hit;
   }
   function remove(word){
     var n = norm(word), list = load();
@@ -4406,7 +4477,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     return true;
   }
 
-  window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, key:key };
+  window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, update:update, key:key };
 
   /* ========== 捕獲模式：點英文直接進閃卡 ========== */
   var MODE_KEY = 'kinNoteMode';       // 'speak' | 'cap'
@@ -4489,11 +4560,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     .then(function(j){
       var t = j && j.data && j.data.translations && j.data.translations[0];
       if(!t || !t.translatedText) return;
-      var list = load();
-      for(var i=0;i<list.length;i++){
-        if(list[i].id === card.id){ list[i].mean = t.translatedText; break; }
-      }
-      save(list);
+      update(card.id, {mean: t.translatedText, byMT: true});
       if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
     })
     .catch(function(){ /* 翻譯失敗不影響捕獲 */ });
@@ -4507,9 +4574,14 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var raw = host.textContent || '';
       var i = raw.indexOf(text);
       if(i < 0) return '';
-      var after = raw.slice(i + text.length).replace(/^[\s]*/, '');
-      var m = after.match(/^[（(]([^）)]{1,30})[）)]/);
-      return m ? m[1] : '';
+      var after = raw.slice(i + text.length);
+      // 直接接括號：appoint a new manager（任命新經理）
+      var direct = after.replace(/^\s*/, '').match(/^[（(]([^）)]{1,40})[）)]/);
+      if(direct) return direct[1];
+      // 共用括號：soar / skyrocket（急升）→ soar 也套用「急升」
+      var shared = after.match(/^(?:\s*[\/、,，]\s*[A-Za-z][A-Za-z'\- ]*?)+[（(]([^）)]{1,40})[）)]/);
+      if(shared) return shared[1];
+      return '';
     }catch(e){ return ''; }
   }
 
@@ -4525,16 +4597,19 @@ body.theme-dark #nwBox .note{color:#6a6661}
       if(typeof window.__kinToast === 'function') window.__kinToast('已在閃卡中：' + text);
       return;
     }
-    add(text, from);
+    var src = e ? {
+      id:   e.id,
+      word: e.word || '',
+      note: e.note || '',
+      ex:   e.en   || '',
+      exZh: e.ja   || '',
+      book: (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || ''
+    } : null;
+    add(text, from, src);
     var card = find(text);
     var zh = nearbyMean(text, el);
-    if(card && zh){
-      var list = load();
-      for(var i=0;i<list.length;i++){ if(list[i].id === card.id){ list[i].mean = zh; break; } }
-      save(list);
-    }else if(card){
-      translateLater(card, text);
-    }
+    if(card && zh) update(card.id, {mean: zh});
+    else if(card) translateLater(card, text);
     paintNoteWords();
     if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
     if(typeof window.__kinToast === 'function') window.__kinToast('已捕獲　' + text);
@@ -4548,6 +4623,180 @@ body.theme-dark #nwBox .note{color:#6a6661}
     if(typeof loadBookById === 'function') loadBookById('custom');
     else if(typeof window.__kinOpenCustom === 'function') window.__kinOpenCustom();
     else if(typeof openBookPicker === 'function') openBookPicker();
+  };
+
+
+  /* ========== 閃卡：來源跳轉與 Gemini 補充 ========== */
+  var GM_KEY = 'kinGeminiKey';    // Gemini 金鑰，只存本機
+  function gmKey(){ try{ return localStorage.getItem(GM_KEY) || ''; }catch(e){ return ''; } }
+
+  var ICON_SRC = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">'
+    + '<path d="M4 5.5h6a2.5 2.5 0 0 1 2.5 2.5v11a2 2 0 0 0-2-2H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>'
+    + '<path d="M20 5.5h-6A2.5 2.5 0 0 0 11.5 8v11a2 2 0 0 1 2-2H20z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+  var ICON_BACK = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">'
+    + '<path d="M9 7h6a4.5 4.5 0 0 1 0 9h-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>'
+    + '<path d="M12.4 12.4 8.6 16l3.8 3.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function esc(t){ return (typeof escapeHtml === 'function') ? escapeHtml(t) : String(t || ''); }
+  function jsq(t){ return String(t || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+  function renderCardExtra(){
+    var box = document.getElementById('cardExtra');
+    if(!box) return;
+    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+    var inCustom = !!(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom');
+    var html = '';
+
+    // 從閃卡跳到來源時，提供一鍵回閃卡
+    var backCard = '';
+    try{ backCard = sessionStorage.getItem('kinFromCard') || ''; }catch(err){}
+    if(!inCustom && backCard && e){
+      html += '<button type="button" class="cx-row" onclick="cardBackToDeck()">'
+           +  '<span class="ic">' + ICON_BACK + '</span>'
+           +  '<span class="t">回到閃卡 <b>' + esc(backCard) + '</b></span>'
+           +  '<span class="ch">\u203a</span></button>';
+    }
+
+    if(inCustom && e){
+      var card = find(e.word);
+      if(card){
+        if(card.srcId){
+          html += '<button type="button" class="cx-row" onclick="cardGotoSource(\'' + jsq(card.srcId) + '\',\'' + jsq(card.id) + '\')">'
+               +  '<span class="ic">' + ICON_SRC + '</span>'
+               +  '<span class="t">回到來源 <b>' + esc(card.srcId) + ' ' + esc(card.srcWord || '') + '</b></span>'
+               +  '<span class="ch">\u203a</span></button>';
+        }
+        var g = card.gm || {};
+        if(g.syn || g.ant || g.tip){
+          html += '<div class="cx-box"><h5>GEMINI 補充</h5>';
+          if(g.syn) html += '<div class="cx-kv"><span>同義</span><span>' + esc(g.syn) + '</span></div>';
+          if(g.ant) html += '<div class="cx-kv"><span>反義</span><span>' + esc(g.ant) + '</span></div>';
+          if(g.tip) html += '<div class="cx-tip">' + esc(g.tip) + '</div>';
+          html += '</div>';
+        }
+        var has = !!(g.mean || g.ex);
+        html += '<button type="button" class="cx-btn' + (has ? ' done' : '') + '" id="cxGmBtn" onclick="gmEnrich()">'
+             +  (has ? '重新補充資料' : '用 Gemini 補充資料') + '</button>'
+             +  '<div class="cx-msg" id="cxMsg"></div>';
+      }
+    }
+
+    box.innerHTML = html;
+    box.classList.toggle('show', !!html);
+  }
+  window.__kinRenderCardExtra = renderCardExtra;
+
+  window.cardGotoSource = function(srcId, cardId){
+    if(!srcId) return;
+    try{ sessionStorage.setItem('kinFromCard', cardId || ''); }catch(e){}
+    var card = load().filter(function(c){ return c.id === cardId; })[0];
+    var book = (card && card.srcBook) || 'kin1000';
+    if(window.CURRENT_BOOK && window.CURRENT_BOOK.id === book){
+      if(typeof openDetail === 'function') openDetail(srcId);
+      return;
+    }
+    window.__kinPendingOpen = srcId;
+    if(typeof loadBookById === 'function') loadBookById(book);
+  };
+
+  window.cardBackToDeck = function(){
+    var id = '';
+    try{ id = sessionStorage.getItem('kinFromCard') || ''; sessionStorage.removeItem('kinFromCard'); }catch(e){}
+    if(id) window.__kinPendingOpen = id;
+    if(typeof loadBookById === 'function') loadBookById('custom');
+  };
+
+  window.gmEnrich = function(){
+    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+    if(!e) return;
+    var card = find(e.word);
+    if(!card) return;
+    var msg = document.getElementById('cxMsg');
+    var btn = document.getElementById('cxGmBtn');
+    function say(t, err){ if(msg){ msg.textContent = t || ''; msg.className = 'cx-msg' + (err ? ' err' : ''); } }
+
+    var k = gmKey();
+    if(!k){ say('請先到使用者專區設定 Gemini 金鑰。', true); return; }
+    if(btn){ btn.disabled = true; btn.textContent = '產生中\u2026'; }
+    say('');
+
+    var prompt = '你是 TOEIC 單字教學助手。針對英文「' + card.word + '」，在 TOEIC 商務語境下提供學習資料。'
+      + (card.srcNote ? ('\n來源書上的說明：' + card.srcNote) : '')
+      + (card.mean ? ('\n書上的中文定義：' + card.mean + '，請以此語意為準。') : '')
+      + '\n只回覆 JSON，不要加說明文字。欄位如下，除英文例句外一律使用繁體中文：'
+      + '\nphon：音標，含方括號'
+      + '\npos：詞性，用一個中文字，例如 動 名 形 副'
+      + '\nmean：語意，以 TOEIC 商務語境優先，20 字內'
+      + '\nex：一句 TOEIC 風格的英文例句'
+      + '\nexZh：該例句的繁體中文翻譯'
+      + '\nsyn：同義字，英文，逗號分隔，最多 3 個'
+      + '\nant：反義字，英文，逗號分隔，最多 3 個'
+      + '\ntip：一句使用提醒或易混淆說明，40 字內';
+
+    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text: prompt }] }],
+        generationConfig:{ temperature:0.3, responseMimeType:'application/json' }
+      })
+    })
+    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP ' + r.status + '\u3000' + t.slice(0,140)); }); })
+    .then(function(j){
+      var c0 = j && j.candidates && j.candidates[0];
+      var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
+      if(!txt) throw new Error('回應沒有內容');
+      var g = JSON.parse(txt);
+      var patch = { gm: {
+        phon:g.phon||'', pos:g.pos||'', mean:g.mean||'',
+        ex:g.ex||'', exZh:g.exZh||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
+        at:new Date().toISOString().slice(0,10)
+      }};
+      // 書上定義優先，只有原本沒有中文時才用 Gemini 補上。
+      if(!card.mean && g.mean) patch.mean = g.mean;
+      update(card.id, patch);
+      say('已補充完成。');
+      if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
+      setTimeout(function(){ try{ openDetail(card.id); }catch(e2){} }, 80);
+    })
+    .catch(function(err){
+      say('補充失敗：' + err.message, true);
+      if(btn){ btn.disabled = false; btn.textContent = '用 Gemini 補充資料'; }
+    });
+  };
+
+  /* ---------- Gemini 金鑰設定 ---------- */
+  function gmPaint(){
+    var i = document.getElementById('gmKey');
+    if(i) i.value = gmKey();
+  }
+  window.__kinPaintGemini = gmPaint;
+
+  window.gmSave = function(){
+    var i = document.getElementById('gmKey');
+    var k = i ? i.value.trim() : '';
+    if(!k){ ttsMsg('請先貼上 Gemini 金鑰。', 'err'); return; }
+    try{ localStorage.setItem(GM_KEY, k); }catch(e){}
+    ttsMsg('Gemini 金鑰已儲存，測試中\u2026');
+    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ contents:[{ parts:[{ text:'只回覆兩個字：測試成功' }] }] })
+    })
+    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP ' + r.status + '\u3000' + t.slice(0,140)); }); })
+    .then(function(j){
+      var c0 = j && j.candidates && j.candidates[0];
+      var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
+      ttsMsg(txt ? ('Gemini 連線成功：' + String(txt).trim().slice(0,20)) : '回應格式不正確', txt ? 'ok' : 'err');
+    })
+    .catch(function(err){
+      ttsMsg('Gemini 測試失敗：' + err.message + '\u3000請確認已啟用 Generative Language API。', 'err');
+    });
+  };
+  window.gmClearKey = function(){
+    if(!confirm('確定清除這台裝置的 Gemini 金鑰嗎？')) return;
+    try{ localStorage.removeItem(GM_KEY); }catch(e){}
+    gmPaint();
+    ttsMsg('已清除 Gemini 金鑰。', 'ok');
   };
 
   /* ---------- 翻譯金鑰設定 ---------- */
@@ -4588,7 +4837,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var _sdMode = window.showDetail;
     window.showDetail = function(){
       var r = _sdMode.apply(this, arguments);
-      setTimeout(paintMode, 0);
+      setTimeout(function(){ paintMode(); renderCardExtra(); }, 0);
       return r;
     };
   }
@@ -4780,13 +5029,6 @@ body.theme-dark #nwBox .note{color:#6a6661}
       ? '已在「我的收藏」中，可從書名列切換過去複習。'
       : '收藏後會出現在「我的收藏」，並跟著 GitHub 同步。';
   }
-  function paintNoteWords(){
-    document.querySelectorAll('.db-note .nw').forEach(function(el){
-      el.classList.toggle('saved', !!find(el.getAttribute('data-w')));
-    });
-  }
-  window.__kinPaintNoteWords = paintNoteWords;
-
   window.nwOpen = function(word){
     if(!word) return;
     cur = String(word);
@@ -4831,6 +5073,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var r = _usOpenTts.apply(this, arguments);
       ttsPaint(); ttsMsg('');
       if(typeof window.__kinPaintTrans === 'function') window.__kinPaintTrans();
+      if(typeof window.__kinPaintGemini === 'function') window.__kinPaintGemini();
       return r;
     };
   }
@@ -4908,9 +5151,19 @@ body.theme-dark #nwBox .note{color:#6a6661}
     return {
       id:'custom', clipMap:{}, audioFix:function(){},
       data: cards.map(function(c){
-        return { id:c.id, word:c.word, mean:c.mean||'', pos:'',
-                 level:'CUSTOM', level_label:'我的收藏',
-                 note:c.from ? ('加入來源：'+c.from) : '', en:'', ja:'' };
+        var g = c.gm || {};
+        return {
+          id: c.id,
+          word: c.word,
+          // 來源書上的定義優先，Gemini 只作補充。
+          mean: c.mean || g.mean || '',
+          pos:  g.pos  || '',
+          phon: g.phon || '',
+          level:'CUSTOM', level_label:'我的收藏',
+          note: c.srcNote || '',
+          en:   g.ex   || c.srcEx   || '',
+          ja:   g.exZh || c.srcExZh || ''
+        };
       })
     };
   }
@@ -5002,6 +5255,13 @@ body.theme-dark #nwBox .note{color:#6a6661}
     try{ updateStats(); }catch(e){ console.warn(e); }
     try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
     window.scrollTo(0,0);
+
+    // 由閃卡跳來源、或由來源跳回閃卡時，換書後直接開啟目標單字。
+    if(window.__kinPendingOpen){
+      var pid = window.__kinPendingOpen;
+      window.__kinPendingOpen = null;
+      setTimeout(function(){ try{ openDetail(pid); }catch(e){} }, 60);
+    }
   }
 
   // 回到選書畫面
