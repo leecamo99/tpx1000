@@ -935,6 +935,7 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="topbar">
     <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
     <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
+    <button type="button" id="deckBtn" onclick="deckOpen()" title="我的閃卡" aria-label="我的閃卡"><span class="ic"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span><span class="ct" id="deckCount">0</span></button>
     <button type="button" id="userChip" onclick="usOpen()" title="使用者專區"><span class="av">P</span><span class="nm">Paul</span></button>
     <button class="icon-btn" onclick="openFilter()" title="篩選">☰</button>
   </div>
@@ -1026,8 +1027,16 @@ body.theme-dark .ap-note{color:#6a6661}
     </div>
   </div>
 
-  <!-- legacy detail chrome removed -->
-  
+  <!-- 註解英文的操作模式：發音 / 不熟 -->
+  <div class="mode-bar">
+    <button type="button" id="modeSpeak" class="on" onclick="nwSetMode('speak')">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>發音
+    </button>
+    <button type="button" id="modeCap" onclick="nwSetMode('cap')">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/><path d="M10 12h4M12 10v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>不熟
+    </button>
+  </div>
+
 <div id="detailBook" class="detail-book"></div><div class="senses-block" id="dSenses" style="display:none"></div>
   <div class="detail-actions">
     <button class="btn-skip" onclick="prevItem()">‹ 上一個</button>
@@ -1224,15 +1233,19 @@ function posTagHtml(text){
     return pre + '<span class="db-pos">' + p + '</span>';
   });
 }
-/* 註解裡的英文可點擊：發音、加入收藏。先切詞再轉義，避免破壞 HTML。 */
+/* 註解裡的英文可點擊。以「連續英文片語」為單位，例如
+   appointment of a new president 會整段辨識，不再拆成單字。 */
 function noteWordsHtml(text){
   var raw=String(text||''), out='', last=0;
-  var re=/[A-Za-z][A-Za-z'\-]{2,}/g, m;
+  // 連續英文詞組：字母、撇號、連字號，中間允許單一空白
+  var re=/[A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*)*/g, m;
   while((m=re.exec(raw))){
+    var w=m[0].trim();
+    // 整串都是 a、of、to 這類虛詞就略過，至少要有一個 3 字以上的實詞
+    if(!w.split(/\s+/).some(function(t){ return t.replace(/[^A-Za-z]/g,'').length >= 3; })) continue;
     out+=escapeHtml(raw.slice(last,m.index));
-    var w=m[0];
     out+='<button type="button" class="nw" data-w="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>';
-    last=m.index+w.length;
+    last=m.index+m[0].length;
   }
   return out+escapeHtml(raw.slice(last));
 }
@@ -1641,10 +1654,14 @@ function showDetail(){
 
   host.innerHTML = html;
 
-  // 註解單字：點一下開啟發音與收藏
+  // 註解英文：依目前模式決定是發音還是加入閃卡
   host.querySelectorAll('.nw').forEach(function(b){
-    b.onclick=function(ev){ ev.stopPropagation(); if(typeof nwOpen==='function') nwOpen(b.getAttribute('data-w')); };
+    b.onclick=function(ev){
+      ev.stopPropagation();
+      if(typeof nwTap==='function') nwTap(b.getAttribute('data-w'), b);
+    };
   });
+  if(typeof window.__kinPaintNoteWords==='function') window.__kinPaintNoteWords();
 
   // tap to play on book elements
   var has = !!getAudioForEntry(e);
@@ -3432,7 +3449,13 @@ body.theme-dark .tts-msg{color:#8a8680}
         <button type="button" class="warn" onclick="ttsClearKey()">清除金鑰</button>
       </div>
       <div class="tts-msg" id="ttsMsg"></div>
-      <div class="tip">未設定金鑰時使用系統語音，功能不受影響。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
+      <label class="tts-lb" style="margin-top:2px">Cloud Translation API Key（選填，只存這台裝置）</label>
+      <input id="trKey" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      <div class="tts-btns" style="margin-bottom:9px">
+        <button type="button" class="pri" onclick="trSave()">儲存並測試翻譯</button>
+        <button type="button" class="warn" onclick="trClearKey()">清除翻譯金鑰</button>
+      </div>
+      <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，捕獲沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
     </div>
 
     <h4>藍牙遙控器</h4>
@@ -4235,16 +4258,62 @@ body.theme-dark #navBack.ready .ico{color:#ff9142}
 </script>
 
 <style>
-/* 註解裡的可點英文 */
-.db-note .nw{
-  display:inline;padding:0 1px;margin:0;border:0;background:transparent;
-  color:#0b6ea8;font:inherit;font-weight:600;
-  border-bottom:1px dotted #7ab3d0;cursor:pointer;touch-action:manipulation;
+/* 解說頁模式切換列 */
+.mode-bar{display:flex;gap:7px;padding:9px 14px 0;max-width:560px;margin:0 auto}
+.mode-bar button{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
+  padding:8px 6px;border:1.5px solid #ddd;border-radius:9px;background:#fff;
+  color:#8a8580;font-size:12.5px;font-weight:700;font-family:inherit;
+  touch-action:manipulation;transition:border-color .15s,color .15s,background .15s;
 }
-.db-note .nw:active{background:rgba(11,110,168,.10)}
-.db-note .nw.saved{color:#2a9d4a;border-bottom-color:#7ecb96}
-body.theme-dark .db-note .nw{color:#6fc0ee;border-bottom-color:#3f6f88}
-body.theme-dark .db-note .nw.saved{color:#5fd07f;border-bottom-color:#3a7a52}
+.mode-bar button svg{flex:0 0 auto}
+.mode-bar button:active{transform:scale(.97)}
+.mode-bar button.on{border-color:#c45c1a;color:#c45c1a;background:#fdf6f0}
+body.theme-dark .mode-bar button{background:#1c1c1e;border-color:#3a3a3c;color:#7a7671}
+body.theme-dark .mode-bar button.on{border-color:#ff9142;color:#ff9142;background:#2a1c10}
+/* 頂列閃卡入口 */
+#screen-list > .topbar #deckBtn{
+  flex:0 0 auto;position:relative;display:flex;align-items:center;justify-content:center;
+  width:34px;height:34px;padding:0;border:1.5px solid #ddd;border-radius:50%;
+  background:#fff;color:#777;touch-action:manipulation;
+}
+#screen-list > .topbar #deckBtn:active{transform:scale(.92)}
+#screen-list > .topbar #deckBtn .ic{display:flex;line-height:0}
+#screen-list > .topbar #deckBtn .ct{
+  position:absolute;top:-4px;right:-4px;min-width:15px;height:15px;padding:0 4px;
+  border-radius:8px;background:#c45c1a;color:#fff;
+  font-size:9px;font-weight:800;line-height:15px;text-align:center;
+}
+#screen-list > .topbar #deckBtn.empty .ct{display:none}
+body.theme-dark #screen-list > .topbar #deckBtn{background:#1c1c1e;border-color:#3a3a3c;color:#8a8680}
+body.theme-dark #screen-list > .topbar #deckBtn .ct{background:#ff9142;color:#141414}
+/* 註解裡的可點英文：維持原書排版，不加色不加底線 */
+.db-note .nw{
+  display:inline;padding:0;margin:0;border:0;background:transparent;
+  color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;
+  border-radius:3px;
+}
+.db-note .nw:active{background:rgba(0,0,0,.07)}
+body.theme-dark .db-note .nw:active{background:rgba(255,255,255,.10)}
+/* 已捕獲：以字重與明暗表示熟悉度，越不熟越深越粗 */
+.db-note .nw.cap{font-weight:700}
+.db-note .nw.cap-5{color:#8a8580;font-weight:600}
+.db-note .nw.cap-4{color:#6b6560}
+.db-note .nw.cap-3{color:#4a453f}
+.db-note .nw.cap-2{color:#2b2723}
+.db-note .nw.cap-1{color:#000;font-weight:800}
+body.theme-dark .db-note .nw.cap-5{color:#6a6661}
+body.theme-dark .db-note .nw.cap-4{color:#8f8b86}
+body.theme-dark .db-note .nw.cap-3{color:#b8b4af}
+body.theme-dark .db-note .nw.cap-2{color:#dcd9d5}
+body.theme-dark .db-note .nw.cap-1{color:#fff;font-weight:800}
+/* 捕獲模式下，未捕獲的英文用細虛線提示可點 */
+body.cap-mode .db-note .nw:not(.cap){
+  box-shadow:inset 0 -1px 0 rgba(0,0,0,.22);
+}
+body.cap-mode.theme-dark .db-note .nw:not(.cap){
+  box-shadow:inset 0 -1px 0 rgba(255,255,255,.28);
+}
 /* 單字彈窗 */
 #nwMask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10020;display:none}
 #nwMask.show{display:block}
@@ -4338,6 +4407,193 @@ body.theme-dark #nwBox .note{color:#6a6661}
   }
 
   window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, key:key };
+
+  /* ========== 捕獲模式：點英文直接進閃卡 ========== */
+  var MODE_KEY = 'kinNoteMode';       // 'speak' | 'cap'
+  var TR_KEY   = 'kinTransKey';       // Cloud Translation 金鑰，只存本機
+
+  function mode(){
+    try{ return localStorage.getItem(MODE_KEY) === 'cap' ? 'cap' : 'speak'; }
+    catch(e){ return 'speak'; }
+  }
+  function trKey(){ try{ return localStorage.getItem(TR_KEY) || ''; }catch(e){ return ''; } }
+
+  // 熟悉度 1（最不熟）～ 5（最熟），未排程過的字算 3
+  function famLevel(id){
+    try{
+      if(typeof srsMap === 'undefined' || !srsMap[id]) return 3;
+      var c = srsMap[id];
+      var ivl = +c.ivl || 0, lapses = +c.lapses || 0;
+      if(lapses >= 3) return 1;
+      if(ivl >= 30) return 5;
+      if(ivl >= 14) return 4;
+      if(ivl >= 4)  return 3;
+      if(ivl >= 1)  return 2;
+      return 1;
+    }catch(e){ return 3; }
+  }
+
+  function paintDeck(){
+    var b = document.getElementById('deckBtn');
+    if(!b) return;
+    var n = load().length;
+    var c = document.getElementById('deckCount');
+    if(c) c.textContent = n > 99 ? '99+' : String(n);
+    b.classList.toggle('empty', n === 0);
+    b.title = n ? ('我的閃卡　已捕獲 ' + n + ' 個') : '我的閃卡　尚未捕獲';
+  }
+  window.__kinPaintDeck = paintDeck;
+
+  function paintNoteWords(){
+    document.querySelectorAll('.db-note .nw').forEach(function(el){
+      var card = find(el.getAttribute('data-w'));
+      el.classList.remove('cap','cap-1','cap-2','cap-3','cap-4','cap-5');
+      if(card){
+        el.classList.add('cap', 'cap-' + famLevel(card.id));
+        el.title = '已在閃卡中';
+      }else{
+        el.title = mode() === 'cap' ? '點一下加入閃卡' : '點一下發音';
+      }
+    });
+    paintDeck();
+  }
+  window.__kinPaintNoteWords = paintNoteWords;
+
+  function paintMode(){
+    var sp = document.getElementById('modeSpeak'), cp = document.getElementById('modeCap');
+    var isCap = mode() === 'cap';
+    if(sp) sp.classList.toggle('on', !isCap);
+    if(cp) cp.classList.toggle('on', isCap);
+    document.body.classList.toggle('cap-mode', isCap);
+    paintNoteWords();
+  }
+
+  window.nwSetMode = function(m){
+    try{ localStorage.setItem(MODE_KEY, m === 'cap' ? 'cap' : 'speak'); }catch(e){}
+    paintMode();
+    if(typeof window.__kinToast === 'function'){
+      window.__kinToast(m === 'cap' ? '捕獲模式：點英文加入閃卡' : '發音模式：點英文播放');
+    }
+  };
+
+  // 沒有中文時才呼叫翻譯，結果直接寫回卡片
+  function translateLater(card, text){
+    var k = trKey();
+    if(!k || !card) return;
+    fetch('https://translation.googleapis.com/language/translate/v2?key=' + encodeURIComponent(k), {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ q:String(text), source:'en', target:'zh-TW', format:'text' })
+    })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      var t = j && j.data && j.data.translations && j.data.translations[0];
+      if(!t || !t.translatedText) return;
+      var list = load();
+      for(var i=0;i<list.length;i++){
+        if(list[i].id === card.id){ list[i].mean = t.translatedText; break; }
+      }
+      save(list);
+      if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
+    })
+    .catch(function(){ /* 翻譯失敗不影響捕獲 */ });
+  }
+
+  // 從註解上下文找中文，例如「appoint a new manager（任命新經理）」
+  function nearbyMean(text, el){
+    try{
+      var host = el && el.closest ? el.closest('.db-note') : null;
+      if(!host) return '';
+      var raw = host.textContent || '';
+      var i = raw.indexOf(text);
+      if(i < 0) return '';
+      var after = raw.slice(i + text.length).replace(/^[\s]*/, '');
+      var m = after.match(/^[（(]([^）)]{1,30})[）)]/);
+      return m ? m[1] : '';
+    }catch(e){ return ''; }
+  }
+
+  // 點擊入口：依模式分派
+  window.nwTap = function(text, el){
+    if(!text) return;
+    if(mode() !== 'cap'){ if(typeof nwOpen === 'function') nwOpen(text); return; }
+
+    var e = (typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) || null;
+    var from = e ? (e.id + ' ' + (e.word || '')) : '';
+
+    if(find(text)){
+      if(typeof window.__kinToast === 'function') window.__kinToast('已在閃卡中：' + text);
+      return;
+    }
+    add(text, from);
+    var card = find(text);
+    var zh = nearbyMean(text, el);
+    if(card && zh){
+      var list = load();
+      for(var i=0;i<list.length;i++){ if(list[i].id === card.id){ list[i].mean = zh; break; } }
+      save(list);
+    }else if(card){
+      translateLater(card, text);
+    }
+    paintNoteWords();
+    if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect();
+    if(typeof window.__kinToast === 'function') window.__kinToast('已捕獲　' + text);
+  };
+
+  window.deckOpen = function(){
+    if(!load().length){
+      if(typeof window.__kinToast === 'function') window.__kinToast('尚未捕獲任何單字');
+      return;
+    }
+    if(typeof loadBookById === 'function') loadBookById('custom');
+    else if(typeof window.__kinOpenCustom === 'function') window.__kinOpenCustom();
+    else if(typeof openBookPicker === 'function') openBookPicker();
+  };
+
+  /* ---------- 翻譯金鑰設定 ---------- */
+  function trPaint(){
+    var i = document.getElementById('trKey');
+    if(i) i.value = trKey();
+  }
+  window.__kinPaintTrans = trPaint;
+
+  window.trSave = function(){
+    var i = document.getElementById('trKey');
+    var k = i ? i.value.trim() : '';
+    if(!k){ ttsMsg('請先貼上翻譯金鑰。', 'err'); return; }
+    try{ localStorage.setItem(TR_KEY, k); }catch(e){}
+    ttsMsg('翻譯金鑰已儲存，測試中…');
+    fetch('https://translation.googleapis.com/language/translate/v2?key=' + encodeURIComponent(k), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ q:'appointment of a new president', source:'en', target:'zh-TW', format:'text' })
+    })
+    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+'　'+t.slice(0,140)); }); })
+    .then(function(j){
+      var t = j && j.data && j.data.translations && j.data.translations[0];
+      ttsMsg(t ? ('翻譯連線成功：' + t.translatedText) : '回應格式不正確', t ? 'ok' : 'err');
+    })
+    .catch(function(err){
+      ttsMsg('翻譯測試失敗：' + err.message + '　請確認已啟用 Cloud Translation API。', 'err');
+    });
+  };
+  window.trClearKey = function(){
+    if(!confirm('確定清除這台裝置的翻譯金鑰嗎？')) return;
+    try{ localStorage.removeItem(TR_KEY); }catch(e){}
+    trPaint();
+    ttsMsg('已清除翻譯金鑰。', 'ok');
+  };
+
+  // 解說顯示後套用模式與熟悉度
+  if(typeof window.showDetail === 'function'){
+    var _sdMode = window.showDetail;
+    window.showDetail = function(){
+      var r = _sdMode.apply(this, arguments);
+      setTimeout(paintMode, 0);
+      return r;
+    };
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintMode);
+  else setTimeout(paintMode, 0);
 
   /* ---------- 語音朗讀：Cloud TTS，失敗時退回系統語音 ---------- */
   var TTS_KEY   = 'kinTtsKey';      // API 金鑰，只存本機
@@ -4574,6 +4830,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     window.usOpen = function(){
       var r = _usOpenTts.apply(this, arguments);
       ttsPaint(); ttsMsg('');
+      if(typeof window.__kinPaintTrans === 'function') window.__kinPaintTrans();
       return r;
     };
   }
@@ -4657,6 +4914,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       })
     };
   }
+  window.loadBookById = function(id){ loadBook(id); };
   window.__kinReloadCollect = function(){
     if(window.CURRENT_BOOK && window.CURRENT_BOOK.id === 'custom'){
       var b = window.BOOKS.filter(function(x){ return x.id==='custom'; })[0];
@@ -4718,6 +4976,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var switched = !prev || prev.id !== meta.id;
     window.CURRENT_BOOK = meta;
     if(typeof window.__kinPaintUser === 'function') window.__kinPaintUser();
+    if(typeof window.__kinPaintDeck === 'function') window.__kinPaintDeck();
     // 換書或換人後，返回解說的目標必須重置。
     if(switched || window.__kinUserSwitched){
       window.__kinUserSwitched = false;
