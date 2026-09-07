@@ -3578,6 +3578,11 @@ body.theme-dark .dk-msg{color:#8a8680}
       <div class="tts-st" id="ttsStatus"></div>
       <label class="tts-lb">Cloud TTS API Key（只存在這台裝置）</label>
       <input id="ttsKey" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
+      <label class="tts-lb">朗讀音源</label>
+      <select id="ttsSrc" onchange="ttsSetSrc()">
+        <option value="cloud">雲端語音　音質自然，短文為句子級跟讀</option>
+        <option value="system">系統語音　機器音，短文可逐字跟讀</option>
+      </select>
       <label class="tts-lb">音色</label>
       <select id="ttsVoice" onchange="ttsSetVoice()">
         <option value="en-US-Neural2-C">美式女聲　Neural2-C</option>
@@ -4506,6 +4511,12 @@ body.theme-dark .cx-row .lv{color:#6a6661}
 .cx-box{border:1px solid #eee;border-radius:10px;background:#fff;padding:11px 13px;margin-bottom:8px}
 .cx-box h5{margin:0 0 7px;font-size:11px;color:#8a8580;font-weight:700;letter-spacing:.04em}
 .cx-note{font-size:12.5px;line-height:1.65;color:#555}
+.cx-src-en{font-size:14px;line-height:1.7;color:#333;font-weight:600}
+.cx-src-zh{font-size:12.5px;line-height:1.7;color:#7d7770;margin-top:3px}
+.cx-hint{font-size:11px;line-height:1.65;color:#a09a94;margin-top:7px}
+body.theme-dark .cx-src-en{color:#e8e6e3}
+body.theme-dark .cx-src-zh{color:#a19c96}
+body.theme-dark .cx-hint{color:#6a6661}
 .cx-kv{display:flex;gap:7px;font-size:12.5px;line-height:1.7;color:#444;margin-bottom:3px}
 .cx-kv span:first-child{flex:0 0 42px;color:#8a8580;font-weight:700}
 .cx-kv b{color:#c45c1a;font-weight:600}
@@ -4996,6 +5007,24 @@ body.theme-dark #nwBox .note{color:#6a6661}
                +  '<span class="ch">\u203a</span></button>';
         }
         var g = card.gm || {};
+
+        // 尚未補充時提示缺少哪些資料
+        if(!g.pos && !g.phon){
+          html += '<div class="cx-box"><h5>尚缺資料</h5>'
+               +  '<div class="cx-note">還沒有詞性與音標，按下方「Gemini 補充」可一併補齊，'
+               +  '並產生這個字自己的 TOEIC 例句。</div></div>';
+        }
+
+        // 來源例句保留供對照，但不參與播放
+        if(card.srcEx){
+          html += '<div class="cx-box"><h5>來源例句　'
+               +  esc(card.srcId || '') + ' ' + esc(card.srcWord || '') + '</h5>'
+               +  '<div class="cx-src-en">' + esc(card.srcEx) + '</div>'
+               +  (card.srcExZh ? ('<div class="cx-src-zh">' + esc(card.srcExZh) + '</div>') : '')
+               +  '<div class="cx-hint">這是來源單字的例句，句中未必出現「'
+               +  esc(card.word) + '」，因此不列入朗讀。</div></div>';
+        }
+
         if(g.syn || g.ant || g.tip){
           html += '<div class="cx-box"><h5>GEMINI 補充</h5>';
           if(g.syn) html += '<div class="cx-kv"><span>同義</span><span>' + esc(g.syn) + '</span></div>';
@@ -5152,7 +5181,8 @@ body.theme-dark #nwBox .note{color:#6a6661}
       + '\nphon：音標，含方括號'
       + '\npos：詞性，用一個中文字，例如 動 名 形 副'
       + '\nmean：語意，以 TOEIC 商務語境優先，20 字內'
-      + '\nex：一句 TOEIC 風格的英文例句'
+      + '\nex：一句 TOEIC 風格的英文例句，必須自然用到「' + card.word + '」本身，'
+      + '場景限定辦公室、會議、出差、客服、採購、人事、財報等商務情境'
       + '\nexZh：該例句的繁體中文翻譯'
       + '\nsyn：同義字，英文，逗號分隔，最多 3 個'
       + '\nant：反義字，英文，逗號分隔，最多 3 個'
@@ -5277,6 +5307,20 @@ body.theme-dark #nwBox .note{color:#6a6661}
   var ttsAudio  = null;
 
   function ttsKey(){ try{ return localStorage.getItem(TTS_KEY) || ''; }catch(e){ return ''; } }
+  var TTS_SRC = 'kinVoiceSrc';      // 'cloud'（預設）| 'system'
+  function ttsSrc(){
+    try{ return localStorage.getItem(TTS_SRC) === 'system' ? 'system' : 'cloud'; }
+    catch(e){ return 'cloud'; }
+  }
+  // 供短文朗讀模組判斷該走哪個音源
+  window.__kinVoiceSrc  = ttsSrc;
+  window.__kinHasTtsKey = function(){ return !!ttsKey(); };
+  window.__kinToggleVoiceSrc = function(){
+    var next = ttsSrc() === 'cloud' ? 'system' : 'cloud';
+    try{ localStorage.setItem(TTS_SRC, next); }catch(e){}
+    if(typeof window.__kinPaintTts === 'function') window.__kinPaintTts();
+    return next;
+  };
   function ttsVoice(){ try{ return localStorage.getItem(TTS_VOICE) || 'en-US-Neural2-C'; }catch(e){ return 'en-US-Neural2-C'; } }
   function ttsCache(){
     try{ return JSON.parse(localStorage.getItem(TTS_CACHE) || '{}') || {}; }catch(e){ return {}; }
@@ -5339,7 +5383,8 @@ body.theme-dark #nwBox .note{color:#6a6661}
   window.kinSpeak = function(text, onend){
     if(!text) return false;
     var key = ttsKey();
-    if(!key) return speakSystem(text, onend);
+    // 沒有金鑰或使用者指定系統語音時，直接走系統語音。
+    if(!key || ttsSrc() === 'system') return speakSystem(text, onend);
 
     var hit = ttsCacheGet(text);
     if(hit){ ttsPlayB64(hit, onend); return true; }
@@ -5379,14 +5424,26 @@ body.theme-dark #nwBox .note{color:#6a6661}
     if(st){
       st.className = 'tts-st' + (k ? ' on' : '');
       st.textContent = k
-        ? ('使用 Cloud TTS　金鑰 ••••' + k.slice(-4) + '　已快取 ' + window.__kinTtsCacheCount() + ' 個字')
+        ? ((ttsSrc() === 'cloud' ? '使用雲端語音' : '使用系統語音（已設金鑰）') +
+           '　金鑰 ••••' + k.slice(-4) + '　已快取 ' + window.__kinTtsCacheCount() + ' 個字')
         : '未設定金鑰，目前使用系統語音';
     }
     var i = document.getElementById('ttsKey');   if(i) i.value = k;
     var v = document.getElementById('ttsVoice'); if(v) v.value = ttsVoice();
+    var sr = document.getElementById('ttsSrc');  if(sr) sr.value = ttsSrc();
+    if(typeof window.__kinRdPaintVoice === 'function') window.__kinRdPaintVoice();
   }
   window.__kinPaintTts = ttsPaint;
 
+  window.ttsSetSrc = function(){
+    var sr = document.getElementById('ttsSrc');
+    if(!sr) return;
+    try{ localStorage.setItem(TTS_SRC, sr.value === 'system' ? 'system' : 'cloud'); }catch(e){}
+    ttsPaint();
+    ttsMsg(sr.value === 'system'
+      ? '已改用系統語音。短文朗讀可逐字跟讀，但音質較生硬。'
+      : '已改用雲端語音。音質自然，短文朗讀為句子級跟讀。', 'ok');
+  };
   window.ttsSetVoice = function(){
     var v = document.getElementById('ttsVoice');
     if(!v) return;
@@ -5662,8 +5719,10 @@ body.theme-dark #rdEntry .ch{color:#5c4a3a}
 /* 播放高亮：句子淡底，單字反白 */
 .rd-doc .sn{border-radius:4px;transition:background .15s}
 .rd-doc .sn.on{background:rgba(196,92,26,.11)}
-.rd-doc .rw.wnow{background:#c45c1a;color:#fff;border-radius:3px;
-  box-shadow:0 0 0 2px #c45c1a}
+.rd-doc .rw.wnow{
+  background:#c45c1a;color:#fff !important;border-radius:3px;
+  padding:1px 2px;margin:0 -2px;box-shadow:none;
+}
 .rd-doc .sn.aMark{box-shadow:inset 3px 0 0 #c45c1a}
 .rd-doc .sn.bMark{box-shadow:inset -3px 0 0 #c45c1a}
 .rd-doc .sn.aMark.bMark{box-shadow:inset 3px 0 0 #c45c1a,inset -3px 0 0 #c45c1a}
@@ -5682,7 +5741,7 @@ body.theme-dark .rd-pl-ab{background:rgba(255,145,66,.22)}
 body.theme-dark .rd-pl-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#a8a49f}
 body.theme-dark .rd-pl-btns button.on{background:#2a1c10;border-color:#ff9142;color:#ff9142}
 body.theme-dark .rd-doc .sn.on{background:rgba(255,145,66,.16)}
-body.theme-dark .rd-doc .rw.wnow{background:#ff9142;color:#141414;box-shadow:0 0 0 2px #ff9142}
+body.theme-dark .rd-doc .rw.wnow{background:#ff9142;color:#141414 !important;box-shadow:none}
 body.theme-dark .rd-doc .sn.aMark{box-shadow:inset 3px 0 0 #ff9142}
 body.theme-dark .rd-doc .sn.bMark{box-shadow:inset -3px 0 0 #ff9142}
 body.theme-dark .rd-doc .sn.aMark.bMark{box-shadow:inset 3px 0 0 #ff9142,inset -3px 0 0 #ff9142}
@@ -6113,6 +6172,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       abb.textContent = rdA === null ? '設 A' : (rdB === null ? '設 B' : '清除 A-B');
       abb.classList.toggle('on', rdA !== null);
     }
+    rdPaintVoice();
     var pb = $('rdPlBtn');
     if(pb){
       pb.innerHTML = rdOn
@@ -6121,6 +6181,34 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       pb.setAttribute('aria-label', rdOn ? '暫停' : '朗讀');
     }
   }
+  // 有金鑰才可能走雲端；沒有金鑰時按鈕標示為系統音並停用切換
+  function rdPaintVoice(){
+    var b = $('rdPlVoice');
+    if(!b) return;
+    var hasKey = (typeof window.__kinHasTtsKey === 'function') && window.__kinHasTtsKey();
+    var cloud  = hasKey && (typeof window.__kinVoiceSrc === 'function') && window.__kinVoiceSrc() === 'cloud';
+    b.textContent = cloud ? '雲端音' : '系統音';
+    b.classList.toggle('on', cloud);
+    b.title = !hasKey
+      ? '尚未設定 Cloud TTS 金鑰，目前使用系統語音'
+      : (cloud ? '雲端語音：音質自然，句子級跟讀。點擊改用系統語音'
+               : '系統語音：可逐字跟讀。點擊改用雲端語音');
+  }
+  window.__kinRdPaintVoice = rdPaintVoice;
+
+  window.rdToggleVoice = function(){
+    if(!(typeof window.__kinHasTtsKey === 'function') || !window.__kinHasTtsKey()){
+      if(typeof window.__kinToast === 'function') window.__kinToast('請先到使用者專區設定雲端語音金鑰');
+      return;
+    }
+    var next = window.__kinToggleVoiceSrc();
+    rdPaintVoice();
+    if(rdOn){ rdGen++; rdOn = true; rdStep(); }   // 立刻用新音源重唸目前這句
+    if(typeof window.__kinToast === 'function'){
+      window.__kinToast(next === 'cloud' ? '雲端語音：句子級跟讀' : '系統語音：可逐字跟讀');
+    }
+  };
+
   function rdPaint(){ rdPaintSn(); rdPaintBar(); }
 
   function rdStop(){
@@ -6140,10 +6228,12 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     var el = rdSn[i];
     var words = el ? Array.prototype.slice.call(el.querySelectorAll('.rw')) : [];
 
-    if(!('speechSynthesis' in window)){
-      // 沒有系統語音就退回 Cloud TTS 或其他來源，僅句子級高亮
+    // 雲端語音音質好但沒有逐字時間，只能句子級高亮；系統語音才有 boundary 事件。
+    var cloud = (typeof window.__kinVoiceSrc === 'function') && window.__kinVoiceSrc() === 'cloud'
+                && (typeof window.__kinHasTtsKey === 'function') && window.__kinHasTtsKey();
+    if(cloud || !('speechSynthesis' in window)){
       if(typeof kinSpeak === 'function' && kinSpeak(text, function(){ if(gen === rdGen) onend(); })) return;
-      onend(); return;
+      if(!('speechSynthesis' in window)){ onend(); return; }
     }
     try{
       window.speechSynthesis.cancel();
@@ -6414,6 +6504,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         '<div class="rd-pl-btns">' +
         '<button type="button" id="rdPlMode" onclick="rdCycleMode()">連續播放</button>' +
         '<button type="button" id="rdPlABBtn" onclick="rdSetAB()">設 A</button>' +
+        '<button type="button" id="rdPlVoice" onclick="rdToggleVoice()">雲端音</button>' +
         '</div></div>';
       bindWords();
       applyDocState();
@@ -6540,8 +6631,9 @@ body.theme-dark .rd-q .qn{color:#6a6661}
           phon: g.phon || '',
           level:'CUSTOM', level_label:'我的收藏',
           note: c.srcNote || '',
-          en:   g.ex   || c.srcEx   || '',
-          ja:   g.exZh || c.srcExZh || ''
+          // 只放這個字自己的例句，播放才不會唸到不含該字的來源句。
+          en:   g.ex   || '',
+          ja:   g.exZh || ''
         };
       })
     };
