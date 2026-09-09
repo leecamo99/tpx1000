@@ -211,7 +211,10 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 .card-ex .en{font-size:15px;font-weight:500}
 .card-ex .en .hl{color:#c45c1a}
 .detail-actions{display:flex;gap:10px;padding:8px 16px 16px}
-.detail-actions button{flex:1;min-width:0;padding:12px 6px;border-radius:10px;font-size:13px;font-weight:600}
+.detail-actions button{flex:1;min-width:0;padding:12px 4px;border-radius:10px;font-size:12px;font-weight:600}
+/* 未學習：中性灰，與習得綠、複習紅明確區隔 */
+.btn-new{background:#f2f2f2;color:#666;border:1.5px solid #aaa}
+body.theme-dark .btn-new{background:#1f1f21;color:#a8a49f;border-color:#4a4a4c}
 .btn-ok{background:#eef8f0;color:#2a9d4a;border:1.5px solid #2a9d4a}
 .btn-rev{background:#fdf0f0;color:#e05050;border:1.5px solid #e05050}
 .btn-skip{background:#f5f5f5;color:#888;border:1.5px solid #ddd}
@@ -1084,6 +1087,7 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="senses-block" id="dSenses" style="display:none"></div>
   <div class="detail-actions">
     <button class="btn-skip" onclick="prevItem()">‹ 上一個</button>
+    <button class="btn-new" onclick="markStatus('')">未學習</button>
     <button class="btn-ok" onclick="markStatus('ok')">習得 ✓</button>
     <button class="btn-rev" onclick="markStatus('review')">要複習</button>
     <button class="btn-skip" onclick="nextItem()">下一個 ›</button>
@@ -1879,9 +1883,15 @@ function markStatus(st){
   const e = currentList[currentIdx];
   if(!e) return;
   var before = statusMap[e.id] || '';
-  statusMap[e.id] = st;
+  // 空字串代表回到未學習，這時要移除標記而不是存入空值
+  if(st) statusMap[e.id] = st;
+  else delete statusMap[e.id];
   saveStatus();
-  if(before!==st && typeof srsGrade==='function') srsGrade(e.id,st==='ok');
+  if(before !== st){
+    if(st) { if(typeof srsGrade==='function') srsGrade(e.id, st==='ok'); }
+    // 改回未學習只清排程，學習歷程照樣保留
+    else if(typeof srsReset==='function') srsReset(e.id);
+  }
   updateStats();
   refreshAllStatusUI();
   updateDetailMarkUI(e.id);
@@ -1895,12 +1905,18 @@ function toggleMark(){
   showDetail();
   updateStats();
 }
+/* 切換單字時是否自動發音。關閉後就純看文字，適合安靜場合。 */
+function autoSpeakOn(){
+  try{ return localStorage.getItem('kinAutoSpeak') !== '0'; }catch(e){ return true; }
+}
+window.__kinAutoSpeak = autoSpeakOn;
+
 function prevItem(){
   if(!currentList||!currentList.length||currentIdx<=0){var sub=document.getElementById('playSub');if(sub)sub.textContent='已到第一個';return;}
   currentIdx--;
   window._kinListPlayback=false;
   showDetail();
-  setTimeout(function(){playCurrent(false);},80);
+  if(autoSpeakOn()) setTimeout(function(){playCurrent(false);},80);
 }
 
 function nextItem(){
@@ -1912,7 +1928,7 @@ function nextItem(){
   currentIdx=next;
   window._kinListPlayback=false;
   showDetail();
-  setTimeout(function(){playCurrent(false);},80);
+  if(autoSpeakOn()) setTimeout(function(){playCurrent(false);},80);
 }
 
 
@@ -2892,6 +2908,19 @@ function srsGrade(id, good){
   srsLog[k] = (srsLog[k]||0) + 1;
   srsSave();
 }
+/* 把單字的排程清掉，回到從未複習的狀態。
+   kinWordHist 的接觸歷程不動，之後仍看得到完整計次。 */
+function srsReset(id){
+  if(srsMap[id]){ delete srsMap[id]; srsSave(); }
+}
+/* 批次重設：回傳實際清除的筆數 */
+function srsResetAll(ids){
+  var n = 0;
+  (ids||[]).forEach(function(id){ if(srsMap[id]){ delete srsMap[id]; n++; } });
+  if(n) srsSave();
+  return n;
+}
+
 function srsDueList(){
   var k = srsDayStr(srsToday()), out = [];
   DATA.forEach(function(e){
@@ -3759,13 +3788,42 @@ body.theme-dark .dk-empty{color:#6a6661}
 body.theme-dark .dk-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
 body.theme-dark .dk-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
 body.theme-dark .dk-msg{color:#8a8680}
+/* 紀錄管理 */
+.rm-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.rm-stat{font-size:11.5px;line-height:1.75;color:#655f5a;background:#fff;border:1px solid #e2e2e2;
+  border-radius:8px;padding:8px 10px;margin-bottom:10px}
+.rm-stat b{color:#c45c1a}
+.rm-grp{border-top:1px solid #ececec;padding-top:10px;margin-top:10px}
+.rm-grp:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.rm-lb{font-size:12px;font-weight:700;color:#655f5a;margin-bottom:7px}
+.rm-btns{display:flex;gap:7px}
+.rm-btns button{flex:1;padding:10px 5px;border-radius:9px;font-size:11.5px;font-weight:700;
+  border:1.5px solid #ccc;background:#fff;color:#444;font-family:inherit;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-btns button.warn{border-color:#e05050;background:#fdf0f0;color:#e05050}
+.rm-btns button:active{transform:scale(.97)}
+.rm-note{font-size:11px;line-height:1.7;color:#a09a94;margin-top:7px}
+.rm-note b{color:#2a9d4a}
+.rm-msg{font-size:12px;line-height:1.7;margin-top:10px;min-height:17px;color:#666}
+.rm-msg.ok{color:#2a9d4a}
+.rm-msg.err{color:#e05050}
+body.theme-dark .rm-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .rm-stat{background:#141416;border-color:#2a2a2c;color:#a8a49f}
+body.theme-dark .rm-stat b{color:#ff9142}
+body.theme-dark .rm-grp{border-top-color:#242426}
+body.theme-dark .rm-lb{color:#a8a49f}
+body.theme-dark .rm-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .rm-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark .rm-note{color:#6a6661}
+body.theme-dark .rm-note b{color:#5fd07f}
+body.theme-dark .rm-msg{color:#8a8680}
 /* 藍牙遙控器設定 */
 .rc-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
 .rc-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
 .rc-sw input{width:20px;height:20px;accent-color:#c45c1a;flex:0 0 auto}
 .rc-map{margin:8px 0 4px;border-top:1px solid #ececec;padding-top:8px}
 .rc-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
-.rc-row .act{width:78px;flex:0 0 auto;color:#655f5a;font-weight:700}
+.rc-row .act{width:88px;flex:0 0 auto;color:#655f5a;font-weight:700}
 .rc-row .keys{flex:1;min-width:0;color:#111;font-size:11px;line-height:1.6}
 .rc-row .keys kbd{display:inline-block;background:#fff;border:1px solid #ddd;border-radius:4px;
   padding:1px 6px;margin:1px 3px 1px 0;font:600 11px/17px system-ui;color:#333}
@@ -3900,6 +3958,38 @@ body.theme-dark .dk-msg{color:#8a8680}
       </div>
       <div class="dk-msg" id="dkMsg"></div>
       <div class="tip">勾選後可一次刪除多張。「沒有中文的卡」是指未取得中文語意的卡片，通常是早期收藏或翻譯失敗的項目。刪除後無法復原。</div>
+    </div>
+
+    <h4>播放</h4>
+    <div class="ap-box">
+      <label class="ap-sw">
+        <span>切換單字時自動發音</span>
+        <input type="checkbox" id="apAutoSpeak" onchange="apToggleAutoSpeak()">
+      </label>
+      <div class="ap-note" id="apSpeakNote"></div>
+    </div>
+
+    <h4>紀錄管理</h4>
+    <div class="rm-box">
+      <div class="rm-stat" id="rmStat"></div>
+      <div class="rm-grp">
+        <div class="rm-lb">改回未學習　保留學習歷程</div>
+        <div class="rm-btns">
+          <button type="button" onclick="rmResetBook()">本書全部改未學習</button>
+          <button type="button" onclick="rmResetAllBooks()">所有書籍改未學習</button>
+        </div>
+        <div class="rm-note">把「習得」「要複習」的標記與複習排程清空，全部回到未學習。
+          看過幾次、標記幾次、反覆遺忘等學習歷程<b>完整保留</b>，弱點字重也會繼續累積。</div>
+      </div>
+      <div class="rm-grp">
+        <div class="rm-lb">徹底清空　無法復原</div>
+        <div class="rm-btns">
+          <button type="button" class="warn" onclick="rmWipeBook()">清空本書所有紀錄</button>
+          <button type="button" class="warn" onclick="rmWipeUser()">清空此使用者全部紀錄</button>
+        </div>
+        <div class="rm-note">連同學習歷程、收藏閃卡、AI 教練短文一併刪除，等於這位使用者從頭開始。</div>
+      </div>
+      <div class="rm-msg" id="rmMsg"></div>
     </div>
 
     <h4>藍牙遙控器</h4>
@@ -4136,14 +4226,17 @@ body.theme-dark .dk-msg{color:#8a8680}
     autoNext: false,
     keys: {
       // 鍵盤與手把共用同一組設定，手把按鈕以 pad: 前綴表示。
-      prev:   ['ArrowLeft','PageUp','pad:14','pad:2'],
-      next:   ['ArrowRight','PageDown','pad:15','pad:0'],
-      ok:     ['ArrowUp','Enter','pad:12','pad:3'],
-      review: ['ArrowDown','pad:13','pad:1']
+      prev:      ['ArrowLeft','PageUp','pad:14','pad:2'],
+      next:      ['ArrowRight','PageDown','pad:15','pad:0'],
+      ok:        ['ArrowUp','Enter','pad:12','pad:3'],
+      review:    ['ArrowDown','pad:13','pad:1'],
+      play:      [' ','MediaPlayPause','pad:9'],
+      unlearned: ['Backspace','Delete','pad:8']
     }
   };
-  var LABEL = { prev:'上一個', next:'下一個', ok:'標記習得', review:'標記要複習' };
-  var ORDER = ['prev','next','ok','review'];
+  var LABEL = { prev:'上一個', next:'下一個', ok:'標記習得', review:'標記要複習',
+                play:'播放／停止', unlearned:'標記未學習' };
+  var ORDER = ['play','prev','unlearned','ok','review','next'];
 
   var cfg = (function(){
     try{
@@ -4232,14 +4325,19 @@ body.theme-dark .dk-msg{color:#8a8680}
     var e = currentList[currentIdx];
     if(!e){ toast('沒有目前單字'); return; }
     var before = statusMap[e.id] || '';
-    statusMap[e.id] = st;
+    if(st) statusMap[e.id] = st;
+    else delete statusMap[e.id];   // 空字串＝改回未學習
     try{ saveStatus(); }catch(err){}
-    if(before !== st && typeof srsGrade === 'function') srsGrade(e.id, st === 'ok');
+    if(before !== st){
+      if(st){ if(typeof srsGrade === 'function') srsGrade(e.id, st === 'ok'); }
+      else if(typeof srsReset === 'function') srsReset(e.id);
+    }
     try{ updateStats(); }catch(err){}
     try{ refreshAllStatusUI(); }catch(err){}
     try{ if(typeof updateDetailMarkUI === 'function') updateDetailMarkUI(e.id); }catch(err){}
     try{ if(typeof srsBadge === 'function') srsBadge(); }catch(err){}
-    toast(st === 'ok' ? '✓ 習得' : '! 要複習', st === 'ok' ? 'ok' : 'rev');
+    toast(st === 'ok' ? '✓ 習得' : (st === 'review' ? '! 要複習' : '○ 未學習'),
+          st === 'ok' ? 'ok' : (st === 'review' ? 'rev' : ''));
     if(cfg.autoNext) setTimeout(function(){ move(1); }, 260);
   }
 
@@ -4268,9 +4366,12 @@ body.theme-dark .dk-msg{color:#8a8680}
     var act = actionFor(key);
     if(!act) return;
 
-    // Enter／Space 落在按鈕上時交還原生行為
+    // Enter／Space 落在按鈕上時交還原生行為，避免誤觸畫面上的按鈕
     var ae = document.activeElement;
-    if((key === 'Enter' || key === ' ') && ae && (ae.tagName||'').toLowerCase() === 'button') return;
+    if((key === 'Enter' || key === ' ') && ae && (ae.tagName||'').toLowerCase() === 'button'){
+      try{ ae.blur(); }catch(e){}
+      if(key === 'Enter') return;
+    }
 
     ev.preventDefault();
     ev.stopImmediatePropagation();
@@ -4291,6 +4392,24 @@ body.theme-dark .dk-msg{color:#8a8680}
     else if(act === 'next') move(1);
     else if(act === 'ok') mark('ok');
     else if(act === 'review') mark('review');
+    else if(act === 'unlearned') mark('');
+    else if(act === 'play') togglePlayback();
+  }
+
+  /* 遙控的播放鍵：正在播就停，沒播就從目前這個字開始 */
+  function togglePlayback(){
+    var a = (typeof ensureAudio === 'function') ? ensureAudio() : null;
+    var speaking = false;
+    try{ speaking = !!(window.speechSynthesis && window.speechSynthesis.speaking); }catch(e){}
+    var playing = (a && !a.paused && a.currentTime > 0) || speaking;
+    if(playing){
+      if(typeof hardStopAllPlayback === 'function') hardStopAllPlayback();
+      toast('停止播放');
+      return;
+    }
+    if(!ensureList()){ toast('沒有可播放的單字'); return; }
+    toast('播放');
+    try{ playCurrent(true); }catch(e){}
   }
 
   function onPadDown(id){
@@ -4398,7 +4517,8 @@ body.theme-dark .dk-msg{color:#8a8680}
       return '手把 ' + (PAD_NAMES[id] || ('鍵' + id));
     }
     var m = {'ArrowUp':'↑','ArrowDown':'↓','ArrowLeft':'←','ArrowRight':'→',
-             ' ':'Space','Enter':'Enter','PageUp':'PageUp','PageDown':'PageDown','Escape':'Esc'};
+             ' ':'Space','Enter':'Enter','PageUp':'PageUp','PageDown':'PageDown','Escape':'Esc',
+             'Backspace':'Backspace','Delete':'Delete','MediaPlayPause':'媒體播放鍵'};
     return m[k] || k;
   }
   function renderMap(){
@@ -6092,6 +6212,15 @@ body.theme-dark #rdEntry .ch{color:#5c4a3a}
 .rd-doc .pp .pz{font-size:13px;line-height:1.8;color:#7d7770;margin:6px 0 0;
   padding-left:11px;border-left:2px solid #eee5da}
 .rd-doc.zh-off .pp .pz{display:none}
+/* 逐句對照：一句英文緊接該句中文，句子之間留白區隔 */
+.rd-doc .sl{margin-bottom:12px}
+.rd-doc .sl:last-child{margin-bottom:0}
+.rd-doc .sl .pe{margin:0}
+.rd-doc .sl .pz{margin:3px 0 0}
+.rd-doc.zh-off .sl .pz{display:none}
+/* 朗讀到的句子，中文也一起提亮 */
+.rd-doc .sl.on .pz{color:#5f5a55;border-left-color:#e0b894}
+body.theme-dark .rd-doc .sl.on .pz{color:#c8c4bf;border-left-color:#7a4a20}
 /* 三段字級 */
 .rd-doc.fs-s .en,.rd-doc.fs-s .pp .pe{font-size:14.5px;line-height:1.9}
 .rd-doc.fs-l .en,.rd-doc.fs-l .pp .pe{font-size:18px;line-height:2.0}
@@ -6455,23 +6584,62 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     return String(t || '').split(/\n+/).map(function(x){ return x.trim(); })
                           .filter(function(x){ return x.length; });
   }
+  /* 英文切句：Ms. Dr. Inc. 這類縮寫後面的句點不算句子結束，
+     否則「Ms.」會被切成獨立一句，句數也會虛增。 */
+  var ABBR = /(?:^|\s)(?:mr|mrs|ms|dr|prof|st|jr|sr|inc|ltd|co|corp|dept|approx|vs|etc|no|fig|vol|ext|dept)\.$/i;
+  var DOTTED = /(?:e\.g|i\.e|a\.m|p\.m|u\.s|u\.k|ph\.d)\.$/i;
+  function splitEn(text){
+    var raw = String(text || '');
+    var out = [], buf = '', m;
+    var re = /[^.!?]*[.!?]+["')\]]*\s*|[^.!?]+$/g;
+    while((m = re.exec(raw))){
+      buf += m[0];
+      var t = buf.replace(/\s+$/, '');
+      if(ABBR.test(t)) continue;                  // Ms. Chen
+      if(DOTTED.test(t)) continue;                // U.S. / e.g.
+      // 單一字母加句點多半是縮寫的一部分，例如 J. Smith、9 a.m.、e.g.
+      if(/(?:^|\s)[A-Za-z]\.$/.test(t)) continue;
+      if(/\d\.$/.test(t)) continue;              // 3.5 或 No. 3
+      out.push(buf);
+      buf = '';
+    }
+    if(buf.trim()) out.push(buf);
+    return out.length ? out : [raw];
+  }
+
+  /* 中文用全形標點切句，才能與英文逐句對齊 */
+  function splitZh(text){
+    var raw = String(text || '');
+    var parts = raw.match(/[^。！？!?]+[。！？!?]+["')\]」』]*\s*|[^。！？!?]+$/g) || [raw];
+    return parts.filter(function(p){ return p.trim(); });
+  }
+
   // 以句為單位包起來，播放時才能逐句高亮、逐句循環、設定 A-B 區間
   var _snSeq = 0;
+  function snHtml(p, used){
+    return '<span class="sn" data-si="' + (_snSeq++) + '">' + inlineHtml(p, used) + '</span>';
+  }
   function sentencesHtml(text, used){
-    var raw = String(text || '');
-    var parts = raw.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [raw];
-    return parts.map(function(p){
-      if(!p.trim()) return esc(p);
-      return '<span class="sn" data-si="' + (_snSeq++) + '">' + inlineHtml(p, used) + '</span>';
+    return splitEn(text).map(function(p){
+      return p.trim() ? snHtml(p, used) : esc(p);
     }).join('');
   }
 
-  // 英文與中文段數相同時採段落對照，最適合精讀
+  /* 英中對照：先配段落，段落內句數相同時再逐句配對，中文也跟著分段 */
   function docBodyHtml(it){
     _snSeq = 0;
     var en = paras(it.en), zh = paras(it.zh);
     if(en.length >= 2 && en.length === zh.length){
       return en.map(function(p, i){
+        var es = splitEn(p).filter(function(x){ return x.trim(); });
+        var zs = splitZh(zh[i]);
+        // 句數對得上才逐句配對，避免翻譯合併或拆分時錯位
+        if(es.length >= 2 && es.length === zs.length){
+          return '<div class="pp">' + es.map(function(sn, k){
+            return '<div class="sl"><p class="pe">' + snHtml(sn, it.used) + '</p>' +
+                   '<p class="pz">' + esc(zs[k].trim()) + '</p></div>';
+          }).join('') + '</div>';
+        }
         return '<div class="pp"><p class="pe">' + sentencesHtml(p, it.used) + '</p>' +
                '<p class="pz">' + esc(zh[i]) + '</p></div>';
       }).join('');
@@ -6598,9 +6766,13 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   }
   function rdPaintSn(){
     rdSn.forEach(function(el, i){
-      el.classList.toggle('on', i === rdIdx && rdOn);
+      var live = (i === rdIdx && rdOn);
+      el.classList.toggle('on', live);
       el.classList.toggle('aMark', rdA !== null && i === rdA);
       el.classList.toggle('bMark', rdB !== null && i === rdB);
+      // 逐句對照時，對應的中文也一起提亮
+      var wrap = el.closest ? el.closest('.sl') : null;
+      if(wrap) wrap.classList.toggle('on', live);
     });
     var cur = rdSn[rdIdx];
     if(cur && rdOn){
@@ -7094,6 +7266,201 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       sub.textContent = n ? ('用這 ' + n + ' 個收藏單字生成短文與測驗') : '先收藏幾個單字再開始';
     }
   };
+})();
+</script>
+
+
+<script>
+/* ===== 紀錄管理與播放設定 ===== */
+(function(){
+  'use strict';
+
+  function $(id){ return document.getElementById(id); }
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function uname(){ return (window.KIN_USER && window.KIN_USER.name()) || uid(); }
+  function bookId(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
+  function bookName(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.title) || '目前書籍'; }
+  function msg(t, cls){
+    var m = $('rmMsg');
+    if(m){ m.textContent = t || ''; m.className = 'rm-msg ' + (cls || ''); }
+  }
+
+  /* ---------- 切換單字時是否自動發音 ---------- */
+  function speakOn(){
+    try{ return localStorage.getItem('kinAutoSpeak') !== '0'; }catch(e){ return true; }
+  }
+  function paintSpeak(){
+    var c = $('apAutoSpeak'), n = $('apSpeakNote');
+    if(c) c.checked = speakOn();
+    if(n) n.textContent = speakOn()
+      ? '按上一個、下一個時會自動播放單字。'
+      : '已關閉自動發音，切換單字只顯示文字，需要時再按播放鍵。';
+  }
+  window.apToggleAutoSpeak = function(){
+    var c = $('apAutoSpeak');
+    try{ localStorage.setItem('kinAutoSpeak', (c && c.checked) ? '1' : '0'); }catch(e){}
+    paintSpeak();
+    if(typeof window.__kinToast === 'function'){
+      window.__kinToast(speakOn() ? '切換單字會自動發音' : '切換單字不發音');
+    }
+  };
+  window.__kinPaintSpeak = paintSpeak;
+
+  /* ---------- 統計目前紀錄量 ---------- */
+  function bookKeys(){
+    var out = [];
+    try{
+      var pre = 'book:', suf = ':' + uid() + ':status';
+      Object.keys(localStorage).forEach(function(k){
+        if(k.indexOf(pre) === 0 && k.indexOf(suf) === k.length - suf.length){
+          out.push(k.slice(pre.length, k.length - suf.length));
+        }
+      });
+    }catch(e){}
+    return out;
+  }
+  function countMarks(bid){
+    try{
+      var raw = localStorage.getItem('book:' + bid + ':' + uid() + ':status');
+      if(!raw) return 0;
+      return Object.keys(JSON.parse(raw) || {}).length;
+    }catch(e){ return 0; }
+  }
+  function countHist(){
+    try{
+      var raw = localStorage.getItem('kinWordHist:' + uid());
+      if(!raw) return 0;
+      return Object.keys(JSON.parse(raw) || {}).length;
+    }catch(e){ return 0; }
+  }
+  function paintStat(){
+    var box = $('rmStat');
+    if(!box) return;
+    var books = bookKeys();
+    var total = 0;
+    books.forEach(function(b){ total += countMarks(b); });
+    box.innerHTML =
+      '使用者　<b>' + uname() + '</b>（' + uid() + '）<br>' +
+      '本書標記　<b>' + countMarks(bookId()) + '</b> 個　' + bookName() + '<br>' +
+      '全部書籍　<b>' + total + '</b> 個標記，共 ' + books.length + ' 本<br>' +
+      '學習歷程　<b>' + countHist() + '</b> 個字有接觸紀錄';
+  }
+  window.__kinPaintRecordStat = function(){ paintStat(); paintSpeak(); };
+
+  /* ---------- 改回未學習：只清標記與排程 ---------- */
+  function resetBooks(books, label){
+    var marks = 0;
+    books.forEach(function(bid){
+      var sKey = 'book:' + bid + ':' + uid() + ':status';
+      var rKey = 'book:' + bid + ':' + uid() + ':srs';
+      try{
+        var st = JSON.parse(localStorage.getItem(sKey) || '{}') || {};
+        marks += Object.keys(st).length;
+        localStorage.setItem(sKey, '{}');
+      }catch(e){}
+      // 排程清空但保留每日複習量的統計，連續天數不會歸零
+      try{
+        var srs = JSON.parse(localStorage.getItem(rKey) || '{}') || {};
+        localStorage.setItem(rKey, JSON.stringify({ cards:{}, log: srs.log || {}, v:1 }));
+      }catch(e){}
+    });
+
+    // 重新載入目前這本書，畫面立即反映
+    if(typeof loadStatus === 'function') loadStatus();
+    if(typeof srsLoad === 'function') srsLoad();
+    try{ updateStats(); }catch(e){}
+    try{ renderList(); }catch(e){}
+    try{ refreshAllStatusUI(); }catch(e){}
+    try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
+    try{ if(typeof window.__kinPaintStrength === 'function') window.__kinPaintStrength(); }catch(e){}
+    paintStat();
+    msg('已把 ' + marks + ' 個標記改回未學習（' + label + '）。學習歷程與弱點紀錄完整保留。', 'ok');
+  }
+
+  window.rmResetBook = function(){
+    var n = countMarks(bookId());
+    if(!n){ msg('本書目前沒有任何標記。', 'err'); return; }
+    if(!confirm('把《' + bookName() + '》的 ' + n + ' 個標記全部改回未學習？\n\n' +
+                '習得與要複習會清空，複習排程重來。\n' +
+                '看過幾次、反覆遺忘等學習歷程會完整保留。')) return;
+    resetBooks([bookId()], '本書');
+  };
+
+  window.rmResetAllBooks = function(){
+    var books = bookKeys();
+    var total = 0;
+    books.forEach(function(b){ total += countMarks(b); });
+    if(!total){ msg('目前沒有任何標記。', 'err'); return; }
+    if(!confirm('把所有書籍共 ' + total + ' 個標記全部改回未學習？\n\n' +
+                '涵蓋 ' + books.length + ' 本書。\n' +
+                '學習歷程與弱點紀錄仍完整保留。')) return;
+    resetBooks(books, '全部書籍');
+  };
+
+  /* ---------- 徹底清空 ---------- */
+  window.rmWipeBook = function(){
+    if(!confirm('清空《' + bookName() + '》這位使用者的所有紀錄？\n\n' +
+                '包含標記、複習排程與學習歷程，無法復原。')) return;
+    var bid = bookId(), u = uid();
+    try{
+      localStorage.removeItem('book:' + bid + ':' + u + ':status');
+      localStorage.removeItem('book:' + bid + ':' + u + ':srs');
+      localStorage.removeItem('gsMeta:' + u + ':' + bid);
+      // 學習歷程以「書籍/編號」為鍵，只刪這本書的部分
+      var hKey = 'kinWordHist:' + u;
+      var h = JSON.parse(localStorage.getItem(hKey) || '{}') || {};
+      var pre = bid + '/';
+      Object.keys(h).forEach(function(k){ if(k.indexOf(pre) === 0) delete h[k]; });
+      localStorage.setItem(hKey, JSON.stringify(h));
+    }catch(e){}
+    afterWipe('已清空《' + bookName() + '》的所有紀錄。');
+  };
+
+  window.rmWipeUser = function(){
+    if(!confirm('清空「' + uname() + '」的全部紀錄？\n\n' +
+                '包含所有書籍的標記、排程、學習歷程、收藏閃卡與 AI 教練短文。\n\n' +
+                '此動作無法復原。')) return;
+    if(!confirm('再確認一次：' + uname() + ' 的所有學習資料都會消失，確定嗎？')) return;
+    var u = uid();
+    try{
+      Object.keys(localStorage).forEach(function(k){
+        var hit =
+          (k.indexOf('book:') === 0 && (k.indexOf(':' + u + ':status') > 0 || k.indexOf(':' + u + ':srs') > 0)) ||
+          k === 'kinWordHist:' + u ||
+          k === 'kinCollect:' + u ||
+          k === 'kinRead:' + u ||
+          k.indexOf('gsMeta:' + u + ':') === 0;
+        if(hit) localStorage.removeItem(k);
+      });
+    }catch(e){}
+    afterWipe('已清空「' + uname() + '」的全部紀錄。');
+  };
+
+  function afterWipe(text){
+    if(typeof loadStatus === 'function') loadStatus();
+    if(typeof srsLoad === 'function') srsLoad();
+    try{ updateStats(); }catch(e){}
+    try{ renderList(); }catch(e){}
+    try{ refreshAllStatusUI(); }catch(e){}
+    try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
+    try{ if(typeof window.__kinPaintDeck === 'function') window.__kinPaintDeck(); }catch(e){}
+    try{ if(typeof window.__kinResetBackTarget === 'function') window.__kinResetBackTarget(); }catch(e){}
+    paintStat();
+    msg(text, 'ok');
+  }
+
+  // 開啟使用者專區時刷新這一區
+  if(typeof window.usOpen === 'function'){
+    var _open = window.usOpen;
+    window.usOpen = function(){
+      var r = _open.apply(this, arguments);
+      paintStat(); paintSpeak(); msg('');
+      return r;
+    };
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintSpeak);
+  else paintSpeak();
 })();
 </script>
 
