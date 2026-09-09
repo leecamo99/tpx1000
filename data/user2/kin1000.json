@@ -2,15 +2,15 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-06T16:24:53.133Z",
-  "deviceId": "dev-so1dyi",
+  "updatedAt": "2026-09-09T02:11:27.927Z",
+  "deviceId": "dev-4zl46m",
   "keys": {
-    "book:kin1000:user2:status": "{\"001\":\"ok\",\"002\":\"ok\",\"003\":\"ok\",\"004\":\"ok\"}",
-    "book:kin1000:user2:srs": "{\"cards\":{\"001\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"002\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"003\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"004\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"}},\"log\":{\"2026-09-06\":4},\"v\":1}",
-    "kinLevels": "[\"600\"]",
+    "book:kin1000:user2:status": "{}",
+    "book:kin1000:user2:srs": "{\"cards\":{\"001\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":2,\"due\":\"2026-09-10\",\"last\":\"2026-09-09\"},\"002\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"003\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"004\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":2,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"005\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"006\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"},\"007\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-07\",\"last\":\"2026-09-06\"}},\"log\":{\"2026-09-06\":16,\"2026-09-09\":2},\"v\":1}",
+    "kinLevels": "[\"all\"]",
     "kinPlayMode": "once",
-    "kinSpeed": "1.75",
+    "kinSpeed": "1.5",
     "kin_phrase_times": "1",
-    "kinReturnContext": "{\"id\":\"037\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":true,\"at\":1788710718890}"
+    "kinReturnContext": "{\"id\":\"001\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":true,\"at\":1788919779620}"
   }
 }
