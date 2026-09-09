@@ -2,7 +2,7 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-09T02:44:19.835Z",
+  "updatedAt": "2026-09-09T02:45:34.589Z",
   "deviceId": "dev-4zl46m",
   "keys": {
     "book:kin1000:user2:status": "{\"001\":\"review\",\"002\":\"review\"}",
@@ -11,6 +11,6 @@
     "kinPlayMode": "once",
     "kinSpeed": "1.5",
     "kin_phrase_times": "1",
-    "kinReturnContext": "{\"id\":\"001\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788921836066}"
+    "kinReturnContext": "{\"id\":\"001\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1788921927121}"
   }
 }
