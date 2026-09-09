@@ -268,8 +268,8 @@ body.theme-dark .btn-new{background:#1f1f21;color:#a8a49f;border-color:#4a4a4c}
 .player-bar{
   position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   width:100%;max-width:480px;z-index:9999;
-  background:#fff;border-top:1px solid #eee;padding:10px 14px;
-  display:flex;align-items:center;gap:10px;
+  background:#fff;border-top:1px solid #eee;padding:10px 10px;
+  display:flex;align-items:center;gap:7px;
   box-shadow:0 -2px 16px rgba(0,0,0,.12);
 }
 .player-bar.show{display:flex}
@@ -311,7 +311,7 @@ body.books-open .player-bar{display:none !important}
   color:#111;font-size:12px;padding:6px 10px;border:1px solid #bbb;border-radius:8px;background:#fff;
   white-space:nowrap;
 }
-.player-bar #playModeBtn{min-width:76px;padding-left:7px;padding-right:7px}
+.player-bar #playModeBtn{min-width:70px;padding-left:6px;padding-right:6px}
 
 
 .detail-play{
@@ -333,6 +333,17 @@ body.books-open .player-bar{display:none !important}
   color:#111;font-size:12px;padding:6px 8px;border:1px solid #bbb;border-radius:8px;background:#fff;
   max-width:72px;
 }
+/* 切換單字是否自動發音：常用，所以直接放在播放列 */
+.player-bar .autospk{
+  flex:0 0 auto;width:34px;height:34px;padding:0;
+  border:1px solid #bbb;border-radius:8px;background:#fff;color:#111;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+}
+.player-bar .autospk svg{display:block;width:19px;height:19px}
+.player-bar .autospk.off{color:#bbb;border-color:#ddd;background:#fafafa}
+.player-bar .autospk:active{transform:scale(.93)}
+body.theme-dark .player-bar .autospk{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .player-bar .autospk.off{background:#141416;border-color:#2a2a2c;color:#5c5a57}
 
 
 .senses-block{margin:12px 16px;display:none}
@@ -1107,6 +1118,7 @@ body.theme-dark .ap-note{color:#6a6661}
     <option value="0">只單字</option>
   </select>
   <button class="speed" id="speedBtn" onclick="cycleSpeed()">1.0x</button>
+  <button type="button" class="autospk" id="autoSpeakBtn" onclick="toggleAutoSpeak()" aria-label="切換單字時自動發音"></button>
 </div>
 <audio id="audioEl" preload="auto" playsinline webkit-playsinline></audio>
 <div class="audio-hint" id="audioHint">請把 TOEIC_kin_kaitei_en01.mp3～19.mp3 放在與本檔同層的 audio/ 資料夾</div>
@@ -1911,6 +1923,52 @@ function autoSpeakOn(){
 }
 window.__kinAutoSpeak = autoSpeakOn;
 
+/* 用 SVG 畫喇叭，避免 iOS 把符號當成 emoji 顯示成彩色方框 */
+var ICON_SPK_ON =
+  '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/>' +
+  '<path d="M15.4 9.2a4 4 0 0 1 0 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+  '<path d="M18 6.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+var ICON_SPK_OFF =
+  '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/>' +
+  '<path d="M15.8 9.6l5 4.8M20.8 9.6l-5 4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
+
+function paintAutoSpeakBtn(){
+  var b = document.getElementById('autoSpeakBtn');
+  if(!b) return;
+  var on = autoSpeakOn();
+  b.innerHTML = on ? ICON_SPK_ON : ICON_SPK_OFF;
+  b.classList.toggle('off', !on);
+  b.title = on
+    ? '切換單字時自動發音　點一下關閉'
+    : '切換單字時不發音　點一下開啟';
+}
+window.__kinPaintAutoSpeak = paintAutoSpeakBtn;
+
+/* 播放列與使用者專區共用同一個設定，改哪邊都會同步 */
+function syncAutoSpeakUI(){
+  var on = autoSpeakOn();
+  paintAutoSpeakBtn();
+  var c = document.getElementById('apAutoSpeak');
+  if(c) c.checked = on;
+  var n = document.getElementById('apSpeakNote');
+  if(n) n.textContent = on
+    ? '按上一個、下一個時會自動播放單字。'
+    : '已關閉自動發音，切換單字只顯示文字，需要時再按播放鍵。';
+}
+window.__kinSyncAutoSpeak = syncAutoSpeakUI;
+
+function toggleAutoSpeak(){
+  var next = !autoSpeakOn();
+  try{ localStorage.setItem('kinAutoSpeak', next ? '1' : '0'); }catch(e){}
+  syncAutoSpeakUI();
+  if(typeof window.__kinToast === 'function'){
+    window.__kinToast(next ? '切換單字會自動發音' : '切換單字不發音');
+  }
+}
+window.toggleAutoSpeak = toggleAutoSpeak;
+
 function prevItem(){
   if(!currentList||!currentList.length||currentIdx<=0){var sub=document.getElementById('playSub');if(sub)sub.textContent='已到第一個';return;}
   currentIdx--;
@@ -2441,7 +2499,7 @@ function cyclePlayMode(){
   try{localStorage.setItem('kinPlayMode',playMode);}catch(ignore){}
   updatePlayModeUI();
 }
-setTimeout(function(){updatePlayModeUI();syncLevelUI();var b=document.getElementById('speedBtn');if(b)b.textContent=SPEEDS[speedIdx]+'x';var a=ensureAudio();a.playbackRate=SPEEDS[speedIdx];a.defaultPlaybackRate=SPEEDS[speedIdx];},0);
+setTimeout(function(){updatePlayModeUI();paintAutoSpeakBtn();syncLevelUI();var b=document.getElementById('speedBtn');if(b)b.textContent=SPEEDS[speedIdx]+'x';var a=ensureAudio();a.playbackRate=SPEEDS[speedIdx];a.defaultPlaybackRate=SPEEDS[speedIdx];},0);
 
 function playListEntry(id){
   window._kinReturnId='';
@@ -7300,6 +7358,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     var c = $('apAutoSpeak');
     try{ localStorage.setItem('kinAutoSpeak', (c && c.checked) ? '1' : '0'); }catch(e){}
     paintSpeak();
+    // 播放列上的同一顆開關也要跟著變  
+    if(typeof window.__kinPaintAutoSpeak === 'function') window.__kinPaintAutoSpeak();
     if(typeof window.__kinToast === 'function'){
       window.__kinToast(speakOn() ? '切換單字會自動發音' : '切換單字不發音');
     }
