@@ -6,7 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="data:application/json,{"name":"金のフレーズ","short_name":"金フレ","display":"standalone","start_url":"./kin-app.html","background_color":"#ffffff","theme_color":"#c45c1a"}">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<meta name="theme-color" content="#c45c1a">
+<meta name="apple-mobile-web-app-title" content="金フレ">
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>金のフレーズ 繁中版</title>
@@ -211,7 +215,10 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 .card-ex .en{font-size:15px;font-weight:500}
 .card-ex .en .hl{color:#c45c1a}
 .detail-actions{display:flex;gap:10px;padding:8px 16px 16px}
-.detail-actions button{flex:1;min-width:0;padding:12px 6px;border-radius:10px;font-size:13px;font-weight:600}
+.detail-actions button{flex:1;min-width:0;padding:12px 4px;border-radius:10px;font-size:12px;font-weight:600}
+/* 未學習：中性灰，與習得綠、複習紅明確區隔 */
+.btn-new{background:#f2f2f2;color:#666;border:1.5px solid #aaa}
+body.theme-dark .btn-new{background:#1f1f21;color:#a8a49f;border-color:#4a4a4c}
 .btn-ok{background:#eef8f0;color:#2a9d4a;border:1.5px solid #2a9d4a}
 .btn-rev{background:#fdf0f0;color:#e05050;border:1.5px solid #e05050}
 .btn-skip{background:#f5f5f5;color:#888;border:1.5px solid #ddd}
@@ -236,9 +243,9 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 }
 
 /* filter modal */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;align-items:flex-end;justify-content:center}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10030;align-items:flex-end;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;padding:16px 16px 32px}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;max-height:75vh;overflow-y:auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom,0px))}
 .modal h2{font-size:16px;text-align:center;margin-bottom:16px}
 .modal .opt{display:flex;align-items:center;padding:12px 4px;border-bottom:1px solid #f0f0f0;font-size:14px}
 .modal .opt input{width:20px;height:20px;margin-left:auto;accent-color:#c45c1a}
@@ -265,8 +272,8 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 .player-bar{
   position:fixed;bottom:calc(56px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   width:100%;max-width:480px;z-index:9999;
-  background:#fff;border-top:1px solid #eee;padding:10px 14px;
-  display:flex;align-items:center;gap:10px;
+  background:#fff;border-top:1px solid #eee;padding:10px 10px;
+  display:flex;align-items:center;gap:7px;
   box-shadow:0 -2px 16px rgba(0,0,0,.12);
 }
 .player-bar.show{display:flex}
@@ -274,6 +281,8 @@ body.kin-playing #topPlayBtn{background:transparent;color:#111;border-color:tran
 body.mode-srs .player-bar{display:none}
 /* 進入短文朗讀時收起單字播放器，避免兩組控制項疊在一起 */
 body.rd-open .player-bar{display:none !important}
+/* 選書畫面浮在最上層，播放列一併收起 */
+body.books-open .player-bar{display:none !important}
 .player-bar .play-btn{
   width:42px;height:42px;border:0;border-radius:0;background:transparent;color:#111;
   font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;
@@ -306,7 +315,7 @@ body.rd-open .player-bar{display:none !important}
   color:#111;font-size:12px;padding:6px 10px;border:1px solid #bbb;border-radius:8px;background:#fff;
   white-space:nowrap;
 }
-.player-bar #playModeBtn{min-width:76px;padding-left:7px;padding-right:7px}
+.player-bar #playModeBtn{min-width:70px;padding-left:6px;padding-right:6px}
 
 
 .detail-play{
@@ -328,6 +337,17 @@ body.rd-open .player-bar{display:none !important}
   color:#111;font-size:12px;padding:6px 8px;border:1px solid #bbb;border-radius:8px;background:#fff;
   max-width:72px;
 }
+/* 切換單字是否自動發音：常用，所以直接放在播放列 */
+.player-bar .autospk{
+  flex:0 0 auto;width:34px;height:34px;padding:0;
+  border:1px solid #bbb;border-radius:8px;background:#fff;color:#111;
+  display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+}
+.player-bar .autospk svg{display:block;width:19px;height:19px}
+.player-bar .autospk.off{color:#bbb;border-color:#ddd;background:#fafafa}
+.player-bar .autospk:active{transform:scale(.93)}
+body.theme-dark .player-bar .autospk{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .player-bar .autospk.off{background:#141416;border-color:#2a2a2c;color:#5c5a57}
 
 
 .senses-block{margin:12px 16px;display:none}
@@ -1082,6 +1102,7 @@ body.theme-dark .ap-note{color:#6a6661}
   <div class="senses-block" id="dSenses" style="display:none"></div>
   <div class="detail-actions">
     <button class="btn-skip" onclick="prevItem()">‹ 上一個</button>
+    <button class="btn-new" onclick="markStatus('')">未學習</button>
     <button class="btn-ok" onclick="markStatus('ok')">習得 ✓</button>
     <button class="btn-rev" onclick="markStatus('review')">要複習</button>
     <button class="btn-skip" onclick="nextItem()">下一個 ›</button>
@@ -1101,6 +1122,7 @@ body.theme-dark .ap-note{color:#6a6661}
     <option value="0">只單字</option>
   </select>
   <button class="speed" id="speedBtn" onclick="cycleSpeed()">1.0x</button>
+  <button type="button" class="autospk" id="autoSpeakBtn" onclick="toggleAutoSpeak()" aria-label="切換單字時自動發音"></button>
 </div>
 <audio id="audioEl" preload="auto" playsinline webkit-playsinline></audio>
 <div class="audio-hint" id="audioHint">請把 TOEIC_kin_kaitei_en01.mp3～19.mp3 放在與本檔同層的 audio/ 資料夾</div>
@@ -1589,7 +1611,9 @@ function jumpToFilteredList(){
   if(!target) return;
   function go(){
     var r=target.getBoundingClientRect();
-    var top=(window.pageYOffset||document.documentElement.scrollTop||0)+r.top-74;
+    var _tb=document.querySelector('#screen-list > .topbar'), _ub=document.getElementById('uxBar');
+    var _off=((_tb&&_tb.offsetHeight)||61)+((_ub&&_ub.offsetHeight)||0)+8;
+    var top=(window.pageYOffset||document.documentElement.scrollTop||0)+r.top-_off;
     window.scrollTo(0,Math.max(0,top));
   }
   go(); requestAnimationFrame(go); setTimeout(go,80); setTimeout(go,220);
@@ -1877,9 +1901,15 @@ function markStatus(st){
   const e = currentList[currentIdx];
   if(!e) return;
   var before = statusMap[e.id] || '';
-  statusMap[e.id] = st;
+  // 空字串代表回到未學習，這時要移除標記而不是存入空值
+  if(st) statusMap[e.id] = st;
+  else delete statusMap[e.id];
   saveStatus();
-  if(before!==st && typeof srsGrade==='function') srsGrade(e.id,st==='ok');
+  if(before !== st){
+    if(st) { if(typeof srsGrade==='function') srsGrade(e.id, st==='ok'); }
+    // 改回未學習只清排程，學習歷程照樣保留
+    else if(typeof srsReset==='function') srsReset(e.id);
+  }
   updateStats();
   refreshAllStatusUI();
   updateDetailMarkUI(e.id);
@@ -1893,12 +1923,64 @@ function toggleMark(){
   showDetail();
   updateStats();
 }
+/* 切換單字時是否自動發音。關閉後就純看文字，適合安靜場合。 */
+function autoSpeakOn(){
+  try{ return localStorage.getItem('kinAutoSpeak') !== '0'; }catch(e){ return true; }
+}
+window.__kinAutoSpeak = autoSpeakOn;
+
+/* 用 SVG 畫喇叭，避免 iOS 把符號當成 emoji 顯示成彩色方框 */
+var ICON_SPK_ON =
+  '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/>' +
+  '<path d="M15.4 9.2a4 4 0 0 1 0 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' +
+  '<path d="M18 6.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+var ICON_SPK_OFF =
+  '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+  '<path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/>' +
+  '<path d="M15.8 9.6l5 4.8M20.8 9.6l-5 4.8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>';
+
+function paintAutoSpeakBtn(){
+  var b = document.getElementById('autoSpeakBtn');
+  if(!b) return;
+  var on = autoSpeakOn();
+  b.innerHTML = on ? ICON_SPK_ON : ICON_SPK_OFF;
+  b.classList.toggle('off', !on);
+  b.title = on
+    ? '切換單字時自動發音　點一下關閉'
+    : '切換單字時不發音　點一下開啟';
+}
+window.__kinPaintAutoSpeak = paintAutoSpeakBtn;
+
+/* 播放列與使用者專區共用同一個設定，改哪邊都會同步 */
+function syncAutoSpeakUI(){
+  var on = autoSpeakOn();
+  paintAutoSpeakBtn();
+  var c = document.getElementById('apAutoSpeak');
+  if(c) c.checked = on;
+  var n = document.getElementById('apSpeakNote');
+  if(n) n.textContent = on
+    ? '按上一個、下一個時會自動播放單字。'
+    : '已關閉自動發音，切換單字只顯示文字，需要時再按播放鍵。';
+}
+window.__kinSyncAutoSpeak = syncAutoSpeakUI;
+
+function toggleAutoSpeak(){
+  var next = !autoSpeakOn();
+  try{ localStorage.setItem('kinAutoSpeak', next ? '1' : '0'); }catch(e){}
+  syncAutoSpeakUI();
+  if(typeof window.__kinToast === 'function'){
+    window.__kinToast(next ? '切換單字會自動發音' : '切換單字不發音');
+  }
+}
+window.toggleAutoSpeak = toggleAutoSpeak;
+
 function prevItem(){
   if(!currentList||!currentList.length||currentIdx<=0){var sub=document.getElementById('playSub');if(sub)sub.textContent='已到第一個';return;}
   currentIdx--;
   window._kinListPlayback=false;
   showDetail();
-  setTimeout(function(){playCurrent(false);},80);
+  if(autoSpeakOn()) setTimeout(function(){playCurrent(false);},80);
 }
 
 function nextItem(){
@@ -1910,7 +1992,7 @@ function nextItem(){
   currentIdx=next;
   window._kinListPlayback=false;
   showDetail();
-  setTimeout(function(){playCurrent(false);},80);
+  if(autoSpeakOn()) setTimeout(function(){playCurrent(false);},80);
 }
 
 
@@ -2321,8 +2403,12 @@ function speakEntry(e, times, onDone){
     if(pt) pt.textContent = it.title;
     if(ps) ps.textContent = it.sub;
     if(typeof setPlayerButtonState === 'function') setPlayerButtonState('pause');
-    // 單字與例句之間留一點間隔，聽起來才不會黏在一起
-    if(!kinSpeak(it.text, function(){ setTimeout(step, 260); })) step();
+    // 單字與例句之間留一點間隔，聽起來才不會黏在一起。
+    // 回呼要再檢查一次世代，否則中途換書仍會唸出下一段。
+    if(!kinSpeak(it.text, function(){
+        if(myGen !== window._kinSpeakSeq) return;
+        setTimeout(step, 260);
+    })) step();
   }
   step();
   return true;
@@ -2419,7 +2505,7 @@ function cyclePlayMode(){
   try{localStorage.setItem('kinPlayMode',playMode);}catch(ignore){}
   updatePlayModeUI();
 }
-setTimeout(function(){updatePlayModeUI();syncLevelUI();var b=document.getElementById('speedBtn');if(b)b.textContent=SPEEDS[speedIdx]+'x';var a=ensureAudio();a.playbackRate=SPEEDS[speedIdx];a.defaultPlaybackRate=SPEEDS[speedIdx];},0);
+setTimeout(function(){updatePlayModeUI();paintAutoSpeakBtn();syncLevelUI();var b=document.getElementById('speedBtn');if(b)b.textContent=SPEEDS[speedIdx]+'x';var a=ensureAudio();a.playbackRate=SPEEDS[speedIdx];a.defaultPlaybackRate=SPEEDS[speedIdx];},0);
 
 function playListEntry(id){
   window._kinReturnId='';
@@ -2886,6 +2972,19 @@ function srsGrade(id, good){
   srsLog[k] = (srsLog[k]||0) + 1;
   srsSave();
 }
+/* 把單字的排程清掉，回到從未複習的狀態。
+   kinWordHist 的接觸歷程不動，之後仍看得到完整計次。 */
+function srsReset(id){
+  if(srsMap[id]){ delete srsMap[id]; srsSave(); }
+}
+/* 批次重設：回傳實際清除的筆數 */
+function srsResetAll(ids){
+  var n = 0;
+  (ids||[]).forEach(function(id){ if(srsMap[id]){ delete srsMap[id]; n++; } });
+  if(n) srsSave();
+  return n;
+}
+
 function srsDueList(){
   var k = srsDayStr(srsToday()), out = [];
   DATA.forEach(function(e){
@@ -3029,10 +3128,27 @@ function srsStartDue(){
 }
 
 /* ================= 匯出 / 匯入 ================= */
+/* v2：一併帶出收藏字卡、筆記、測驗紀錄、成就、學習時間、每日目標達成日。
+   這些鍵原本只走 GitHub 同步，改用檔案搬家的人會整批遺失。
+   uid 取法與 GitHub 同步的 userId() 一致，換裝置後才對得上。 */
+function uxUid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+function uxRead(k, dft){
+  try{ var v = JSON.parse(localStorage.getItem('kin' + k + ':' + uxUid()) || 'null'); return v === null ? dft : v; }
+  catch(e){ return dft; }
+}
+function uxWrite(k, v){
+  try{ localStorage.setItem('kin' + k + ':' + uxUid(), JSON.stringify(v)); }catch(e){}
+}
 function srsExport(){
   var blob = new Blob([JSON.stringify({
-    app:'kin-app', exported:new Date().toISOString(),
-    status:statusMap, cards:srsMap, log:srsLog
+    app:'kin-app', v:2, exported:new Date().toISOString(),
+    status:statusMap, cards:srsMap, log:srsLog,
+    collect:  uxRead('Collect',  []),   // 收藏字卡，跨書共用
+    notes:    uxRead('Notes',    {}),   // 個人筆記 "bookId/id" -> {t,at}
+    quizLog:  uxRead('QuizLog',  []),   // 測驗紀錄
+    ach:      uxRead('Ach',      {}),   // 成就徽章 id -> 取得日
+    time:     uxRead('Time',     {}),   // 學習時間 日 -> 秒
+    goalDays: uxRead('GoalDays', {})    // 每日目標達成日
   })], {type:'application/json'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -3055,10 +3171,67 @@ function srsImport(input){
         if(!mine || (theirs.last||'') > (mine.last||'')){ srsMap[id2] = theirs; n++; }
       }
       for(var d in (o.log||{})) srsLog[d] = Math.max(srsLog[d]||0, o.log[d]);
+
+      /* ---- v2 欄位；舊版檔案沒有這些鍵，會自動略過 ---- */
+      var n2 = 0;
+
+      if(Array.isArray(o.collect) && o.collect.length){          // 收藏字卡：依單字聯集，本機優先
+        var mineC = uxRead('Collect', []); if(!Array.isArray(mineC)) mineC = [];
+        var seen = {}; mineC.forEach(function(c){ seen[String(c.word||'').trim().toLowerCase()] = 1; });
+        o.collect.forEach(function(c){
+          var w = String(c.word||'').trim().toLowerCase();
+          if(w && !seen[w]){ seen[w] = 1; mineC.push(c); n2++; }
+        });
+        uxWrite('Collect', mineC);
+      }
+
+      if(o.notes){                                               // 筆記：同一則取 at 較新者
+        var mineN = uxRead('Notes', {});
+        for(var kN in o.notes){
+          var aN = mineN[kN], bN = o.notes[kN];
+          if(!aN || (bN && (bN.at||'') > (aN.at||''))){ mineN[kN] = bN; n2++; }
+        }
+        uxWrite('Notes', mineN);
+      }
+
+      if(Array.isArray(o.quizLog) && o.quizLog.length){          // 測驗紀錄：去重後依日期排序，維持上限 300
+        var mineQ = uxRead('QuizLog', []); if(!Array.isArray(mineQ)) mineQ = [];
+        var sig = function(r){ return [r.d,r.m,r.n,r.c,r.s,r.b].join('|'); };
+        var has = {}; mineQ.forEach(function(r){ has[sig(r)] = 1; });
+        o.quizLog.forEach(function(r){ if(!has[sig(r)]){ has[sig(r)] = 1; mineQ.push(r); n2++; } });
+        mineQ.sort(function(x, y){ return (x.d||'') < (y.d||'') ? -1 : 1; });
+        uxWrite('QuizLog', mineQ.slice(-300));
+      }
+
+      if(o.ach){                                                 // 成就：保留較早取得的日期
+        var mineA = uxRead('Ach', {});
+        for(var kA in o.ach){
+          if(!mineA[kA] || o.ach[kA] < mineA[kA]){ mineA[kA] = o.ach[kA]; n2++; }
+        }
+        uxWrite('Ach', mineA);
+      }
+
+      if(o.time){                                                // 學習時間：同一天取較大值，避免重複匯入灌水
+        var mineT = uxRead('Time', {});
+        for(var kT in o.time){
+          var vT = Math.max(mineT[kT]||0, o.time[kT]||0);
+          if(vT !== (mineT[kT]||0)){ mineT[kT] = vT; n2++; }
+        }
+        uxWrite('Time', mineT);
+      }
+
+      if(o.goalDays){                                            // 每日目標達成日：聯集
+        var mineG = uxRead('GoalDays', {});
+        for(var kG in o.goalDays){ if(!mineG[kG]){ mineG[kG] = o.goalDays[kG]; n2++; } }
+        uxWrite('GoalDays', mineG);
+      }
+
       saveStatus(); srsSave(); srsRender();
       if(typeof updateStats === 'function') updateStats();
       if(typeof renderList === 'function') renderList();
-      alert('匯入完成，更新 ' + n + ' 筆。');
+      if(window.UX && UX.paintDash){ try{ UX.paintDash(); }catch(e2){} }
+      alert(n2 ? ('匯入完成，進度 ' + n + ' 筆、學習紀錄 ' + n2 + ' 筆。')
+               : ('匯入完成，更新 ' + n + ' 筆。'));
     }catch(e){ alert('檔案格式不正確，請選擇匯出的進度檔。'); }
     input.value = '';
   };
@@ -3156,7 +3329,7 @@ function srsBadge(){
   }
   function onDetail(){
     var s=document.getElementById('screen-detail');
-    return !!(s && s.classList.contains('active')) && !document.body.classList.contains('mode-srs');
+    return !!(s && s.classList.contains('active')) && !document.body.classList.contains('mode-srs') && !document.body.classList.contains('ux-quiz-open');
   }
   function setMark(st){
     var e=currentEntry(); if(!e) return;
@@ -3378,6 +3551,11 @@ function srsBadge(){
       'book:' + bookId() + ':' + userId() + ':status',   // 習得／要複習狀態
       'book:' + bookId() + ':' + userId() + ':srs',      // SM-2 複習排程
       'kinCollect:' + userId(),                          // 收藏字卡，跨書共用
+      'kinNotes:' + userId(),                            // 個人筆記（UX 模組）
+      'kinQuizLog:' + userId(),                          // 測驗紀錄（UX 模組）
+      'kinAch:' + userId(),                              // 成就徽章（UX 模組）
+      'kinTime:' + userId(),                             // 學習時間（UX 模組）
+      'kinGoalDays:' + userId(),                         // 每日目標達成日（UX 模組）
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
@@ -3753,13 +3931,42 @@ body.theme-dark .dk-empty{color:#6a6661}
 body.theme-dark .dk-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
 body.theme-dark .dk-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
 body.theme-dark .dk-msg{color:#8a8680}
+/* 紀錄管理 */
+.rm-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.rm-stat{font-size:11.5px;line-height:1.75;color:#655f5a;background:#fff;border:1px solid #e2e2e2;
+  border-radius:8px;padding:8px 10px;margin-bottom:10px}
+.rm-stat b{color:#c45c1a}
+.rm-grp{border-top:1px solid #ececec;padding-top:10px;margin-top:10px}
+.rm-grp:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.rm-lb{font-size:12px;font-weight:700;color:#655f5a;margin-bottom:7px}
+.rm-btns{display:flex;gap:7px}
+.rm-btns button{flex:1;padding:10px 5px;border-radius:9px;font-size:11.5px;font-weight:700;
+  border:1.5px solid #ccc;background:#fff;color:#444;font-family:inherit;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rm-btns button.warn{border-color:#e05050;background:#fdf0f0;color:#e05050}
+.rm-btns button:active{transform:scale(.97)}
+.rm-note{font-size:11px;line-height:1.7;color:#a09a94;margin-top:7px}
+.rm-note b{color:#2a9d4a}
+.rm-msg{font-size:12px;line-height:1.7;margin-top:10px;min-height:17px;color:#666}
+.rm-msg.ok{color:#2a9d4a}
+.rm-msg.err{color:#e05050}
+body.theme-dark .rm-box{background:#0e0e0e;border-color:#242426}
+body.theme-dark .rm-stat{background:#141416;border-color:#2a2a2c;color:#a8a49f}
+body.theme-dark .rm-stat b{color:#ff9142}
+body.theme-dark .rm-grp{border-top-color:#242426}
+body.theme-dark .rm-lb{color:#a8a49f}
+body.theme-dark .rm-btns button{background:#1c1c1e;border-color:#3a3a3c;color:#c8c4bf}
+body.theme-dark .rm-btns button.warn{background:#2a1515;border-color:#e05050;color:#ff7b7b}
+body.theme-dark .rm-note{color:#6a6661}
+body.theme-dark .rm-note b{color:#5fd07f}
+body.theme-dark .rm-msg{color:#8a8680}
 /* 藍牙遙控器設定 */
 .rc-box{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
 .rc-sw{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:#333;font-weight:600;padding:5px 0}
 .rc-sw input{width:20px;height:20px;accent-color:#c45c1a;flex:0 0 auto}
 .rc-map{margin:8px 0 4px;border-top:1px solid #ececec;padding-top:8px}
 .rc-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
-.rc-row .act{width:78px;flex:0 0 auto;color:#655f5a;font-weight:700}
+.rc-row .act{width:88px;flex:0 0 auto;color:#655f5a;font-weight:700}
 .rc-row .keys{flex:1;min-width:0;color:#111;font-size:11px;line-height:1.6}
 .rc-row .keys kbd{display:inline-block;background:#fff;border:1px solid #ddd;border-radius:4px;
   padding:1px 6px;margin:1px 3px 1px 0;font:600 11px/17px system-ui;color:#333}
@@ -3894,6 +4101,38 @@ body.theme-dark .dk-msg{color:#8a8680}
       </div>
       <div class="dk-msg" id="dkMsg"></div>
       <div class="tip">勾選後可一次刪除多張。「沒有中文的卡」是指未取得中文語意的卡片，通常是早期收藏或翻譯失敗的項目。刪除後無法復原。</div>
+    </div>
+
+    <h4>播放</h4>
+    <div class="ap-box">
+      <label class="ap-sw">
+        <span>切換單字時自動發音</span>
+        <input type="checkbox" id="apAutoSpeak" onchange="apToggleAutoSpeak()">
+      </label>
+      <div class="ap-note" id="apSpeakNote"></div>
+    </div>
+
+    <h4>紀錄管理</h4>
+    <div class="rm-box">
+      <div class="rm-stat" id="rmStat"></div>
+      <div class="rm-grp">
+        <div class="rm-lb">改回未學習　保留學習歷程</div>
+        <div class="rm-btns">
+          <button type="button" onclick="rmResetBook()">本書全部改未學習</button>
+          <button type="button" onclick="rmResetAllBooks()">所有書籍改未學習</button>
+        </div>
+        <div class="rm-note">把「習得」「要複習」的標記與複習排程清空，全部回到未學習。
+          看過幾次、標記幾次、反覆遺忘等學習歷程<b>完整保留</b>，弱點字重也會繼續累積。</div>
+      </div>
+      <div class="rm-grp">
+        <div class="rm-lb">徹底清空　無法復原</div>
+        <div class="rm-btns">
+          <button type="button" class="warn" onclick="rmWipeBook()">清空本書所有紀錄</button>
+          <button type="button" class="warn" onclick="rmWipeUser()">清空此使用者全部紀錄</button>
+        </div>
+        <div class="rm-note">連同學習歷程、收藏閃卡、AI 教練短文一併刪除，等於這位使用者從頭開始。</div>
+      </div>
+      <div class="rm-msg" id="rmMsg"></div>
     </div>
 
     <h4>藍牙遙控器</h4>
@@ -4130,14 +4369,17 @@ body.theme-dark .dk-msg{color:#8a8680}
     autoNext: false,
     keys: {
       // 鍵盤與手把共用同一組設定，手把按鈕以 pad: 前綴表示。
-      prev:   ['ArrowLeft','PageUp','pad:14','pad:2'],
-      next:   ['ArrowRight','PageDown','pad:15','pad:0'],
-      ok:     ['ArrowUp','Enter','pad:12','pad:3'],
-      review: ['ArrowDown','pad:13','pad:1']
+      prev:      ['ArrowLeft','PageUp','pad:14','pad:2'],
+      next:      ['ArrowRight','PageDown','pad:15','pad:0'],
+      ok:        ['ArrowUp','Enter','pad:12','pad:3'],
+      review:    ['ArrowDown','pad:13','pad:1'],
+      play:      [' ','MediaPlayPause','pad:9'],
+      unlearned: ['Backspace','Delete','pad:8']
     }
   };
-  var LABEL = { prev:'上一個', next:'下一個', ok:'標記習得', review:'標記要複習' };
-  var ORDER = ['prev','next','ok','review'];
+  var LABEL = { prev:'上一個', next:'下一個', ok:'標記習得', review:'標記要複習',
+                play:'播放／停止', unlearned:'標記未學習' };
+  var ORDER = ['play','prev','unlearned','ok','review','next'];
 
   var cfg = (function(){
     try{
@@ -4181,6 +4423,7 @@ body.theme-dark .dk-msg{color:#8a8680}
   }
   // 任一面板開啟時不攔截按鍵，避免影響設定操作
   function panelOpen(){
+    if(document.body.classList.contains('ux-quiz-open') || document.body.classList.contains('rd-open')) return true;
     var books = $('screen-books');
     if(books && !books.classList.contains('hide') && books.style.display !== 'none') return true;
     if(($('pinBox')||{}).classList && $('pinBox').classList.contains('show')) return true;
@@ -4226,14 +4469,19 @@ body.theme-dark .dk-msg{color:#8a8680}
     var e = currentList[currentIdx];
     if(!e){ toast('沒有目前單字'); return; }
     var before = statusMap[e.id] || '';
-    statusMap[e.id] = st;
+    if(st) statusMap[e.id] = st;
+    else delete statusMap[e.id];   // 空字串＝改回未學習
     try{ saveStatus(); }catch(err){}
-    if(before !== st && typeof srsGrade === 'function') srsGrade(e.id, st === 'ok');
+    if(before !== st){
+      if(st){ if(typeof srsGrade === 'function') srsGrade(e.id, st === 'ok'); }
+      else if(typeof srsReset === 'function') srsReset(e.id);
+    }
     try{ updateStats(); }catch(err){}
     try{ refreshAllStatusUI(); }catch(err){}
     try{ if(typeof updateDetailMarkUI === 'function') updateDetailMarkUI(e.id); }catch(err){}
     try{ if(typeof srsBadge === 'function') srsBadge(); }catch(err){}
-    toast(st === 'ok' ? '✓ 習得' : '! 要複習', st === 'ok' ? 'ok' : 'rev');
+    toast(st === 'ok' ? '✓ 習得' : (st === 'review' ? '! 要複習' : '○ 未學習'),
+          st === 'ok' ? 'ok' : (st === 'review' ? 'rev' : ''));
     if(cfg.autoNext) setTimeout(function(){ move(1); }, 260);
   }
 
@@ -4262,9 +4510,12 @@ body.theme-dark .dk-msg{color:#8a8680}
     var act = actionFor(key);
     if(!act) return;
 
-    // Enter／Space 落在按鈕上時交還原生行為
+    // Enter／Space 落在按鈕上時交還原生行為，避免誤觸畫面上的按鈕
     var ae = document.activeElement;
-    if((key === 'Enter' || key === ' ') && ae && (ae.tagName||'').toLowerCase() === 'button') return;
+    if((key === 'Enter' || key === ' ') && ae && (ae.tagName||'').toLowerCase() === 'button'){
+      try{ ae.blur(); }catch(e){}
+      if(key === 'Enter') return;
+    }
 
     ev.preventDefault();
     ev.stopImmediatePropagation();
@@ -4285,6 +4536,24 @@ body.theme-dark .dk-msg{color:#8a8680}
     else if(act === 'next') move(1);
     else if(act === 'ok') mark('ok');
     else if(act === 'review') mark('review');
+    else if(act === 'unlearned') mark('');
+    else if(act === 'play') togglePlayback();
+  }
+
+  /* 遙控的播放鍵：正在播就停，沒播就從目前這個字開始 */
+  function togglePlayback(){
+    var a = (typeof ensureAudio === 'function') ? ensureAudio() : null;
+    var speaking = false;
+    try{ speaking = !!(window.speechSynthesis && window.speechSynthesis.speaking); }catch(e){}
+    var playing = (a && !a.paused && a.currentTime > 0) || speaking;
+    if(playing){
+      if(typeof hardStopAllPlayback === 'function') hardStopAllPlayback();
+      toast('停止播放');
+      return;
+    }
+    if(!ensureList()){ toast('沒有可播放的單字'); return; }
+    toast('播放');
+    try{ playCurrent(true); }catch(e){}
   }
 
   function onPadDown(id){
@@ -4392,7 +4661,8 @@ body.theme-dark .dk-msg{color:#8a8680}
       return '手把 ' + (PAD_NAMES[id] || ('鍵' + id));
     }
     var m = {'ArrowUp':'↑','ArrowDown':'↓','ArrowLeft':'←','ArrowRight':'→',
-             ' ':'Space','Enter':'Enter','PageUp':'PageUp','PageDown':'PageDown','Escape':'Esc'};
+             ' ':'Space','Enter':'Enter','PageUp':'PageUp','PageDown':'PageDown','Escape':'Esc',
+             'Backspace':'Backspace','Delete':'Delete','MediaPlayPause':'媒體播放鍵'};
     return m[k] || k;
   }
   function renderMap(){
@@ -6086,6 +6356,15 @@ body.theme-dark #rdEntry .ch{color:#5c4a3a}
 .rd-doc .pp .pz{font-size:13px;line-height:1.8;color:#7d7770;margin:6px 0 0;
   padding-left:11px;border-left:2px solid #eee5da}
 .rd-doc.zh-off .pp .pz{display:none}
+/* 逐句對照：一句英文緊接該句中文，句子之間留白區隔 */
+.rd-doc .sl{margin-bottom:12px}
+.rd-doc .sl:last-child{margin-bottom:0}
+.rd-doc .sl .pe{margin:0}
+.rd-doc .sl .pz{margin:3px 0 0}
+.rd-doc.zh-off .sl .pz{display:none}
+/* 朗讀到的句子，中文也一起提亮 */
+.rd-doc .sl.on .pz{color:#5f5a55;border-left-color:#e0b894}
+body.theme-dark .rd-doc .sl.on .pz{color:#c8c4bf;border-left-color:#7a4a20}
 /* 三段字級 */
 .rd-doc.fs-s .en,.rd-doc.fs-s .pp .pe{font-size:14.5px;line-height:1.9}
 .rd-doc.fs-l .en,.rd-doc.fs-l .pp .pe{font-size:18px;line-height:2.0}
@@ -6449,23 +6728,62 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     return String(t || '').split(/\n+/).map(function(x){ return x.trim(); })
                           .filter(function(x){ return x.length; });
   }
+  /* 英文切句：Ms. Dr. Inc. 這類縮寫後面的句點不算句子結束，
+     否則「Ms.」會被切成獨立一句，句數也會虛增。 */
+  var ABBR = /(?:^|\s)(?:mr|mrs|ms|dr|prof|st|jr|sr|inc|ltd|co|corp|dept|approx|vs|etc|no|fig|vol|ext|dept)\.$/i;
+  var DOTTED = /(?:e\.g|i\.e|a\.m|p\.m|u\.s|u\.k|ph\.d)\.$/i;
+  function splitEn(text){
+    var raw = String(text || '');
+    var out = [], buf = '', m;
+    var re = /[^.!?]*[.!?]+["')\]]*\s*|[^.!?]+$/g;
+    while((m = re.exec(raw))){
+      buf += m[0];
+      var t = buf.replace(/\s+$/, '');
+      if(ABBR.test(t)) continue;                  // Ms. Chen
+      if(DOTTED.test(t)) continue;                // U.S. / e.g.
+      // 單一字母加句點多半是縮寫的一部分，例如 J. Smith、9 a.m.、e.g.
+      if(/(?:^|\s)[A-Za-z]\.$/.test(t)) continue;
+      if(/\d\.$/.test(t)) continue;              // 3.5 或 No. 3
+      out.push(buf);
+      buf = '';
+    }
+    if(buf.trim()) out.push(buf);
+    return out.length ? out : [raw];
+  }
+
+  /* 中文用全形標點切句，才能與英文逐句對齊 */
+  function splitZh(text){
+    var raw = String(text || '');
+    var parts = raw.match(/[^。！？!?]+[。！？!?]+["')\]」』]*\s*|[^。！？!?]+$/g) || [raw];
+    return parts.filter(function(p){ return p.trim(); });
+  }
+
   // 以句為單位包起來，播放時才能逐句高亮、逐句循環、設定 A-B 區間
   var _snSeq = 0;
+  function snHtml(p, used){
+    return '<span class="sn" data-si="' + (_snSeq++) + '">' + inlineHtml(p, used) + '</span>';
+  }
   function sentencesHtml(text, used){
-    var raw = String(text || '');
-    var parts = raw.match(/[^.!?]+[.!?]+["')\]]*\s*|[^.!?]+$/g) || [raw];
-    return parts.map(function(p){
-      if(!p.trim()) return esc(p);
-      return '<span class="sn" data-si="' + (_snSeq++) + '">' + inlineHtml(p, used) + '</span>';
+    return splitEn(text).map(function(p){
+      return p.trim() ? snHtml(p, used) : esc(p);
     }).join('');
   }
 
-  // 英文與中文段數相同時採段落對照，最適合精讀
+  /* 英中對照：先配段落，段落內句數相同時再逐句配對，中文也跟著分段 */
   function docBodyHtml(it){
     _snSeq = 0;
     var en = paras(it.en), zh = paras(it.zh);
     if(en.length >= 2 && en.length === zh.length){
       return en.map(function(p, i){
+        var es = splitEn(p).filter(function(x){ return x.trim(); });
+        var zs = splitZh(zh[i]);
+        // 句數對得上才逐句配對，避免翻譯合併或拆分時錯位
+        if(es.length >= 2 && es.length === zs.length){
+          return '<div class="pp">' + es.map(function(sn, k){
+            return '<div class="sl"><p class="pe">' + snHtml(sn, it.used) + '</p>' +
+                   '<p class="pz">' + esc(zs[k].trim()) + '</p></div>';
+          }).join('') + '</div>';
+        }
         return '<div class="pp"><p class="pe">' + sentencesHtml(p, it.used) + '</p>' +
                '<p class="pz">' + esc(zh[i]) + '</p></div>';
       }).join('');
@@ -6592,9 +6910,13 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   }
   function rdPaintSn(){
     rdSn.forEach(function(el, i){
-      el.classList.toggle('on', i === rdIdx && rdOn);
+      var live = (i === rdIdx && rdOn);
+      el.classList.toggle('on', live);
       el.classList.toggle('aMark', rdA !== null && i === rdA);
       el.classList.toggle('bMark', rdB !== null && i === rdB);
+      // 逐句對照時，對應的中文也一起提亮
+      var wrap = el.closest ? el.closest('.sl') : null;
+      if(wrap) wrap.classList.toggle('on', live);
     });
     var cur = rdSn[rdIdx];
     if(cur && rdOn){
@@ -7091,6 +7413,203 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 })();
 </script>
 
+
+<script>
+/* ===== 紀錄管理與播放設定 ===== */
+(function(){
+  'use strict';
+
+  function $(id){ return document.getElementById(id); }
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function uname(){ return (window.KIN_USER && window.KIN_USER.name()) || uid(); }
+  function bookId(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
+  function bookName(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.title) || '目前書籍'; }
+  function msg(t, cls){
+    var m = $('rmMsg');
+    if(m){ m.textContent = t || ''; m.className = 'rm-msg ' + (cls || ''); }
+  }
+
+  /* ---------- 切換單字時是否自動發音 ---------- */
+  function speakOn(){
+    try{ return localStorage.getItem('kinAutoSpeak') !== '0'; }catch(e){ return true; }
+  }
+  function paintSpeak(){
+    var c = $('apAutoSpeak'), n = $('apSpeakNote');
+    if(c) c.checked = speakOn();
+    if(n) n.textContent = speakOn()
+      ? '按上一個、下一個時會自動播放單字。'
+      : '已關閉自動發音，切換單字只顯示文字，需要時再按播放鍵。';
+  }
+  window.apToggleAutoSpeak = function(){
+    var c = $('apAutoSpeak');
+    try{ localStorage.setItem('kinAutoSpeak', (c && c.checked) ? '1' : '0'); }catch(e){}
+    paintSpeak();
+    // 播放列上的同一顆開關也要跟著變  
+    if(typeof window.__kinPaintAutoSpeak === 'function') window.__kinPaintAutoSpeak();
+    if(typeof window.__kinToast === 'function'){
+      window.__kinToast(speakOn() ? '切換單字會自動發音' : '切換單字不發音');
+    }
+  };
+  window.__kinPaintSpeak = paintSpeak;
+
+  /* ---------- 統計目前紀錄量 ---------- */
+  function bookKeys(){
+    var out = [];
+    try{
+      var pre = 'book:', suf = ':' + uid() + ':status';
+      Object.keys(localStorage).forEach(function(k){
+        if(k.indexOf(pre) === 0 && k.indexOf(suf) === k.length - suf.length){
+          out.push(k.slice(pre.length, k.length - suf.length));
+        }
+      });
+    }catch(e){}
+    return out;
+  }
+  function countMarks(bid){
+    try{
+      var raw = localStorage.getItem('book:' + bid + ':' + uid() + ':status');
+      if(!raw) return 0;
+      return Object.keys(JSON.parse(raw) || {}).length;
+    }catch(e){ return 0; }
+  }
+  function countHist(){
+    try{
+      var raw = localStorage.getItem('kinWordHist:' + uid());
+      if(!raw) return 0;
+      return Object.keys(JSON.parse(raw) || {}).length;
+    }catch(e){ return 0; }
+  }
+  function paintStat(){
+    var box = $('rmStat');
+    if(!box) return;
+    var books = bookKeys();
+    var total = 0;
+    books.forEach(function(b){ total += countMarks(b); });
+    box.innerHTML =
+      '使用者　<b>' + uname() + '</b>（' + uid() + '）<br>' +
+      '本書標記　<b>' + countMarks(bookId()) + '</b> 個　' + bookName() + '<br>' +
+      '全部書籍　<b>' + total + '</b> 個標記，共 ' + books.length + ' 本<br>' +
+      '學習歷程　<b>' + countHist() + '</b> 個字有接觸紀錄';
+  }
+  window.__kinPaintRecordStat = function(){ paintStat(); paintSpeak(); };
+
+  /* ---------- 改回未學習：只清標記與排程 ---------- */
+  function resetBooks(books, label){
+    var marks = 0;
+    books.forEach(function(bid){
+      var sKey = 'book:' + bid + ':' + uid() + ':status';
+      var rKey = 'book:' + bid + ':' + uid() + ':srs';
+      try{
+        var st = JSON.parse(localStorage.getItem(sKey) || '{}') || {};
+        marks += Object.keys(st).length;
+        localStorage.setItem(sKey, '{}');
+      }catch(e){}
+      // 排程清空但保留每日複習量的統計，連續天數不會歸零
+      try{
+        var srs = JSON.parse(localStorage.getItem(rKey) || '{}') || {};
+        localStorage.setItem(rKey, JSON.stringify({ cards:{}, log: srs.log || {}, v:1 }));
+      }catch(e){}
+    });
+
+    // 重新載入目前這本書，畫面立即反映
+    if(typeof loadStatus === 'function') loadStatus();
+    if(typeof srsLoad === 'function') srsLoad();
+    try{ updateStats(); }catch(e){}
+    try{ renderList(); }catch(e){}
+    try{ refreshAllStatusUI(); }catch(e){}
+    try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
+    try{ if(typeof window.__kinPaintStrength === 'function') window.__kinPaintStrength(); }catch(e){}
+    paintStat();
+    msg('已把 ' + marks + ' 個標記改回未學習（' + label + '）。學習歷程與弱點紀錄完整保留。', 'ok');
+  }
+
+  window.rmResetBook = function(){
+    var n = countMarks(bookId());
+    if(!n){ msg('本書目前沒有任何標記。', 'err'); return; }
+    if(!confirm('把《' + bookName() + '》的 ' + n + ' 個標記全部改回未學習？\n\n' +
+                '習得與要複習會清空，複習排程重來。\n' +
+                '看過幾次、反覆遺忘等學習歷程會完整保留。')) return;
+    resetBooks([bookId()], '本書');
+  };
+
+  window.rmResetAllBooks = function(){
+    var books = bookKeys();
+    var total = 0;
+    books.forEach(function(b){ total += countMarks(b); });
+    if(!total){ msg('目前沒有任何標記。', 'err'); return; }
+    if(!confirm('把所有書籍共 ' + total + ' 個標記全部改回未學習？\n\n' +
+                '涵蓋 ' + books.length + ' 本書。\n' +
+                '學習歷程與弱點紀錄仍完整保留。')) return;
+    resetBooks(books, '全部書籍');
+  };
+
+  /* ---------- 徹底清空 ---------- */
+  window.rmWipeBook = function(){
+    if(!confirm('清空《' + bookName() + '》這位使用者的所有紀錄？\n\n' +
+                '包含標記、複習排程與學習歷程，無法復原。')) return;
+    var bid = bookId(), u = uid();
+    try{
+      localStorage.removeItem('book:' + bid + ':' + u + ':status');
+      localStorage.removeItem('book:' + bid + ':' + u + ':srs');
+      localStorage.removeItem('gsMeta:' + u + ':' + bid);
+      // 學習歷程以「書籍/編號」為鍵，只刪這本書的部分
+      var hKey = 'kinWordHist:' + u;
+      var h = JSON.parse(localStorage.getItem(hKey) || '{}') || {};
+      var pre = bid + '/';
+      Object.keys(h).forEach(function(k){ if(k.indexOf(pre) === 0) delete h[k]; });
+      localStorage.setItem(hKey, JSON.stringify(h));
+    }catch(e){}
+    afterWipe('已清空《' + bookName() + '》的所有紀錄。');
+  };
+
+  window.rmWipeUser = function(){
+    if(!confirm('清空「' + uname() + '」的全部紀錄？\n\n' +
+                '包含所有書籍的標記、排程、學習歷程、收藏閃卡與 AI 教練短文。\n\n' +
+                '此動作無法復原。')) return;
+    if(!confirm('再確認一次：' + uname() + ' 的所有學習資料都會消失，確定嗎？')) return;
+    var u = uid();
+    try{
+      Object.keys(localStorage).forEach(function(k){
+        var hit =
+          (k.indexOf('book:') === 0 && (k.indexOf(':' + u + ':status') > 0 || k.indexOf(':' + u + ':srs') > 0)) ||
+          k === 'kinWordHist:' + u ||
+          k === 'kinCollect:' + u ||
+          k === 'kinRead:' + u ||
+          k.indexOf('gsMeta:' + u + ':') === 0;
+        if(hit) localStorage.removeItem(k);
+      });
+    }catch(e){}
+    afterWipe('已清空「' + uname() + '」的全部紀錄。');
+  };
+
+  function afterWipe(text){
+    if(typeof loadStatus === 'function') loadStatus();
+    if(typeof srsLoad === 'function') srsLoad();
+    try{ updateStats(); }catch(e){}
+    try{ renderList(); }catch(e){}
+    try{ refreshAllStatusUI(); }catch(e){}
+    try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
+    try{ if(typeof window.__kinPaintDeck === 'function') window.__kinPaintDeck(); }catch(e){}
+    try{ if(typeof window.__kinResetBackTarget === 'function') window.__kinResetBackTarget(); }catch(e){}
+    paintStat();
+    msg(text, 'ok');
+  }
+
+  // 開啟使用者專區時刷新這一區
+  if(typeof window.usOpen === 'function'){
+    var _open = window.usOpen;
+    window.usOpen = function(){
+      var r = _open.apply(this, arguments);
+      paintStat(); paintSpeak(); msg('');
+      return r;
+    };
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintSpeak);
+  else paintSpeak();
+})();
+</script>
+
 <script src="books.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
@@ -7211,6 +7730,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   function applyBook(meta, payload){
     var prev = window.CURRENT_BOOK;
+    // 換書等於離開目前這批單字，朗讀佇列必須中止，不然會繼續唸上一本的字
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
     // 資料
     DATA = payload.data || [];
     CLIP_MAP = payload.clipMap || {};
@@ -7253,6 +7774,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(title) title.textContent = meta.title + ' 全集合';
 
     pickerOpen = false;
+    document.body.classList.remove('books-open');
     var screen = document.getElementById('screen-books');
     if(screen){ screen.classList.add('hide'); screen.style.display = 'none'; }
 
@@ -7275,6 +7797,9 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   window.openBookPicker = function(){
     var screen = document.getElementById('screen-books');
     if(!screen){ alert('選書畫面尚未載入，請重新整理頁面。'); return; }
+    // 播放列即將被收起，先停掉正在唸的語音，否則會變成看不見卻仍在響
+    if(typeof hardStopAllPlayback === 'function'){ try{ hardStopAllPlayback(); }catch(e){} }
+    document.body.classList.add('books-open');
     pickerOpen = true;
     var loading = document.getElementById('bkLoading');
     if(loading) loading.style.display = 'none';
@@ -7294,6 +7819,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   window.closeBookPicker = function(){
     if(!window.CURRENT_BOOK) return;
+    document.body.classList.remove('books-open');
     pickerOpen = false;
     var screen = document.getElementById('screen-books');
     if(screen){ screen.classList.add('hide'); screen.style.display = 'none'; }
@@ -7320,6 +7846,2033 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
+</script>
+
+<!-- ===================================================================
+     UX 強化模組 v2.0（附加式：不改動既有邏輯，只包裹既有函式）
+     搜尋／遮蔽自測／洗牌／進度／復原／每日目標／熱力圖／測驗／拼字／
+     填空／筆記／成就／結算／聽力工具／離線快取
+     =================================================================== -->
+<style>
+/* ---------- 共用 ---------- */
+:root{--ux-o:#c45c1a;--ux-o2:#e86f00;--ux-ok:#2a9d4a;--ux-rev:#e05050;--ux-scale:1}
+.ux-hide{display:none !important}
+#uxToast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);
+  z-index:10050;background:rgba(35,33,30,.93);color:#fff;padding:9px 15px;border-radius:20px;font-size:13px;font-weight:600;
+  opacity:0;pointer-events:none;transition:.16s;max-width:88vw;text-align:center;line-height:1.45;box-shadow:0 6px 22px rgba(0,0,0,.22)}
+#uxToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#uxToast.big{font-size:16px;padding:14px 22px;border-radius:16px;background:linear-gradient(135deg,#c45c1a,#e08a3c)}
+.ux-chip{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;border:1.5px solid #ddd;border-radius:999px;
+  background:#fff;color:#555;font-size:12px;font-weight:700;touch-action:manipulation;white-space:nowrap}
+.ux-chip:active{transform:scale(.96)}
+.ux-chip.on{border-color:var(--ux-o2);color:var(--ux-o2);background:#fff6ee}
+.ux-chip svg{width:15px;height:15px;display:block}
+.ux-seg{display:inline-flex;border:1.5px solid #ddd;border-radius:999px;overflow:hidden;background:#fff;height:30px}
+.ux-seg button{padding:0 11px;font-size:12px;font-weight:700;color:#666;background:#fff;border-right:1px solid #eee;touch-action:manipulation}
+.ux-seg button:last-child{border-right:0}
+.ux-seg button.on{background:#222;color:#fff}
+body.theme-dark .ux-chip{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .ux-chip.on{background:#2a1a0e;border-color:#ff9142;color:#ff9142}
+body.theme-dark .ux-seg{background:#1c1c1e;border-color:#3a3a3c}
+body.theme-dark .ux-seg button{background:#1c1c1e;color:#a8a49f;border-right-color:#2a2a2c}
+body.theme-dark .ux-seg button.on{background:#e8e6e3;color:#111}
+
+/* ---------- 一覽：搜尋 + 工具列（黏在頂列下方；範圍選單本身改為不黏） ---------- */
+#paneBrowse .browse-pick{position:static}
+#uxBar{position:sticky;top:61px;z-index:5;display:flex;align-items:center;gap:6px;padding:8px 16px;background:#fff;border-bottom:1px solid #eee}
+#uxBar .ux-search{flex:1;min-width:0}
+#uxBar .ux-chip{flex:0 0 auto;padding:0 9px}
+body.theme-dark #uxBar{background:#0e0e0e;border-bottom-color:#242426}
+.ux-search{display:flex;align-items:center;gap:6px;height:38px;border:1.5px solid #ddd;border-radius:10px;background:#fafafa;padding:0 8px 0 10px}
+.ux-search:focus-within{border-color:var(--ux-o2);background:#fff}
+.ux-search svg{width:16px;height:16px;flex:0 0 auto;color:#999}
+.ux-search input{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:14px;color:#111;outline:none;height:100%}
+.ux-search input::-webkit-search-cancel-button{display:none}
+.ux-search .cnt{font-size:11px;color:#999;white-space:nowrap}
+.ux-search .clr{width:26px;height:26px;border-radius:50%;background:#e8e8e8;color:#666;font-size:16px;line-height:1;display:none;align-items:center;justify-content:center}
+.ux-search.has .clr{display:flex}
+.ux-tools-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ux-tools-row .sp{flex:1}
+#itemList mark.ux-hl{background:#ffe6c2;color:inherit;border-radius:2px;padding:0 1px}
+body.theme-dark #itemList mark.ux-hl{background:#5a3a14;color:#ffd7a8}
+.ux-nmark{display:inline-block;margin-left:5px;font-size:11px;color:#b58a5c;vertical-align:1px}
+body.theme-dark .ux-search{background:#141416;border-color:#3a3a3c}
+body.theme-dark .ux-search input{color:#e8e6e3}
+body.theme-dark .ux-search .clr{background:#2a2a2c;color:#b8b4af}
+.ux-empty-search{text-align:center;padding:40px 20px;color:#999;font-size:13px;line-height:1.7}
+
+/* ---------- 遮蔽自測 ---------- */
+#itemList.ux-mask-zh .item:not(.ux-reveal) .sub,
+#itemList.ux-mask-en .item:not(.ux-reveal) .hw{
+  color:transparent !important;background:#ece9e4;border-radius:5px;text-shadow:none;
+  user-select:none;-webkit-user-select:none;transition:background .15s}
+#itemList.ux-mask-zh .item:not(.ux-reveal) .sub mark,
+#itemList.ux-mask-en .item:not(.ux-reveal) .hw mark{background:transparent;color:transparent}
+#itemList.ux-mask-en .item:not(.ux-reveal) .hw{padding:0 6px;min-width:70px;display:inline-block}
+#itemList.ux-mask-zh .item:not(.ux-reveal) .sub{display:inline-block;min-width:80px;padding:0 6px}
+body.theme-dark #itemList.ux-mask-zh .item:not(.ux-reveal) .sub,
+body.theme-dark #itemList.ux-mask-en .item:not(.ux-reveal) .hw{background:#2a2a2c}
+#itemList.ux-mask-zh .item .sub::after,#itemList.ux-mask-en .item .hw::after{content:''}
+#detailBook.ux-dmask-zh:not(.ux-revealed) .db-mean,
+#detailBook.ux-dmask-zh:not(.ux-revealed) .db-note,
+#detailBook.ux-dmask-zh:not(.ux-revealed) .db-ex-zh,
+#detailBook.ux-dmask-en:not(.ux-revealed) .db-word,
+#detailBook.ux-dmask-en:not(.ux-revealed) .db-ex-en{filter:blur(7px);pointer-events:none;user-select:none;-webkit-user-select:none}
+.ux-reveal-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 12px;background:#fff6ee;border-bottom:1px solid #f1dcc8}
+#detailBook.ux-revealed .ux-reveal-bar{display:none}
+.ux-reveal-bar button{height:34px;padding:0 16px;border-radius:999px;background:var(--ux-o);color:#fff;font-size:13px;font-weight:800;touch-action:manipulation}
+.ux-reveal-bar span{font-size:11px;color:#a07a55}
+body.theme-dark .ux-reveal-bar{background:#2a1a0e;border-bottom-color:#3a2a18}
+
+/* ---------- 解說頁進度 ---------- */
+#screen-detail .topbar{position:sticky}
+#screen-detail .topbar .ux-pos{font-size:11px;font-weight:600;color:#999;margin-left:6px;white-space:nowrap}
+.ux-dbar{position:absolute;left:0;right:0;bottom:-1px;height:3px;background:transparent}
+.ux-dbar i{display:block;height:100%;background:var(--ux-o2);width:0;transition:width .25s}
+.detail-actions button:disabled{opacity:.35;pointer-events:none}
+
+/* ---------- 復原列 ---------- */
+#uxUndo{position:fixed;left:50%;bottom:calc(126px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(12px);
+  z-index:10040;display:flex;align-items:center;gap:12px;background:#2b2926;color:#fff;border-radius:12px;padding:10px 12px 10px 14px;
+  font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:.18s;max-width:92vw}
+#uxUndo.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}
+#uxUndo .w{font-weight:800;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#uxUndo .st.ok{color:#7fe09a}#uxUndo .st.rev{color:#ff8a8a}#uxUndo .st.none{color:#cfcac4}
+#uxUndo button{height:30px;padding:0 12px;border-radius:8px;background:#fff;color:#222;font-weight:800;font-size:12px;touch-action:manipulation}
+#uxUndo .x{background:transparent;color:#aaa;font-size:16px;padding:0 4px}
+
+/* ---------- 回到頂端／播放位置 ---------- */
+#uxFab{position:fixed;right:12px;bottom:calc(130px + env(safe-area-inset-bottom,0px));z-index:9990;height:36px;padding:0 12px;border-radius:999px;
+  background:rgba(35,33,30,.88);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);opacity:0;pointer-events:none;transform:translateY(8px);transition:.18s;touch-action:manipulation}
+#uxFab.show{opacity:1;pointer-events:auto;transform:none}
+#uxFab.play{background:var(--ux-o2)}
+
+/* ---------- 手勢教學 ---------- */
+#uxCoach{position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px}
+#uxCoach.show{display:flex}
+#uxCoach .card{background:#fff;border-radius:18px;padding:20px 18px 16px;width:min(92vw,360px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#uxCoach h3{margin:0 0 4px;font-size:17px;font-weight:800;color:#111}
+#uxCoach p{margin:0 0 14px;font-size:12px;color:#777}
+.ux-gest{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ux-gest div{background:#faf7f2;border:1px solid #efe6da;border-radius:12px;padding:10px;display:flex;align-items:center;gap:10px;font-size:13px;color:#333;font-weight:600}
+.ux-gest b{width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid var(--ux-o);color:var(--ux-o);display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto}
+.ux-gest div.wide{grid-column:1/-1}
+#uxCoach .btns{display:flex;gap:8px;margin-top:14px}
+#uxCoach .btns button{flex:1;height:42px;border-radius:12px;font-size:14px;font-weight:800;touch-action:manipulation}
+#uxCoach .btns .pri{background:#222;color:#fff}
+#uxCoach .btns .sec{background:#f2f2f2;color:#555}
+body.theme-dark #uxCoach .card{background:#161618}
+body.theme-dark #uxCoach h3{color:#f2f0ed}
+body.theme-dark .ux-gest div{background:#1c1c1e;border-color:#2a2a2c;color:#e8e6e3}
+body.theme-dark .ux-gest b{background:#0e0e0e}
+
+/* ---------- 今日目標 + 首頁熱力圖 ---------- */
+.ux-goal{margin:0 16px 8px;background:#faf7f2;border:1px solid #efe6da;border-radius:14px;padding:12px 14px}
+.ux-goal .hd{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:#333}
+.ux-goal .hd .n{font-size:13px;color:#666}
+.ux-goal .hd .n b{font-size:18px;color:var(--ux-o)}
+.ux-goal .bar{height:8px;background:#ece5da;border-radius:4px;overflow:hidden;margin:8px 0 6px}
+.ux-goal .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#e08a3c,#c45c1a);border-radius:4px;transition:width .35s}
+.ux-goal.done .bar i{background:linear-gradient(90deg,#3cb371,#2a9d4a)}
+.ux-goal .ft{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#8a8580}
+.ux-goal .ctl{display:inline-flex;align-items:center;gap:2px}
+.ux-goal .ctl button{width:26px;height:24px;border-radius:6px;background:#fff;border:1px solid #e3dbd0;color:#555;font-size:14px;font-weight:800;line-height:1;touch-action:manipulation}
+.ux-goal .ctl span{min-width:26px;text-align:center;font-weight:700;color:#333}
+.ux-home-row{display:flex;gap:10px;margin:0 16px 14px}
+.ux-home-row button{flex:1;height:42px;border-radius:12px;border:1.5px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;touch-action:manipulation}
+.ux-home-row button:active{background:#f5f5f5;transform:scale(.98)}
+.ux-home-row button svg{width:16px;height:16px}
+.ux-home-row button.pri{background:#fff6ee;border-color:#f0c9a5;color:var(--ux-o)}
+.ux-mini-heat{margin:0 16px 18px;background:#fff;border:1px solid #eee;border-radius:14px;padding:10px 12px}
+.ux-mini-heat .hd{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#777;font-weight:700;margin-bottom:6px}
+.ux-mini-heat .hd span:last-child{color:#999;font-weight:500}
+body.theme-dark .ux-goal{background:#141416;border-color:#242426}
+body.theme-dark .ux-goal .hd{color:#e8e6e3}
+body.theme-dark .ux-goal .bar{background:#242426}
+body.theme-dark .ux-goal .ctl button{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .ux-goal .ctl span{color:#e8e6e3}
+body.theme-dark .ux-home-row button{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .ux-home-row button.pri{background:#2a1a0e;border-color:#6a3a14;color:#ff9142}
+body.theme-dark .ux-mini-heat{background:#0e0e0e;border-color:#242426}
+
+/* ---------- 熱力圖 ---------- */
+/* 既有儀表板 inset:0 + left:50% 造成只有半寬，這裡補正 */
+.srs-screen{width:100%;right:auto}
+.ux-heat{--c:9px;--g:2px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ux-heat.compact{--c:9px;--g:2px}
+.ux-heat .mo{display:grid;grid-auto-flow:column;grid-auto-columns:calc(var(--c) + var(--g));font-size:9px;color:#aaa;height:12px;margin-left:22px}
+.ux-heat .mo span{white-space:nowrap}
+.ux-heat .gd{display:flex;gap:0}
+.ux-heat .wd{display:grid;grid-template-rows:repeat(7,var(--c));row-gap:var(--g);font-size:9px;color:#aaa;width:22px;line-height:var(--c)}
+.ux-heat .cells{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,var(--c));grid-auto-columns:var(--c);gap:var(--g)}
+.ux-heat .cells i{display:block;width:var(--c);height:var(--c);border-radius:3px;background:#efece7}
+.ux-heat .cells i.l1{background:#f5d6b8}.ux-heat .cells i.l2{background:#eaa96e}.ux-heat .cells i.l3{background:#d97a34}.ux-heat .cells i.l4{background:#a8440c}
+.ux-heat .cells i.today{outline:2px solid #222;outline-offset:-2px}
+.ux-heat .cells i.future{background:transparent}
+.ux-heat .lg{display:flex;align-items:center;gap:4px;justify-content:flex-end;font-size:9px;color:#aaa;margin-top:6px}
+.ux-heat .lg i{width:10px;height:10px;border-radius:2px;display:inline-block;background:#efece7}
+.ux-heat .lg i.l1{background:#f5d6b8}.ux-heat .lg i.l2{background:#eaa96e}.ux-heat .lg i.l3{background:#d97a34}.ux-heat .lg i.l4{background:#a8440c}
+body.theme-dark .ux-heat .cells i,body.theme-dark .ux-heat .lg i{background:#1e1e20}
+body.theme-dark .ux-heat .cells i.l1,body.theme-dark .ux-heat .lg i.l1{background:#4a2c14}
+body.theme-dark .ux-heat .cells i.l2,body.theme-dark .ux-heat .lg i.l2{background:#7a4218}
+body.theme-dark .ux-heat .cells i.l3,body.theme-dark .ux-heat .lg i.l3{background:#b8621e}
+body.theme-dark .ux-heat .cells i.l4,body.theme-dark .ux-heat .lg i.l4{background:#ff9142}
+body.theme-dark .ux-heat .cells i.today{outline-color:#f2f0ed}
+body.theme-dark .ux-heat .cells i.future{background:transparent}
+.ux-heat-sum{font-size:11px;color:#8a8580;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.ux-heat-sum b{color:var(--ux-o)}
+
+/* ---------- 成就徽章 ---------- */
+.ux-badges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ux-badge{text-align:center;padding:8px 4px 6px;border-radius:12px;background:#faf7f2;border:1px solid #efe6da}
+.ux-badge .ic{font-size:22px;line-height:1.2;filter:grayscale(1);opacity:.35}
+.ux-badge .n{font-size:10px;color:#666;margin-top:3px;line-height:1.3;font-weight:600}
+.ux-badge .d{font-size:9px;color:#b0aaa4;margin-top:1px}
+.ux-badge.on{background:#fff6ee;border-color:#f0c9a5}
+.ux-badge.on .ic{filter:none;opacity:1}
+.ux-badge.on .n{color:#a0522d}
+body.theme-dark .ux-badge{background:#141416;border-color:#242426}
+body.theme-dark .ux-badge.on{background:#2a1a0e;border-color:#6a3a14}
+body.theme-dark .ux-badge .n{color:#a8a49f}
+body.theme-dark .ux-badge.on .n{color:#ffbe7d}
+.ux-kpi4{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.ux-kpi4 div{text-align:center;background:#fff;border:1px solid #ecebe8;border-radius:12px;padding:10px 4px}
+.ux-kpi4 .v{font-size:18px;font-weight:800;color:var(--ux-o)}
+.ux-kpi4 .k{font-size:10px;color:#8a8580;margin-top:3px}
+body.theme-dark .ux-kpi4 div{background:#0e0e0e;border-color:#242426}
+body.theme-dark .ux-kpi4 .v{color:#ff9142}
+
+/* ---------- 全螢幕畫面（測驗／結算） ---------- */
+.ux-screen{position:fixed;inset:0;z-index:9000;background:#faf8f5;display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+.ux-screen.show{display:block}
+.ux-screen .inner{max-width:480px;margin:0 auto}
+body.ux-quiz-open .player-bar,body.ux-quiz-open .bottom-nav,body.ux-quiz-open #uxFab,body.ux-quiz-open #uxUndo{display:none !important}
+.ux-sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ux-sh h2{margin:0;font-size:18px;font-weight:800;color:#333}
+.ux-sh .sub{font-size:11px;color:#999;margin-top:2px;font-weight:500}
+.ux-x{width:36px;height:36px;border:1px solid #ddd8d2;border-radius:50%;background:#fff;color:#655f5a;font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.ux-x:active{background:#f2eee9;transform:scale(.96)}
+.ux-card{background:#fff;border:1px solid #ecebe8;border-radius:14px;padding:14px;margin-bottom:12px}
+.ux-card h3{font-size:13px;color:#8a8580;font-weight:700;margin:0 0 10px;letter-spacing:.03em}
+.ux-opts{display:flex;flex-wrap:wrap;gap:8px}
+.ux-opts button{height:34px;padding:0 13px;border-radius:999px;border:1.5px solid #ddd;background:#fff;color:#555;font-size:13px;font-weight:700;touch-action:manipulation}
+.ux-opts button.on{background:#222;color:#fff;border-color:#222}
+.ux-opts button:disabled{opacity:.4}
+.ux-note-sm{font-size:11px;color:#a09a94;line-height:1.6;margin-top:8px}
+.ux-btn{width:100%;height:46px;border-radius:12px;border:1px solid #ddd8d2;background:#fff;font-size:15px;color:#655f5a;font-weight:700;margin-top:8px;touch-action:manipulation}
+.ux-btn.pri{background:var(--ux-o);color:#fff;border-color:var(--ux-o)}
+.ux-btn.dark{background:#222;color:#fff;border-color:#222}
+.ux-btn:disabled{opacity:.45}
+.ux-btn:active{transform:scale(.99)}
+body.theme-dark .ux-screen{background:#000}
+body.theme-dark .ux-sh h2{color:#f2f0ed}
+body.theme-dark .ux-x{background:#1c1c1e;border-color:#3a3a3c;color:#9a9691}
+body.theme-dark .ux-card{background:#0e0e0e;border-color:#242426}
+body.theme-dark .ux-opts button{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .ux-opts button.on{background:#e8e6e3;color:#111;border-color:#e8e6e3}
+body.theme-dark .ux-btn{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .ux-btn.pri{background:#b8621e;border-color:#b8621e;color:#fff}
+body.theme-dark .ux-btn.dark{background:#e8e6e3;color:#111;border-color:#e8e6e3}
+
+/* 測驗題目 */
+.ux-qbar{height:6px;background:#ece9e4;border-radius:3px;overflow:hidden;margin-bottom:12px}
+.ux-qbar i{display:block;height:100%;width:0;background:var(--ux-o);transition:width .25s}
+.ux-qmeta{display:flex;justify-content:space-between;font-size:12px;color:#8a8580;margin-bottom:8px}
+.ux-qmeta b{color:var(--ux-o)}
+.ux-q{background:#fff;border:1px solid #ecebe8;border-radius:16px;padding:22px 16px 18px;text-align:center;margin-bottom:12px;position:relative}
+.ux-q .lv{font-size:10px;color:#b0aaa4;letter-spacing:.05em;margin-bottom:8px}
+.ux-q .w{font-size:28px;font-weight:800;color:#111;line-height:1.25;word-break:break-word}
+.ux-q .w.zh{font-size:22px}
+.ux-q .ph{font-size:12px;color:#999;font-family:Consolas,monospace;margin-top:4px}
+.ux-q .pos{display:inline-block;background:#eee;color:#555;font-size:11px;padding:1px 7px;border-radius:3px;margin-top:8px}
+.ux-q .spk{position:absolute;right:10px;top:10px;width:38px;height:38px;border-radius:50%;background:#fff6ee;color:var(--ux-o);border:1.5px solid #f0c9a5;display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.ux-q .spk svg{width:20px;height:20px}
+.ux-q .spk:active{transform:scale(.94)}
+.ux-q .cloze{font-size:18px;font-weight:600;line-height:1.55;color:#222;text-align:left}
+.ux-q .cloze .bl{display:inline-block;min-width:74px;border-bottom:2.5px solid var(--ux-o);color:var(--ux-o);font-weight:800;padding:0 4px;text-align:center}
+.ux-q .zh{font-size:13px;color:#777;margin-top:8px;text-align:left}
+.ux-q .hint{font-size:12px;color:#a07a55;margin-top:10px;min-height:16px;letter-spacing:.12em;font-family:Consolas,monospace}
+.ux-choices{display:grid;gap:9px}
+.ux-choices button{min-height:52px;padding:10px 14px 10px 44px;border-radius:14px;border:1.5px solid #e2ddd6;background:#fff;color:#222;font-size:15px;font-weight:600;
+  text-align:left;position:relative;line-height:1.4;touch-action:manipulation;transition:.12s}
+.ux-choices button .k{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:#f0ede8;color:#777;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.ux-choices button:active{background:#faf7f2}
+.ux-choices button.ok{border-color:var(--ux-ok);background:#eef8f0;color:#1f7a38}
+.ux-choices button.ok .k{background:var(--ux-ok);color:#fff}
+.ux-choices button.ng{border-color:var(--ux-rev);background:#fdf0f0;color:#b03030}
+.ux-choices button.ng .k{background:var(--ux-rev);color:#fff}
+.ux-choices button.dim{opacity:.45}
+.ux-choices button:disabled{pointer-events:none}
+.ux-fb{margin-top:12px;background:#fff;border:1px solid #ecebe8;border-radius:14px;padding:12px 14px;display:none}
+.ux-fb.show{display:block}
+.ux-fb .t{font-size:14px;font-weight:800;margin-bottom:6px}
+.ux-fb .t.ok{color:var(--ux-ok)}.ux-fb .t.ng{color:var(--ux-rev)}
+.ux-fb .ex{font-size:14px;color:#222;font-weight:600;line-height:1.5}
+.ux-fb .exz{font-size:12px;color:#777;margin-top:2px}
+.ux-fb .nt{font-size:12px;color:#555;margin-top:6px;line-height:1.5;background:#faf7f2;border-radius:8px;padding:6px 8px}
+.ux-fb .row{display:flex;gap:8px;margin-top:10px}
+.ux-fb .row button{flex:1;height:40px;border-radius:10px;font-size:13px;font-weight:700;border:1px solid #ddd;background:#fff;color:#555;touch-action:manipulation}
+.ux-fb .row button.pri{background:#222;color:#fff;border-color:#222}
+.ux-spell{display:flex;gap:8px;margin-top:4px}
+.ux-spell input{flex:1;min-width:0;height:50px;border:1.5px solid #ddd;border-radius:12px;padding:0 14px;font:inherit;font-size:20px;font-weight:700;letter-spacing:.04em;color:#111;background:#fff;outline:none;text-align:center}
+.ux-spell input:focus{border-color:var(--ux-o2)}
+.ux-spell input.ok{border-color:var(--ux-ok);background:#eef8f0;color:#1f7a38}
+.ux-spell input.ng{border-color:var(--ux-rev);background:#fdf0f0;color:#b03030;animation:uxShake .3s}
+.ux-spell button{width:64px;height:50px;border-radius:12px;background:#222;color:#fff;font-size:14px;font-weight:800;touch-action:manipulation}
+.ux-spell-row{display:flex;gap:8px;margin-top:8px}
+.ux-spell-row button{flex:1;height:38px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#555;font-size:12px;font-weight:700;touch-action:manipulation}
+.ux-diff{font-family:Consolas,monospace;font-size:18px;letter-spacing:.06em;margin-top:8px;word-break:break-all}
+.ux-diff .g{color:#1f7a38}.ux-diff .r{color:#b03030;text-decoration:underline}.ux-diff .m{color:#b03030;background:#fdf0f0;border-radius:3px}
+@keyframes uxShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.ux-res{text-align:center;padding:20px 10px 10px}
+.ux-res .big{font-size:54px;font-weight:800;color:var(--ux-o);line-height:1}
+.ux-res .big small{font-size:18px;color:#999;font-weight:600}
+.ux-res .sub{font-size:13px;color:#777;margin-top:6px}
+.ux-res .grade{display:inline-block;margin-top:10px;padding:4px 14px;border-radius:999px;background:#fff6ee;color:var(--ux-o);font-weight:800;font-size:13px}
+.ux-wrong li{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f4f2ef;font-size:13px}
+.ux-wrong li:last-child{border:0}
+.ux-wrong .w{font-weight:700;color:#333;flex:1;min-width:0}
+.ux-wrong .w small{display:block;color:#8a8580;font-weight:400;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ux-wrong button{height:28px;padding:0 10px;border-radius:999px;border:1px solid #ddd;background:#fff;color:#555;font-size:11px;font-weight:700;touch-action:manipulation}
+body.theme-dark .ux-q,body.theme-dark .ux-fb{background:#0e0e0e;border-color:#242426}
+body.theme-dark .ux-q .w{color:#f2f0ed}
+body.theme-dark .ux-q .cloze{color:#e8e6e3}
+body.theme-dark .ux-q .pos{background:#2a2a2c;color:#b8b4af}
+body.theme-dark .ux-q .spk{background:#2a1a0e;border-color:#6a3a14;color:#ff9142}
+body.theme-dark .ux-qbar{background:#242426}
+body.theme-dark .ux-choices button{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .ux-choices button .k{background:#2a2a2c;color:#a8a49f}
+body.theme-dark .ux-choices button.ok{background:#14251a;border-color:#3fa85f;color:#7fe09a}
+body.theme-dark .ux-choices button.ng{background:#2a1515;border-color:#e05050;color:#ff8a8a}
+body.theme-dark .ux-fb .ex{color:#e8e6e3}
+body.theme-dark .ux-fb .nt{background:#161618;color:#b8b4af}
+body.theme-dark .ux-fb .row button{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .ux-fb .row button.pri{background:#e8e6e3;color:#111;border-color:#e8e6e3}
+body.theme-dark .ux-spell input{background:#1c1c1e;border-color:#3a3a3c;color:#f2f0ed}
+body.theme-dark .ux-spell button{background:#e8e6e3;color:#111}
+body.theme-dark .ux-spell-row button{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark .ux-wrong .w{color:#e8e6e3}
+body.theme-dark .ux-wrong button{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+
+/* ---------- 結算卡（底部浮出） ---------- */
+#uxSum{position:fixed;left:50%;bottom:0;transform:translateX(-50%) translateY(105%);width:100%;max-width:480px;z-index:10045;
+  background:#fff;border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.22);padding:16px 18px calc(18px + env(safe-area-inset-bottom,0px));transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+#uxSum.show{transform:translateX(-50%) translateY(0)}
+#uxSum .hd{display:flex;align-items:center;justify-content:space-between}
+#uxSum h3{margin:0;font-size:16px;font-weight:800;color:#111}
+#uxSum .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+#uxSum .grid div{background:#faf7f2;border-radius:12px;padding:10px 4px;text-align:center}
+#uxSum .grid .v{font-size:20px;font-weight:800;color:var(--ux-o)}
+#uxSum .grid .v.ok{color:var(--ux-ok)}#uxSum .grid .v.rev{color:var(--ux-rev)}
+#uxSum .grid .k{font-size:10px;color:#8a8580;margin-top:2px}
+#uxSum .line{font-size:12px;color:#666;line-height:1.7}
+#uxSum .line b{color:#333}
+#uxSum .ach{margin-top:6px;font-size:12px;color:#a0522d;background:#fff6ee;border-radius:10px;padding:8px 10px}
+#uxSum .btns{display:flex;gap:8px;margin-top:12px}
+#uxSum .btns button{flex:1;height:42px;border-radius:12px;font-size:13px;font-weight:800;border:1px solid #ddd;background:#fff;color:#555;touch-action:manipulation}
+#uxSum .btns button.pri{background:#222;color:#fff;border-color:#222}
+body.theme-dark #uxSum{background:#161618}
+body.theme-dark #uxSum h3{color:#f2f0ed}
+body.theme-dark #uxSum .grid div{background:#1c1c1e}
+body.theme-dark #uxSum .line{color:#a8a49f}body.theme-dark #uxSum .line b{color:#e8e6e3}
+body.theme-dark #uxSum .btns button{background:#1c1c1e;border-color:#3a3a3c;color:#b8b4af}
+body.theme-dark #uxSum .btns button.pri{background:#e8e6e3;color:#111;border-color:#e8e6e3}
+
+/* ---------- 聽力工具（底部導覽第 4 顆 → 浮窗） ---------- */
+.bottom-nav #uxToolsBtn .ico svg{width:19px;height:19px;display:block}
+.bottom-nav #uxToolsBtn.on{color:var(--ux-o)}
+.bottom-nav #uxToolsBtn .tm{position:absolute;top:2px;left:50%;margin-left:6px;background:var(--ux-o2);color:#fff;font-size:8px;font-weight:800;line-height:14px;border-radius:9px;padding:0 4px;display:none;pointer-events:none}
+.bottom-nav #uxToolsBtn.timer .tm{display:block}
+body.theme-dark .bottom-nav #uxToolsBtn.on{color:#ff9142}
+#uxToolsMask{position:fixed;inset:0;z-index:10010;display:none}
+#uxToolsMask.show{display:block}
+#uxTools{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(64px + env(safe-area-inset-bottom,0px));width:calc(100% - 20px);max-width:460px;z-index:10011;
+  background:#fff;border:1px solid #e6e2dc;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.22);padding:12px 14px;display:none}
+#uxTools.show{display:block}
+#uxTools .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #f2f0ec}
+#uxTools .row:last-child{border-bottom:0}
+#uxTools .lb{font-size:13px;font-weight:700;color:#333;flex:0 0 74px}
+#uxTools .lb small{display:block;font-size:10px;color:#a09a94;font-weight:500}
+#uxTools .ux-seg{height:30px}
+#uxTools .ux-seg button{padding:0 10px}
+#uxTools .fs{display:inline-flex;align-items:center;gap:6px}
+#uxTools .fs button{width:36px;height:30px;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#333;font-weight:800;touch-action:manipulation}
+#uxTools .fs span{min-width:44px;text-align:center;font-size:12px;font-weight:700;color:#555}
+body.theme-dark #uxTools{background:#161618;border-color:#2a2a2c}
+body.theme-dark #uxTools .row{border-bottom-color:#242426}
+body.theme-dark #uxTools .lb{color:#e8e6e3}
+body.theme-dark #uxTools .fs button{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+#detailBook,#cardExtra,.ux-note{zoom:var(--ux-scale)}
+#itemList{zoom:var(--ux-scale)}
+
+/* ---------- 個人筆記 ---------- */
+.ux-note{max-width:640px;margin:10px auto 0;background:#fff;border:1px solid #e8e0d0;border-radius:10px;overflow:hidden}
+.ux-note .hd{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#fdf8f0;font-size:13px;font-weight:700;color:#7a5a30;cursor:pointer;touch-action:manipulation}
+.ux-note .hd .st{font-size:11px;color:#b58a5c;font-weight:500}
+.ux-note textarea{display:block;width:100%;min-height:74px;border:0;resize:vertical;padding:10px 12px;font:inherit;font-size:14px;line-height:1.55;color:#222;background:#fff;outline:none}
+.ux-note.closed textarea{display:none}
+.ux-note .hd .chev{transition:transform .15s}
+.ux-note.closed .hd .chev{transform:rotate(-90deg)}
+body.theme-dark .ux-note{background:#0e0e0e;border-color:#2a2a2c}
+body.theme-dark .ux-note .hd{background:#1f1f21;color:#ffbe7d}
+body.theme-dark .ux-note textarea{background:#0e0e0e;color:#e8e6e3}
+
+/* ---------- 使用者專區：互動體驗設定 ---------- */
+.ux-set{background:#fafafa;border:1px solid #eee;border-radius:10px;padding:11px 12px}
+.ux-set .row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;font-size:13px;color:#333;font-weight:600}
+.ux-set .row input[type=checkbox]{width:20px;height:20px;accent-color:#c45c1a;flex:0 0 auto}
+.ux-set .row .ux-seg,.ux-set .row .ctl{flex:0 0 auto}
+.ux-set .ctl{display:inline-flex;align-items:center;gap:2px}
+.ux-set .ctl button{width:28px;height:26px;border-radius:6px;background:#fff;border:1px solid #ddd;color:#555;font-size:14px;font-weight:800;line-height:1;touch-action:manipulation}
+.ux-set .ctl span{min-width:30px;text-align:center;font-weight:700}
+.ux-set .note{font-size:11px;color:#a09a94;line-height:1.7;margin-top:4px;font-weight:400}
+.ux-set .btn{height:32px;padding:0 12px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;font-size:12px;font-weight:700;touch-action:manipulation}
+.ux-set .btn.warn{color:#c0392b;border-color:#f0c0c0}
+.ux-set .pbar{height:6px;background:#eee;border-radius:3px;overflow:hidden;margin:6px 0}
+.ux-set .pbar i{display:block;height:100%;width:0;background:var(--ux-o);transition:width .2s}
+.ux-set .st{font-size:11px;color:#666;line-height:1.6}
+body.theme-dark .ux-set{background:#141416;border-color:#242426}
+body.theme-dark .ux-set .row{color:#e8e6e3}
+body.theme-dark .ux-set .ctl button,body.theme-dark .ux-set .btn{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .ux-set .pbar{background:#242426}
+body.theme-dark .ux-set .st{color:#a8a49f}
+
+/* ---------- 慶祝 ---------- */
+.ux-confetti{position:fixed;inset:0;pointer-events:none;z-index:10070;overflow:hidden}
+.ux-confetti i{position:absolute;top:-12px;width:8px;height:12px;border-radius:2px;animation:uxFall 1.6s ease-in forwards}
+@keyframes uxFall{to{transform:translateY(110vh) rotate(540deg);opacity:.2}}
+</style>
+
+
+<div id="uxToast" role="status" aria-live="polite"></div>
+
+<div id="uxUndo" role="status">
+  <span class="st" id="uxUndoSt"></span>
+  <span class="w" id="uxUndoW"></span>
+  <button type="button" id="uxUndoBtn">復原</button>
+  <button type="button" class="x" id="uxUndoX" aria-label="關閉">×</button>
+</div>
+
+<button type="button" id="uxFab" aria-label="回到頂端">↑ 頂端</button>
+
+<div id="uxCoach" role="dialog" aria-label="手勢操作說明">
+  <div class="card">
+    <h3>解說頁手勢操作</h3>
+    <p>在單字卡上滑動即可操作，不用找按鈕。鍵盤與藍牙遙控器也適用（按 H 查看快捷鍵）。</p>
+    <div class="ux-gest">
+      <div><b>↑</b>上滑：習得</div>
+      <div><b>↓</b>下滑：要複習</div>
+      <div><b>→</b>右滑：下一個</div>
+      <div><b>←</b>左滑：上一個</div>
+      <div class="wide"><b>▶</b>輕點卡片：播放單字與例句</div>
+      <div class="wide"><b>S</b>遮蔽模式下：點「顯示答案」或按 S 揭曉</div>
+    </div>
+    <div class="btns">
+      <button type="button" class="sec" id="uxCoachLater">稍後再看</button>
+      <button type="button" class="pri" id="uxCoachOk">知道了</button>
+    </div>
+  </div>
+</div>
+
+<div id="uxQuiz" class="ux-screen" role="dialog" aria-label="測驗">
+  <div class="inner">
+    <div class="ux-sh">
+      <div><h2 id="uxQzTitle">測驗</h2><div class="sub" id="uxQzSub">選擇範圍與題型後開始</div></div>
+      <button type="button" class="ux-x" id="uxQzClose" aria-label="關閉">×</button>
+    </div>
+
+    <!-- 設定 -->
+    <div id="uxQzSetup">
+      <div class="ux-card">
+        <h3>題型</h3>
+        <div class="ux-opts" id="uxQzMode">
+          <button type="button" data-v="en2zh" class="on">英 → 中　選擇題</button>
+          <button type="button" data-v="zh2en">中 → 英　選擇題</button>
+          <button type="button" data-v="listen">聽力 → 中　選擇題</button>
+          <button type="button" data-v="spell">拼字聽寫</button>
+          <button type="button" data-v="cloze">例句填空</button>
+        </div>
+        <div class="ux-note-sm" id="uxQzModeNote">看英文選出正確中文意思。答錯會自動標為「要複習」並進入弱點清單。</div>
+      </div>
+      <div class="ux-card">
+        <h3>出題範圍</h3>
+        <div class="ux-opts" id="uxQzSrc">
+          <button type="button" data-v="range" class="on">目前範圍</button>
+          <button type="button" data-v="review">要複習</button>
+          <button type="button" data-v="due">今日到期</button>
+          <button type="button" data-v="weak">弱點字</button>
+          <button type="button" data-v="learned">已習得（抽查）</button>
+          <button type="button" data-v="recent">最近學過</button>
+        </div>
+        <div class="ux-note-sm" id="uxQzSrcNote"></div>
+      </div>
+      <div class="ux-card">
+        <h3>題數</h3>
+        <div class="ux-opts" id="uxQzN">
+          <button type="button" data-v="10" class="on">10</button>
+          <button type="button" data-v="20">20</button>
+          <button type="button" data-v="30">30</button>
+          <button type="button" data-v="50">50</button>
+          <button type="button" data-v="0">全部</button>
+        </div>
+      </div>
+      <button type="button" class="ux-btn pri" id="uxQzStart">開始測驗</button>
+      <div class="ux-note-sm" style="text-align:center">鍵盤：1–4 選答案　Enter 下一題　Esc 離開</div>
+    </div>
+
+    <!-- 作答 -->
+    <div id="uxQzPlay" class="ux-hide">
+      <div class="ux-qmeta"><span>第 <b id="uxQzIdx">1</b> / <span id="uxQzTot">10</span> 題</span><span>✓ <b id="uxQzOk">0</b>　✗ <b id="uxQzNg">0</b></span></div>
+      <div class="ux-qbar"><i id="uxQzBar"></i></div>
+      <div class="ux-q" id="uxQzCard"></div>
+      <div class="ux-choices" id="uxQzChoices"></div>
+      <div id="uxQzSpell" class="ux-hide">
+        <div class="ux-spell">
+          <input id="uxQzIn" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="輸入英文">
+          <button type="button" id="uxQzCheck">確認</button>
+        </div>
+        <div class="ux-spell-row">
+          <button type="button" id="uxQzHint">提示一個字母</button>
+          <button type="button" id="uxQzReplay">重聽</button>
+          <button type="button" id="uxQzGiveUp">看答案</button>
+        </div>
+      </div>
+      <div class="ux-fb" id="uxQzFb"></div>
+    </div>
+
+    <!-- 結果 -->
+    <div id="uxQzResult" class="ux-hide">
+      <div class="ux-card ux-res">
+        <div class="big"><span id="uxQzScore">0</span><small>%</small></div>
+        <div class="sub" id="uxQzResSub"></div>
+        <div class="grade" id="uxQzGrade"></div>
+      </div>
+      <div class="ux-card" id="uxQzWrongCard">
+        <h3>答錯的字</h3>
+        <ul class="ux-wrong" id="uxQzWrong" style="list-style:none;margin:0;padding:0"></ul>
+      </div>
+      <button type="button" class="ux-btn pri" id="uxQzRetryWrong">再測答錯的字</button>
+      <button type="button" class="ux-btn" id="uxQzAgain">再測一次（同設定）</button>
+      <button type="button" class="ux-btn" id="uxQzBack">回到設定</button>
+    </div>
+  </div>
+</div>
+
+<div id="uxSum" role="dialog" aria-label="本次學習結算">
+  <div class="hd"><h3>本次學習結算</h3><button type="button" class="ux-x" id="uxSumX" aria-label="關閉">×</button></div>
+  <div class="grid">
+    <div><div class="v ok" id="uxSumOk">0</div><div class="k">習得</div></div>
+    <div><div class="v rev" id="uxSumRev">0</div><div class="k">要複習</div></div>
+    <div><div class="v" id="uxSumMin">0</div><div class="k">分鐘</div></div>
+  </div>
+  <div class="line" id="uxSumLine"></div>
+  <div class="ach ux-hide" id="uxSumAch"></div>
+  <div class="btns">
+    <button type="button" id="uxSumQuiz" class="pri">立刻測驗剛學的字</button>
+    <button type="button" id="uxSumClose">關閉</button>
+  </div>
+</div>
+
+<div id="uxToolsMask"></div>
+<div id="uxTools" role="dialog" aria-label="聽力工具">
+  <div class="row"><div class="lb">睡眠定時<small id="uxSleepSt">關閉</small></div>
+    <div class="ux-seg" id="uxSleepSeg"><button data-v="0" class="on">關</button><button data-v="10">10分</button><button data-v="20">20分</button><button data-v="30">30分</button><button data-v="60">60分</button></div></div>
+  <div class="row"><div class="lb">每字重複<small>連續播放時</small></div>
+    <div class="ux-seg" id="uxRepSeg"><button data-v="1" class="on">1次</button><button data-v="2">2次</button><button data-v="3">3次</button><button data-v="5">5次</button></div></div>
+  <div class="row"><div class="lb">字間停頓<small>給自己回想</small></div>
+    <div class="ux-seg" id="uxGapSeg"><button data-v="0" class="on">0秒</button><button data-v="1">1秒</button><button data-v="2">2秒</button><button data-v="3">3秒</button><button data-v="5">5秒</button></div></div>
+  <div class="row"><div class="lb">字體大小</div>
+    <div class="fs"><button type="button" id="uxFsDn">A−</button><span id="uxFsVal">100%</span><button type="button" id="uxFsUp">A+</button></div></div>
+</div>
+
+<script>
+
+/* ===================================================================
+   UX 強化模組 v2.0 — 核心（工具、搜尋、遮蔽、洗牌、進度、復原、
+   播放列效能、手勢教學、每日目標、觸覺、快捷鍵、筆記、聽力工具）
+   =================================================================== */
+window.UX = window.UX || {};
+(function(){
+  'use strict';
+  var UX = window.UX;
+
+  /* ---------- 小工具 ---------- */
+  function $(id){ return document.getElementById(id); }
+  function qsa(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); }
+  function esc(s){ return (typeof escapeHtml === 'function') ? escapeHtml(s) : String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function bookId(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
+  function today(){ var d=new Date(); d.setHours(0,0,0,0); return d; }
+  function dayStr(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+  function lsGet(k, def){ try{ var v=JSON.parse(localStorage.getItem(k)||'null'); return (v==null)?def:v; }catch(e){ return def; } }
+  function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function clone(o){ return o==null ? o : JSON.parse(JSON.stringify(o)); }
+  function cssEsc(s){ return String(s).replace(/["\\]/g,'\\$&'); }
+  function entryById(id){ id=String(id); for(var i=0;i<DATA.length;i++) if(String(DATA[i].id)===id) return DATA[i]; return null; }
+  function curEntry(){ return (currentList && currentList[currentIdx]) || null; }
+  function onDetail(){ var s=$('screen-detail'); return !!(s&&s.classList.contains('active'))&&!document.body.classList.contains('mode-srs'); }
+  function onList(){ var s=$('screen-list'); return !!(s&&s.classList.contains('active'))&&!document.body.classList.contains('mode-srs'); }
+  function isTyping(el){ if(!el) return false; var t=(el.tagName||'').toLowerCase(); return t==='input'||t==='textarea'||t==='select'||el.isContentEditable; }
+  function panelOpen(){
+    var b=$('screen-books'); if(b && !b.classList.contains('hide') && b.style.display!=='none') return true;
+    return ['pinBox','usPanel','gsPanel','nwBox','uxCoach','uxTools'].some(function(id){ var el=$(id); return el && el.classList.contains('show'); })
+      || (($('filterModal')||{}).classList||{contains:function(){return false;}}).contains('open')
+      || document.body.classList.contains('rd-open') || document.body.classList.contains('ux-quiz-open');
+  }
+  UX.$=$; UX.qsa=qsa; UX.esc=esc; UX.uid=uid; UX.bookId=bookId; UX.today=today; UX.dayStr=dayStr;
+  UX.lsGet=lsGet; UX.lsSet=lsSet; UX.clone=clone; UX.entryById=entryById; UX.curEntry=curEntry;
+  UX.onDetail=onDetail; UX.onList=onList; UX.isTyping=isTyping; UX.panelOpen=panelOpen;
+
+  /* ---------- 設定（裝置層級） ---------- */
+  var S = lsGet('kinUX', {});
+  var DEF = { mask:'none', shuffle:false, seed:1, haptic:true, goal:20, scale:1, quizAffects:true, repeat:1, gap:0, coachSeen:false, goalDoneDay:'' };
+  Object.keys(DEF).forEach(function(k){ if(S[k]===undefined) S[k]=DEF[k]; });
+  function saveS(){ lsSet('kinUX', S); }
+  UX.S=S; UX.saveS=saveS;
+
+  /* ---------- 非阻斷提示 ---------- */
+  var toastT=0;
+  function toast(msg, ms, big){
+    var el=$('uxToast'); if(!el) return;
+    el.textContent=String(msg==null?'':msg);
+    el.classList.toggle('big', !!big);
+    el.classList.add('show');
+    clearTimeout(toastT);
+    toastT=setTimeout(function(){ el.classList.remove('show'); }, ms||1600);
+  }
+  UX.toast=toast;
+  // 既有程式用 alert() 提示「音檔找不到」等訊息，改為不阻斷播放節奏的提示。
+  var _alert=window.alert;
+  window.alert=function(m){ var s=String(m==null?'':m).split('\n')[0].trim(); if(!s) return; toast(s.length>80?s.slice(0,80)+'…':s, 2600); };
+  UX.nativeAlert=_alert;
+
+  /* ---------- 觸覺回饋 ---------- */
+  function haptic(p){ if(!S.haptic) return; try{ if(navigator.vibrate) navigator.vibrate(p||10); }catch(e){} }
+  UX.haptic=haptic;
+
+  /* ---------- 慶祝 ---------- */
+  function confetti(){
+    var box=document.createElement('div'); box.className='ux-confetti';
+    var colors=['#c45c1a','#e08a3c','#2a9d4a','#f2c14e','#4a90d9','#e05050'];
+    for(var i=0;i<28;i++){
+      var s=document.createElement('i');
+      s.style.left=(Math.random()*100)+'vw';
+      s.style.background=colors[i%colors.length];
+      s.style.animationDelay=(Math.random()*.5)+'s';
+      s.style.animationDuration=(1.2+Math.random()*.9)+'s';
+      s.style.transform='rotate('+(Math.random()*360)+'deg)';
+      box.appendChild(s);
+    }
+    document.body.appendChild(box);
+    setTimeout(function(){ if(box.parentNode) box.parentNode.removeChild(box); }, 2400);
+  }
+  UX.confetti=confetti;
+
+  /* ===================================================================
+     1. 搜尋　2. 遮蔽自測　5. 洗牌  —— 都掛在 filtered() 上
+     =================================================================== */
+  var query='';
+  function norm(s){ return String(s==null?'':s).toLowerCase(); }
+  function hit(e, q){
+    if(norm(e.id).indexOf(q)>=0 || norm(e.word).indexOf(q)>=0 || norm(e.mean).indexOf(q)>=0) return true;
+    if(norm(e.en).indexOf(q)>=0 || norm(e.ja).indexOf(q)>=0 || norm(e.note).indexOf(q)>=0) return true;
+    var ss=e.senses||[];
+    for(var i=0;i<ss.length;i++){ if(norm(ss[i].en).indexOf(q)>=0||norm(ss[i].zh).indexOf(q)>=0||norm(ss[i].mean).indexOf(q)>=0) return true; }
+    return false;
+  }
+  function searchResults(){
+    var q=norm(query).trim(); if(!q) return null;
+    var out=[];
+    for(var i=0;i<DATA.length;i++){
+      var e=DATA[i]; if(!hit(e,q)) continue;
+      var w=norm(e.word), r=9;
+      if(w===q||norm(e.id)===q) r=0;
+      else if(w.indexOf(q)===0) r=1;
+      else if(w.indexOf(' '+q)>=0) r=2;
+      else if(w.indexOf(q)>=0) r=3;
+      else if(norm(e.mean).indexOf(q)>=0) r=4;
+      else if(norm(e.en).indexOf(q)>=0) r=5;
+      out.push({r:r,i:i,e:e});
+    }
+    out.sort(function(a,b){ return a.r-b.r || a.i-b.i; });
+    return out.map(function(x){ return x.e; });
+  }
+  function hash(str){ var h=2166136261>>>0; for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h; }
+  function shuffled(list){
+    var seed=String(S.seed||1);
+    return list.slice().sort(function(a,b){ return hash(seed+'|'+a.id)-hash(seed+'|'+b.id); });
+  }
+  var _filtered=window.filtered;
+  window.filtered=function(){
+    var r=searchResults();
+    if(r) return r;
+    var base=_filtered.apply(this, arguments);
+    return S.shuffle ? shuffled(base) : base;
+  };
+  UX.query=function(){ return query; };
+
+  /* 一覽頁工具列（黏在範圍選單下，單列：搜尋＋遮蔽＋洗牌） */
+  function buildBar(){
+    var pick=document.querySelector('#paneBrowse .browse-pick'); if(!pick||$('uxBar')) return;
+    var bar=document.createElement('div'); bar.id='uxBar';
+    bar.innerHTML=
+      '<div class="ux-search" id="uxSearchBox">'+
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>'+
+        '<input id="uxSearchIn" type="search" placeholder="搜尋單字、中文、編號、例句" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="搜尋單字">'+
+        '<span class="cnt" id="uxSearchCnt"></span>'+
+        '<button type="button" class="clr" id="uxSearchClr" aria-label="清除搜尋">×</button>'+
+      '</div>'+
+      '<button type="button" class="ux-chip" id="uxMaskBtn" title="遮蔽自測：全部顯示 → 遮中文 → 遮英文（M）"></button>'+
+      '<button type="button" class="ux-chip" id="uxShuffleBtn" title="打亂目前範圍的順序（R）">'+
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l3.5 5L14 17h3M4 17h3l2-3M14 7h3M17 7l-2-2M17 7l-2 2M17 17l-2-2M17 17l-2 2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+    pick.parentNode.insertBefore(bar, pick.nextSibling);
+
+    var inp=$('uxSearchIn'), t=0;
+    inp.addEventListener('input', function(){ clearTimeout(t); t=setTimeout(function(){ setQuery(inp.value); },110); });
+    inp.addEventListener('keydown', function(ev){
+      if(ev.key==='Enter'){ ev.preventDefault(); var r=searchResults(); if(r&&r.length){ inp.blur(); openDetail(r[0].id); } else toast('沒有符合的單字'); }
+      else if(ev.key==='Escape'){ ev.preventDefault(); if(inp.value){ inp.value=''; setQuery(''); } else inp.blur(); }
+      ev.stopPropagation();   // 不讓全域快捷鍵搶走輸入
+    }, true);
+    $('uxSearchClr').addEventListener('click', function(){ inp.value=''; setQuery(''); inp.focus(); });
+    $('uxMaskBtn').addEventListener('click', function(){ UX.cycleMask(); });
+    $('uxShuffleBtn').addEventListener('click', function(){ toggleShuffle(); });
+    paintMaskSeg(); paintShuffle();
+  }
+  function rerender(){
+    try{
+      window._kinStudyQueueActive=false;
+      currentList=filtered(); renderList(); updateStats();
+    }catch(e){ console.warn(e); }
+  }
+  function setQuery(v){
+    query=String(v||'');
+    var box=$('uxSearchBox'); if(box) box.classList.toggle('has', !!query.trim());
+    if(query.trim()){
+      // 搜尋一律在「一覽」模式進行
+      if(typeof listMode!=='undefined' && listMode!=='browse'){ try{ setListMode('browse'); }catch(e){} }
+    }
+    rerender();
+    var r=searchResults(), cnt=$('uxSearchCnt');
+    if(cnt) cnt.textContent = r ? ('找到 '+r.length+' 筆') : '';
+    if(r && !r.length){ var box2=$('itemList'); if(box2) box2.innerHTML='<div class="ux-empty-search">找不到「'+esc(query.trim())+'」<br>試試英文字首、中文意思或編號（例如 S6-12）</div>'; }
+  }
+  UX.setQuery=setQuery;
+  UX.focusSearch=function(){
+    if(!onList()) return;
+    if(typeof listMode!=='undefined' && listMode!=='browse'){ try{ setListMode('browse'); }catch(e){} }
+    var inp=$('uxSearchIn'); if(inp){ inp.focus(); try{ inp.select(); }catch(e){} }
+  };
+  // 清單重繪後：高亮關鍵字、筆記記號
+  function highlightRows(){
+    var q=norm(query).trim(); if(!q) return;
+    var re=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    qsa('#itemList .item .hw, #itemList .item .sub').forEach(function(el){
+      var t=el.textContent; if(!t || t.toLowerCase().indexOf(q)<0) return;
+      el.innerHTML=esc(t).replace(re,'<mark class="ux-hl">$1</mark>');
+    });
+  }
+  var _renderList=window.renderList;
+  window.renderList=function(){
+    var r=_renderList.apply(this, arguments);
+    try{ highlightRows(); paintNoteMarks(); applyListMask(); }catch(e){}
+    return r;
+  };
+  var _renderSQ=window.renderStudyQueueList;
+  window.renderStudyQueueList=function(){
+    var r=_renderSQ.apply(this, arguments);
+    try{ paintNoteMarks(); applyListMask(); }catch(e){}
+    return r;
+  };
+
+  /* 洗牌 */
+  function paintShuffle(){
+    var b=$('uxShuffleBtn'); if(!b) return;
+    b.classList.toggle('on', !!S.shuffle);
+    b.innerHTML=b.innerHTML.replace(/<\/svg>[\s\S]*$/, '</svg>')+(S.shuffle?'洗牌中':'');
+  }
+  function toggleShuffle(){
+    S.shuffle=!S.shuffle; if(S.shuffle) S.seed=(Date.now()%1e9)|0; saveS();
+    paintShuffle(); rerender(); toast(S.shuffle?'已打亂順序　再按一次恢復；重新開啟可換一組順序':'已恢復書本順序', 2200);
+    UX.paintSettings && UX.paintSettings();
+  }
+  UX.toggleShuffle=toggleShuffle;
+
+  /* 遮蔽 */
+  function paintMaskSeg(){
+    qsa('#uxSetMaskSeg button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-m')===S.mask); });
+    var c=$('uxMaskBtn'); if(c){ c.classList.toggle('on', S.mask!=='none'); c.textContent=S.mask==='zh'?'遮中文':(S.mask==='en'?'遮英文':'遮蔽'); }
+  }
+  function applyListMask(){
+    var list=$('itemList'); if(!list) return;
+    list.classList.toggle('ux-mask-zh', S.mask==='zh');
+    list.classList.toggle('ux-mask-en', S.mask==='en');
+  }
+  function setMask(m){
+    S.mask=(m==='zh'||m==='en')?m:'none'; saveS();
+    paintMaskSeg(); applyListMask();
+    qsa('#itemList .item.ux-reveal').forEach(function(r){ r.classList.remove('ux-reveal'); });
+    applyDetailMask();
+    toast(S.mask==='zh'?'遮住中文：先回想意思，點被遮住的地方揭曉':(S.mask==='en'?'遮住英文：看中文回想單字，點被遮住的地方揭曉':'已取消遮蔽'), 2200);
+    UX.paintSettings && UX.paintSettings();
+  }
+  UX.setMask=setMask;
+  UX.cycleMask=function(){ setMask(S.mask==='none'?'zh':(S.mask==='zh'?'en':'none')); };
+  // 點到被遮住的地方 → 先揭曉、不播放
+  document.addEventListener('click', function(ev){
+    if(S.mask==='none') return;
+    var list=$('itemList'); if(!list || !list.contains(ev.target)) return;
+    var row=ev.target.closest('.item'); if(!row || row.classList.contains('ux-reveal')) return;
+    var hitEl=ev.target.closest(S.mask==='zh' ? '.sub' : '.hw');
+    if(!hitEl) return;
+    ev.stopPropagation(); ev.preventDefault();
+    row.classList.add('ux-reveal'); haptic(5);
+  }, true);
+  function applyDetailMask(){
+    var host=$('detailBook'); if(!host) return;
+    host.classList.remove('ux-dmask-zh','ux-dmask-en','ux-revealed');
+    var old=host.querySelector('.ux-reveal-bar'); if(old) old.parentNode.removeChild(old);
+    if(S.mask==='none' || !onDetail()) return;
+    host.classList.add(S.mask==='zh'?'ux-dmask-zh':'ux-dmask-en');
+    var bar=document.createElement('div'); bar.className='ux-reveal-bar';
+    bar.innerHTML='<button type="button">顯示答案</button><span>'+(S.mask==='zh'?'先回想中文意思':'先回想英文單字')+'　鍵盤 S</span>';
+    bar.querySelector('button').onclick=function(ev){ ev.stopPropagation(); revealDetail(); };
+    host.insertBefore(bar, host.firstChild);
+  }
+  function revealDetail(){ var host=$('detailBook'); if(host && !host.classList.contains('ux-revealed')){ host.classList.add('ux-revealed'); haptic(5); } }
+  UX.revealDetail=revealDetail;
+
+  /* ===================================================================
+     3. 解說頁進度、首尾停用　＋　「下一個」語意修正
+     =================================================================== */
+  var keepMode=false;
+  var _openDetail=window.openDetail;
+  window.openDetail=function(id){
+    // 從一覽進入解說時，「下一個」應該是順序上的下一個字；
+    // 原本會沿用上次「未學習／複習」按鈕留下的過濾模式，導致跳字。
+    if(!window._kinStudyQueueActive && !keepMode && typeof studyMode!=='undefined') studyMode='all';
+    keepMode=false;
+    return _openDetail.apply(this, arguments);
+  };
+  if(typeof window.srsStartDue==='function'){
+    var _srsStartDue=window.srsStartDue;
+    window.srsStartDue=function(){ keepMode=true; try{ return _srsStartDue.apply(this, arguments); } finally{ keepMode=false; } };
+  }
+  function hasNext(){
+    if(!currentList) return false;
+    var sm=(typeof studyMode!=='undefined')?studyMode:'all';
+    for(var i=currentIdx+1;i<currentList.length;i++){
+      var st=statusMap[currentList[i].id]||'';
+      if(sm==='new' && st) continue;
+      if(sm==='review' && st!=='review') continue;
+      return true;
+    }
+    return false;
+  }
+  function paintDetailPos(){
+    var top=document.querySelector('#screen-detail .topbar'); if(!top) return;
+    var h1=top.querySelector('h1');
+    var pos=top.querySelector('.ux-pos');
+    if(!pos && h1){ pos=document.createElement('span'); pos.className='ux-pos'; h1.appendChild(pos); }
+    var bar=top.querySelector('.ux-dbar');
+    if(!bar){ bar=document.createElement('div'); bar.className='ux-dbar'; bar.innerHTML='<i></i>'; top.appendChild(bar); }
+    var n=(currentList&&currentList.length)||0, i=Math.min(n, currentIdx+1);
+    if(pos) pos.textContent = n ? (i+' / '+n) : '';
+    var fill=bar.querySelector('i'); if(fill) fill.style.width = n ? ((i/n*100).toFixed(1)+'%') : '0%';
+    var btns=qsa('#screen-detail .detail-actions .btn-skip');
+    if(btns.length>=2){ btns[0].disabled = currentIdx<=0; btns[btns.length-1].disabled = !hasNext(); }
+  }
+
+  /* ===================================================================
+     解說頁：修正點單字／例句播放（改用逐字音檔 CLIP_MAP）
+     =================================================================== */
+  function clipFor(e){
+    if(!e || typeof CLIP_MAP==='undefined' || !CLIP_MAP) return null;
+    var id=String(e.id);
+    var cm=CLIP_MAP[id];
+    if(!cm && /^\d+$/.test(id)) cm=CLIP_MAP[('000'+id).slice(-3)]||CLIP_MAP[String(parseInt(id,10))];
+    return (cm && (cm.word || (cm.words&&cm.words.length) || (cm.phrases&&cm.phrases.length))) ? cm : null;
+  }
+  UX.clipFor=clipFor;
+  function wordFiles(cm, e){
+    var files=(cm.words&&cm.words.length)?cm.words.slice():(cm.word?[cm.word]:[]);
+    return {files:files, titles:files.map(function(){ return (e.word||'')+'（單字）'; })};
+  }
+  function playWordClip(e){
+    var cm=clipFor(e); if(!cm) return false;
+    window._kinAfterEntry=null; setPlayingVisual(null);
+    var w=wordFiles(cm,e); if(!w.files.length) return false;
+    playClipFiles(w.files, w.titles); return true;
+  }
+  function playPhraseClip(e, idx){
+    var cm=clipFor(e); if(!cm) return false;
+    var ph=cm.phrases||[]; if(!ph.length) return playWordClip(e);
+    window._kinAfterEntry=null; setPlayingVisual(null);
+    var times=Math.max(1,(typeof getPhraseTimes==='function')?getPhraseTimes():1), files=[], titles=[];
+    var list = (idx==null) ? ph : (ph[idx] ? [ph[idx]] : [ph[0]]);
+    list.forEach(function(f,i){ for(var t=0;t<times;t++){ files.push(f); titles.push((e.word||'')+'（例句'+((idx==null?i:idx)+1)+'）'); } });
+    playClipFiles(files, titles); return true;
+  }
+  UX.playWordClip=playWordClip;
+  var _playPart=window.playPart;
+  window.playPart=function(e, which){
+    var wordOnly=(which==='word'||which==='dHw'||which==='dWordSmall'||which==='dPos');
+    if(clipFor(e)){ if(wordOnly ? playWordClip(e) : playPhraseClip(e, null)) return; }
+    return _playPart.apply(this, arguments);
+  };
+  function rebindDetailTaps(e){
+    var host=$('detailBook'); if(!host || !clipFor(e)) return;
+    var w=$('dbWord'); if(w){ w.classList.add('tap-play'); w.onclick=function(){ playWordClip(e); }; }
+    qsa('.db-ex-en', host).forEach(function(el, idx){
+      el.classList.add('tap-play');
+      el.onclick=function(){ playPhraseClip(e, idx); };
+    });
+  }
+
+  /* ===================================================================
+     4. 復原（含 SRS 排程與弱點歷程）　11. 觸覺
+     =================================================================== */
+  var shadow=null, undoSkip=false, undoItem=null, undoTimer=0;
+  function syncShadow(){ shadow={}; for(var k in statusMap) shadow[k]=statusMap[k]; }
+  function histKey(){ return 'kinWordHist:'+uid(); }
+  function histGet(id){ try{ var all=window.KIN_STRENGTH&&window.KIN_STRENGTH.all(); return all ? clone(all[bookId()+'/'+id]) : undefined; }catch(e){ return undefined; } }
+  function histSet(id, h){
+    try{
+      var all=window.KIN_STRENGTH&&window.KIN_STRENGTH.all(); if(!all) return;
+      var k=bookId()+'/'+id;
+      if(h) all[k]=h; else delete all[k];
+      localStorage.setItem(histKey(), JSON.stringify(all));
+    }catch(e){}
+  }
+  var _saveStatus=window.saveStatus;
+  window.saveStatus=function(){
+    var changed=[];
+    if(shadow && !undoSkip){
+      var seen={};
+      Object.keys(shadow).concat(Object.keys(statusMap)).forEach(function(id){
+        if(seen[id]) return; seen[id]=1;
+        if((shadow[id]||'')!==(statusMap[id]||'')) changed.push(id);
+      });
+    }
+    var r=_saveStatus.apply(this, arguments);
+    if(changed.length===1){
+      var id=changed[0], k=dayStr(today());
+      undoItem={ id:id, before:(shadow[id]||''), after:(statusMap[id]||''), srs:clone(srsMap[id])||null, hist:histGet(id), logDay:k, logBefore:(srsLog[k]||0), book:bookId() };
+      if(!UX.quiet) showUndo(undoItem); haptic(12);
+      UX.onMark && UX.onMark(id, undoItem.before, undoItem.after);
+    }
+    syncShadow();
+    return r;
+  };
+  var _loadStatus=window.loadStatus;
+  window.loadStatus=function(){ var r=_loadStatus.apply(this, arguments); syncShadow(); hideUndo(); return r; };
+  try{ syncShadow(); }catch(e){}
+
+  function showUndo(u){
+    var box=$('uxUndo'); if(!box) return;
+    var e=entryById(u.id);
+    var st=$('uxUndoSt'), w=$('uxUndoW');
+    st.className='st '+(u.after==='ok'?'ok':(u.after==='review'?'rev':'none'));
+    st.textContent=u.after==='ok'?'✓ 習得':(u.after==='review'?'! 要複習':'○ 未學習');
+    w.textContent=(e&&e.word)||u.id;
+    box.classList.add('show');
+    clearTimeout(undoTimer); undoTimer=setTimeout(hideUndo, 5000);
+  }
+  function hideUndo(){ var box=$('uxUndo'); if(box) box.classList.remove('show'); clearTimeout(undoTimer); }
+  function doUndo(){
+    var u=undoItem; if(!u){ toast('沒有可復原的標記'); return; }
+    if(u.book!==bookId()){ toast('已切換書籍，無法復原'); undoItem=null; hideUndo(); return; }
+    undoItem=null; hideUndo();
+    undoSkip=true;
+    try{
+      if(u.before) statusMap[u.id]=u.before; else delete statusMap[u.id];
+      _saveStatus();
+    }finally{ undoSkip=false; syncShadow(); }
+    // SRS 排程與當日計數還原
+    var graded = JSON.stringify(srsMap[u.id]||null)!==JSON.stringify(u.srs||null);
+    if(u.srs) srsMap[u.id]=u.srs; else delete srsMap[u.id];
+    if(graded){ if((srsLog[u.logDay]||0)>u.logBefore){ srsLog[u.logDay]=u.logBefore; if(!srsLog[u.logDay]) delete srsLog[u.logDay]; } }
+    if(typeof srsSave==='function') srsSave();
+    histSet(u.id, u.hist);
+    try{ updateStats(); refreshAllStatusUI(); }catch(e){}
+    try{ var ce=curEntry(); if(ce && typeof updateDetailMarkUI==='function') updateDetailMarkUI(ce.id); }catch(e){}
+    try{ if(typeof srsBadge==='function') srsBadge(); }catch(e){}
+    try{ if(typeof window.__kinPaintStrength==='function') window.__kinPaintStrength(); }catch(e){}
+    UX.onUndo && UX.onUndo(u);
+    var e=entryById(u.id);
+    toast('已復原　'+((e&&e.word)||u.id)+'：'+(u.before==='ok'?'習得':(u.before==='review'?'要複習':'未學習')));
+    haptic([8,40,8]);
+  }
+  UX.undo=doUndo;
+  $('uxUndoBtn').addEventListener('click', doUndo);
+  $('uxUndoX').addEventListener('click', hideUndo);
+
+  /* ===================================================================
+     6. 播放中標示：只切換 class，不再整表重繪 1,800 列
+     =================================================================== */
+  window.setPlayingVisual=function(entry){
+    if(entry){
+      window._kinReturnId='';
+      try{ sessionStorage.removeItem('kinReturnId'); }catch(e){}
+      qsa('#itemList .item.return-focus').forEach(function(el){ el.classList.remove('return-focus'); });
+    }
+    window._kinPlayingId = entry ? entry.id : null;
+    document.body.classList.toggle('kin-playing', !!entry);
+    qsa('#itemList .item.is-playing').forEach(function(el){ el.classList.remove('is-playing'); });
+    if(!entry){ paintFab(); return; }
+    var row=document.querySelector('#itemList .item[data-entry-id="'+cssEsc(entry.id)+'"]');
+    if(!row){
+      try{ if(window._kinStudyQueueActive) renderStudyQueueList(currentList||studyQueue()); else renderList(); }catch(e){}
+      row=document.querySelector('#itemList .item[data-entry-id="'+cssEsc(entry.id)+'"]');
+    }
+    if(row){
+      row.classList.add('is-playing');
+      if(onList()) setTimeout(function(){ try{ row.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} }, 30);
+    }
+    paintFab();
+  };
+
+  /* ===================================================================
+     8. 回到頂端／回到播放位置
+     =================================================================== */
+  var fabRaf=0;
+  function paintFab(){
+    var f=$('uxFab'); if(!f) return;
+    var show = onList() && !panelOpen() && (window.pageYOffset||document.documentElement.scrollTop||0) > 520;
+    var playing = !!window._kinPlayingId && !!document.querySelector('#itemList .item.is-playing');
+    f.classList.toggle('show', show);
+    f.classList.toggle('play', show && playing);
+    f.textContent = playing ? '▶ 播放位置' : '↑ 頂端';
+    f.setAttribute('aria-label', playing?'回到播放位置':'回到頂端');
+  }
+  window.addEventListener('scroll', function(){ if(fabRaf) return; fabRaf=requestAnimationFrame(function(){ fabRaf=0; paintFab(); }); }, {passive:true});
+  $('uxFab').addEventListener('click', function(){
+    var row=document.querySelector('#itemList .item.is-playing');
+    if(row) row.scrollIntoView({behavior:'smooth',block:'center'});
+    else window.scrollTo({top:0,behavior:'smooth'});
+  });
+
+  /* ===================================================================
+     9. 手勢教學（首次進解說、觸控裝置）
+     =================================================================== */
+  var coachLater=false;
+  function showCoach(force){
+    var isTouch=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
+    if(!force && (S.coachSeen || coachLater || !isTouch)) return;
+    var c=$('uxCoach'); if(c) c.classList.add('show');
+  }
+  UX.showCoach=function(){ showCoach(true); };
+  $('uxCoachOk').addEventListener('click', function(){ S.coachSeen=true; saveS(); $('uxCoach').classList.remove('show'); });
+  $('uxCoachLater').addEventListener('click', function(){ coachLater=true; $('uxCoach').classList.remove('show'); });
+
+  /* ===================================================================
+     10. 每日目標（跨書累計）＋ 首頁快捷列
+     =================================================================== */
+  function allSrsLogs(){
+    // 所有書籍的當前使用者 SRS 紀錄，彙整每日學習量
+    var out={}, u=uid(), re=new RegExp('^book:[^:]+:'+u.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+':srs$');
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i); if(!re.test(k)) continue;
+        var o=JSON.parse(localStorage.getItem(k)||'{}'), lg=o.log||{};
+        for(var d in lg) out[d]=(out[d]||0)+(lg[d]||0);
+      }
+    }catch(e){}
+    // 目前書籍以記憶體為準（尚未寫入時也正確）
+    try{ if(typeof srsLog!=='undefined' && typeof SRS_KEY!=='undefined'){ var o2=JSON.parse(localStorage.getItem(SRS_KEY)||'{}'), lg2=o2.log||{}; for(var d2 in srsLog){ out[d2]=(out[d2]||0)-(lg2[d2]||0)+(srsLog[d2]||0); } } }catch(e){}
+    return out;
+  }
+  UX.allSrsLogs=allSrsLogs;
+  function todayCount(){ var lg=allSrsLogs(); return (lg[dayStr(today())]||0) + (UX.extraToday ? UX.extraToday() : 0); }
+  UX.todayCount=todayCount;
+  function buildHome(){
+    var pane=$('paneStudy'); if(!pane || $('uxGoal')) return;
+    var actions=pane.querySelector('.list-actions');
+    var wrap=document.createElement('div');
+    wrap.innerHTML=
+      '<div class="ux-goal" id="uxGoal">'+
+        '<div class="hd"><span>今日目標</span><span class="n"><b id="uxGoalNow">0</b> / <span id="uxGoalTgt">20</span> 字</span></div>'+
+        '<div class="bar"><i id="uxGoalBar"></i></div>'+
+        '<div class="ft"><span id="uxGoalMsg"></span><span class="ctl"><button type="button" data-d="-5" aria-label="減少目標">−</button><span id="uxGoalVal">20</span><button type="button" data-d="5" aria-label="增加目標">＋</button></span></div>'+
+      '</div>'+
+      '<div class="ux-home-row">'+
+        '<button type="button" class="pri" id="uxHomeQuiz"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11l2 2 4-5M5 4h14v16H5z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>測驗</button>'+
+        '<button type="button" id="uxHomeSearch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>搜尋</button>'+
+        '<button type="button" id="uxHomeHeat"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18M8 4v5M16 4v5" stroke="currentColor" stroke-width="1.8"/></svg>儀表板</button>'+
+      '</div>'+
+      '<div class="ux-mini-heat" id="uxMiniHeat"><div class="hd"><span>近 20 週學習</span><span id="uxMiniHeatSum"></span></div><div id="uxMiniHeatBox"></div></div>';
+    if(actions && actions.parentNode) actions.parentNode.insertBefore(wrap, actions.nextSibling); else pane.appendChild(wrap);
+    qsa('#uxGoal .ctl button').forEach(function(b){ b.addEventListener('click', function(){ setGoal(S.goal+parseInt(b.getAttribute('data-d'),10)); }); });
+    $('uxHomeQuiz').addEventListener('click', function(){ UX.openQuiz && UX.openQuiz(); });
+    $('uxHomeSearch').addEventListener('click', function(){ try{ setListMode('browse'); }catch(e){} setTimeout(function(){ var i=$('uxSearchIn'); if(i) i.focus(); },60); });
+    $('uxHomeHeat').addEventListener('click', function(){ if(typeof srsOpen==='function') srsOpen(); });
+    $('uxMiniHeat').addEventListener('click', function(ev){ if(ev.target.closest('.cells i')) return; if(typeof srsOpen==='function') srsOpen(); });
+    paintGoal();
+  }
+  function setGoal(n){ S.goal=Math.max(5, Math.min(300, n|0)); S.goalDoneDay=''; saveS(); paintGoal(); UX.paintSettings && UX.paintSettings(); }
+  UX.setGoal=setGoal;
+  function paintGoal(){
+    var box=$('uxGoal'); if(!box) return;
+    var now=todayCount(), g=S.goal||20, pct=Math.min(100, now/g*100);
+    $('uxGoalNow').textContent=now; $('uxGoalTgt').textContent=g; $('uxGoalVal').textContent=g;
+    $('uxGoalBar').style.width=pct.toFixed(1)+'%';
+    box.classList.toggle('done', now>=g);
+    var msg=$('uxGoalMsg');
+    var streak=(UX.streak?UX.streak():0);
+    msg.textContent = now>=g ? ('🎉 已達標'+(now>g?('，超出 '+(now-g)+' 字'):'')+(streak>1?('　連續 '+streak+' 天'):'')) : ('再 '+(g-now)+' 字達標'+(streak>1?('　連續 '+streak+' 天'):''));
+    if(now>=g && S.goalDoneDay!==dayStr(today())){
+      S.goalDoneDay=dayStr(today()); saveS();
+      setTimeout(function(){ toast('🎉 達成今日目標 '+g+' 字！', 2600, true); confetti(); haptic([30,60,30,60,60]); }, 250);
+      UX.onGoalDone && UX.onGoalDone();
+    }
+    if(UX.paintMiniHeat) UX.paintMiniHeat();
+  }
+  UX.paintGoal=paintGoal;
+  var _updateStats=window.updateStats;
+  window.updateStats=function(){ var r=_updateStats.apply(this, arguments); try{ paintGoal(); }catch(e){} return r; };
+
+  /* ===================================================================
+     個人筆記（隨 GitHub 同步）
+     =================================================================== */
+  function notesKey(){ return 'kinNotes:'+uid(); }
+  function notesAll(){ return lsGet(notesKey(), {}); }
+  function noteGet(id){ var n=notesAll()[bookId()+'/'+id]; return n ? n.t : ''; }
+  function noteSet(id, text){
+    var all=notesAll(), k=bookId()+'/'+id;
+    text=String(text||'');
+    if(text.trim()) all[k]={t:text, at:dayStr(today())}; else delete all[k];
+    lsSet(notesKey(), all);
+  }
+  UX.noteGet=noteGet; UX.noteSet=noteSet;
+  function paintNoteMarks(){
+    var all=notesAll(), b=bookId();
+    qsa('#itemList .item[data-entry-id]').forEach(function(row){
+      var id=row.getAttribute('data-entry-id'); var has=!!all[b+'/'+id];
+      var m=row.querySelector('.ux-nmark');
+      if(has && !m){ var en=row.querySelector('.en'); if(en){ m=document.createElement('span'); m.className='ux-nmark'; m.title='有筆記'; m.textContent='✎'; en.appendChild(m); } }
+      else if(!has && m) m.parentNode.removeChild(m);
+    });
+  }
+  var noteTimer=0;
+  function paintNoteBox(e){
+    var old=$('uxNote'); if(old) old.parentNode.removeChild(old);
+    var host=$('detailBook'); if(!host || !e) return;
+    var txt=noteGet(e.id);
+    var box=document.createElement('div'); box.id='uxNote'; box.className='ux-note'+(txt?'':' closed');
+    box.innerHTML='<div class="hd"><span>✎ 我的筆記<span class="st" id="uxNoteSt">'+(txt?'':'　點此新增聯想、記法')+'</span></span><span class="chev">▾</span></div>'+
+      '<textarea id="uxNoteTa" placeholder="寫下你的聯想、字根、易混字…（自動儲存，隨 GitHub 同步）" aria-label="個人筆記"></textarea>';
+    host.parentNode.insertBefore(box, host.nextSibling);
+    var ta=box.querySelector('textarea'); ta.value=txt;
+    box.querySelector('.hd').addEventListener('click', function(){ box.classList.toggle('closed'); if(!box.classList.contains('closed')) setTimeout(function(){ ta.focus(); },30); });
+    ta.addEventListener('input', function(){
+      clearTimeout(noteTimer);
+      var id=e.id, st=$('uxNoteSt'); if(st) st.textContent='　儲存中…';
+      noteTimer=setTimeout(function(){ noteSet(id, ta.value); var s2=$('uxNoteSt'); if(s2) s2.textContent=ta.value.trim()?'　已儲存':''; paintNoteMarks(); }, 500);
+    });
+    ta.addEventListener('keydown', function(ev){ ev.stopPropagation(); if(ev.key==='Escape') ta.blur(); }, true);
+  }
+  UX.focusNote=function(){ var box=$('uxNote'); if(!box) return; box.classList.remove('closed'); var ta=$('uxNoteTa'); if(ta) ta.focus(); };
+
+  /* ===================================================================
+     showDetail 掛勾：進度、遮蔽、筆記、播放修正、教學
+     =================================================================== */
+  var _showDetail=window.showDetail;
+  window.showDetail=function(){
+    var r=_showDetail.apply(this, arguments);
+    try{
+      var e=curEntry();
+      paintDetailPos(); applyDetailMask(); rebindDetailTaps(e); paintNoteBox(e);
+      hideUndo();
+      if(!S.coachSeen) setTimeout(function(){ showCoach(false); }, 400);
+      UX.onShowDetail && UX.onShowDetail(e);
+    }catch(err){ console.warn('UX showDetail', err); }
+    return r;
+  };
+  var _showList=window.showList;
+  window.showList=function(){
+    var r=_showList.apply(this, arguments);
+    try{ paintFab(); UX.onShowList && UX.onShowList(); }catch(e){}
+    return r;
+  };
+  var _setListMode=window.setListMode;
+  window.setListMode=function(){ var r=_setListMode.apply(this, arguments); try{ paintFab(); }catch(e){} return r; };
+
+  /* ===================================================================
+     聽力工具：睡眠定時、每字重複、字間停頓、字體大小
+     =================================================================== */
+  var sleepAt=0, sleepTimer=0, sleepTick=0, repState={id:null,n:0};
+  function buildTools(){
+    var nav=document.querySelector('.bottom-nav'); if(!nav || $('uxToolsBtn')) return;
+    var b=document.createElement('button'); b.type='button'; b.id='uxToolsBtn'; b.title='聽力工具：睡眠定時、每字重複、字間停頓、字體大小（T）';
+    b.setAttribute('aria-label', '聽力工具');
+    b.innerHTML='<span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="7.5" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M12 9v4l2.5 2M9.5 3h5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span>工具<span class="tm" id="uxToolsTm"></span>';
+    nav.appendChild(b);
+    b.addEventListener('click', function(){ var t=$('uxTools'), m=$('uxToolsMask'); var on=!t.classList.contains('show'); t.classList.toggle('show',on); m.classList.toggle('show',on); paintTools(); });
+    $('uxToolsMask').addEventListener('click', closeTools);
+    function seg(id, get, set){
+      qsa('#'+id+' button').forEach(function(x){ x.addEventListener('click', function(){ set(parseFloat(x.getAttribute('data-v'))); paintTools(); }); });
+    }
+    seg('uxSleepSeg', null, setSleep);
+    seg('uxRepSeg', null, function(v){ S.repeat=v; saveS(); repState={id:null,n:0}; toast(v>1?('每個字連續播 '+v+' 次'):'每個字播 1 次'); });
+    seg('uxGapSeg', null, function(v){ S.gap=v; saveS(); toast(v?('字與字之間停 '+v+' 秒'):'字之間不停頓'); });
+    $('uxFsDn').addEventListener('click', function(){ setScale(S.scale-0.1); });
+    $('uxFsUp').addEventListener('click', function(){ setScale(S.scale+0.1); });
+    applyScale();
+  }
+  function closeTools(){ $('uxTools').classList.remove('show'); $('uxToolsMask').classList.remove('show'); }
+  function paintTools(){
+    function mark(id, v){ qsa('#'+id+' button').forEach(function(x){ x.classList.toggle('on', parseFloat(x.getAttribute('data-v'))===v); }); }
+    mark('uxSleepSeg', sleepAt ? currentSleepChoice : 0); mark('uxRepSeg', S.repeat); mark('uxGapSeg', S.gap);
+    $('uxFsVal').textContent=Math.round(S.scale*100)+'%';
+    var st=$('uxSleepSt'); if(st) st.textContent = sleepAt ? ('剩 '+fmtLeft()) : '關閉';
+    var btn=$('uxToolsBtn'); if(btn){ btn.classList.toggle('on', !!sleepAt || S.repeat>1 || S.gap>0); btn.classList.toggle('timer', !!sleepAt); }
+  }
+  var currentSleepChoice=0;
+  function fmtLeft(){ var s=Math.max(0, Math.round((sleepAt-Date.now())/1000)); return (s>=60 ? Math.ceil(s/60)+' 分' : s+' 秒'); }
+  function setSleep(min){
+    clearTimeout(sleepTimer); clearInterval(sleepTick); sleepAt=0; currentSleepChoice=min;
+    if(min>0){
+      sleepAt=Date.now()+min*60000;
+      sleepTimer=setTimeout(function(){ sleepAt=0; currentSleepChoice=0; try{ hardStopAllPlayback(); }catch(e){} toast('睡眠定時：已停止播放', 2600); paintTools(); clearInterval(sleepTick); }, min*60000);
+      sleepTick=setInterval(function(){ var tm=$('uxToolsTm'); if(tm) tm.textContent=fmtLeft(); var st=$('uxSleepSt'); if(st) st.textContent='剩 '+fmtLeft(); }, 1000);
+      toast(min+' 分鐘後自動停止播放');
+    }else toast('已取消睡眠定時');
+    var tm=$('uxToolsTm'); if(tm) tm.textContent=sleepAt?fmtLeft():'';
+    paintTools();
+  }
+  function setScale(v){ S.scale=Math.max(0.8, Math.min(1.5, Math.round(v*10)/10)); saveS(); applyScale(); paintTools(); UX.paintSettings && UX.paintSettings(); }
+  function applyScale(){ document.documentElement.style.setProperty('--ux-scale', S.scale); var v=$('uxFsVal'); if(v) v.textContent=Math.round(S.scale*100)+'%'; }
+  UX.setScale=setScale;
+  // 連續播放時每字重複 N 次、字間停頓
+  var _playCurrent=window.playCurrent;
+  window.playCurrent=function(autoContinue){
+    var r=_playCurrent.apply(this, arguments);
+    try{
+      var after=window._kinAfterEntry;
+      if(typeof after==='function' && (S.repeat>1 || S.gap>0)){
+        var e=curEntry(), id=e?String(e.id):null, epoch=window._kinPlaybackEpoch;
+        window._kinAfterEntry=function(){
+          if(epoch!==window._kinPlaybackEpoch) return;
+          if(S.repeat>1 && id){
+            if(repState.id!==id){ repState={id:id,n:1}; } else repState.n++;
+            if(repState.n < S.repeat){
+              var sub=$('playSub'); if(sub) sub.textContent='重複 '+(repState.n+1)+' / '+S.repeat;
+              setTimeout(function(){ if(epoch===window._kinPlaybackEpoch) window.playCurrent(true); }, Math.max(350, S.gap*1000));
+              return;
+            }
+          }
+          repState={id:null,n:0};
+          if(S.gap>0){ var sub2=$('playSub'); if(sub2) sub2.textContent='停頓 '+S.gap+' 秒…'; setTimeout(function(){ if(epoch===window._kinPlaybackEpoch) after(); }, S.gap*1000); }
+          else after();
+        };
+      }
+    }catch(e){}
+    return r;
+  };
+
+  /* ===================================================================
+     12. 快捷鍵（新增，與既有按鍵不衝突）
+     =================================================================== */
+  document.addEventListener('keydown', function(ev){
+    if(ev.ctrlKey||ev.metaKey||ev.altKey||isTyping(ev.target)) return;
+    if(document.body.classList.contains('ux-quiz-open')) return;   // 測驗有自己的按鍵
+    if(panelOpen()) return;
+    var k=ev.key;
+    if(k==='f'||k==='F'){ if(onList()){ ev.preventDefault(); UX.focusSearch(); } return; }
+    if(k==='s'||k==='S'){ if(onDetail()&&S.mask!=='none'){ ev.preventDefault(); revealDetail(); } return; }
+    if(k==='m'||k==='M'){ ev.preventDefault(); UX.cycleMask(); return; }
+    if(k==='z'||k==='Z'){ ev.preventDefault(); doUndo(); return; }
+    if(k==='r'||k==='R'){ if(onList()){ ev.preventDefault(); toggleShuffle(); } return; }
+    if(k==='q'||k==='Q'){ ev.preventDefault(); UX.openQuiz && UX.openQuiz(); return; }
+    if(k==='n'||k==='N'){ if(onDetail()){ ev.preventDefault(); UX.focusNote(); } return; }
+    if(k==='t'||k==='T'){ ev.preventDefault(); var b=$('uxToolsBtn'); if(b) b.click(); return; }
+  });
+  (function(){
+    var help=$('hotkeyHelp'); if(!help) return;
+    help.insertAdjacentHTML('beforeend',
+      '<div><kbd>F</kbd>搜尋單字</div><div><kbd>S</kbd>遮蔽時顯示答案</div><div><kbd>M</kbd>切換遮蔽模式</div>'+
+      '<div><kbd>Z</kbd>復原上一個標記</div><div><kbd>R</kbd>洗牌</div><div><kbd>Q</kbd>測驗</div><div><kbd>N</kbd>筆記</div><div><kbd>T</kbd>聽力工具</div>');
+  })();
+
+  UX._t={searchResults:searchResults, shuffled:shuffled, hash:hash, hasNext:hasNext, clipFor:clipFor, notesKey:notesKey};
+  /* ---------- 啟動 ---------- */
+  function init(){ buildBar(); buildHome(); buildTools(); applyListMask(); paintFab(); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+  // 換書、換人後首頁與工具列都要重畫
+  window.addEventListener('focus', function(){ try{ paintGoal(); }catch(e){} });
+})();
+
+</script>
+<script>
+
+/* ===================================================================
+   UX 強化模組 v2.0 — 測驗（選擇題／聽力／拼字聽寫／例句填空）
+   =================================================================== */
+(function(){
+  'use strict';
+  var UX=window.UX, $=UX.$, qsa=UX.qsa, esc=UX.esc, S=UX.S, toast=UX.toast, haptic=UX.haptic;
+
+  var MODE_NOTE={
+    en2zh:'看英文選出正確中文意思。答錯會自動標為「要複習」並進入弱點清單。',
+    zh2en:'看中文選出正確英文單字，練習主動回想。',
+    listen:'只聽音檔（不顯示拼字）選出意思，訓練聽力辨識。',
+    spell:'聽音檔後拼出單字。可逐字母提示；輸入正確才進下一題。',
+    cloze:'例句挖空，依中文翻譯與語境填入單字（接受例句中的原形或變化形）。'
+  };
+  var Q=null, preset=null, advTimer=0, sel={mode:'en2zh', src:'range', n:10};
+
+  /* ---------- 題庫 ---------- */
+  function statusOf(id){ return statusMap[id]||''; }
+  function poolFor(src){
+    var list;
+    if(preset && preset.ids){ var set={}; preset.ids.forEach(function(i){ set[String(i)]=1; }); list=DATA.filter(function(e){ return set[String(e.id)]; }); }
+    else if(src==='review') list=DATA.filter(function(e){ return statusOf(e.id)==='review'; });
+    else if(src==='due') list=(typeof srsDueList==='function')?srsDueList():[];
+    else if(src==='learned') list=DATA.filter(function(e){ return statusOf(e.id)==='ok'; });
+    else if(src==='weak'){
+      var K=window.KIN_STRENGTH;
+      list=DATA.filter(function(e){ if(statusOf(e.id)==='review') return true; if(!K) return false; try{ return K.level(e.id)<=2 || K.isRelapse(e.id); }catch(x){ return false; } });
+    }
+    else if(src==='recent'){
+      var lim=UX.dayStr(new Date(+UX.today()-3*864e5));
+      list=DATA.filter(function(e){ var c=(typeof srsMap!=='undefined')&&srsMap[e.id]; if(c && c.last && c.last>=lim) return true; var h=window.KIN_STRENGTH&&window.KIN_STRENGTH.get(e.id); return !!(h && h.last && h.last>=lim); });
+    }
+    else list=filtered();
+    return list.slice();
+  }
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){ var j=(Math.random()*(i+1))|0, t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function meanText(e){ return String(e.mean||e.pos||'').replace(/\s+/g,' ').trim(); }
+  function headVariants(e){ return String(e.word||'').split(/[\/／]/).map(function(x){ return x.trim(); }).filter(Boolean); }
+  function normAns(s){ return String(s||'').toLowerCase().replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim().replace(/[.,!?;:]+$/,'').trim(); }
+
+  function clozeInfo(e){
+    var sent=String(e.en||'').trim(); if(!sent) return null;
+    var heads=headVariants(e); if(!heads.length) return null;
+    var head=heads[0].toLowerCase();
+    if(normAns(sent)===normAns(heads.join(' / ')) || normAns(sent)===head) return null;   // 例句就是單字本身
+    var low=sent.toLowerCase();
+    if(head.indexOf(' ')>=0){
+      var idx=low.indexOf(head); if(idx<0) return null;
+      return {pre:sent.slice(0,idx), ans:sent.slice(idx,idx+head.length), post:sent.slice(idx+head.length), accept:heads};
+    }
+    var re=/[A-Za-z][A-Za-z'’\-]*/g, m, best=null, bs=0;
+    while((m=re.exec(sent))){
+      var lw=m[0].toLowerCase(), sc=0;
+      if(lw===head) sc=100;
+      else{
+        var stem=head.slice(0, Math.max(4, head.length-2));
+        if(lw.indexOf(stem)===0) sc=50+stem.length;
+        else if(lw.length>=4 && head.indexOf(lw)===0) sc=40+lw.length;
+      }
+      if(sc>bs){ bs=sc; best={t:m[0], i:m.index}; }
+    }
+    if(!best) return null;
+    return {pre:sent.slice(0,best.i), ans:best.t, post:sent.slice(best.i+best.t.length), accept:heads.concat([best.t])};
+  }
+
+  function distractors(e, mode, k){
+    var same=DATA.filter(function(x){ return x.level===e.level && x.id!==e.id; });
+    var all=DATA.filter(function(x){ return x.id!==e.id; });
+    var out=[], used={}; used[mode==='zh2en'?normAns(e.word):meanText(e)]=1;
+    function take(src, needPos){
+      var c=shuffle(src.slice());
+      for(var i=0;i<c.length && out.length<k;i++){
+        var x=c[i];
+        if(needPos && x.pos!==e.pos) continue;
+        var key = (mode==='zh2en') ? normAns(x.word) : meanText(x);
+        if(!key || used[key]) continue;
+        used[key]=1; out.push(x);
+      }
+    }
+    if(e.pos) take(same, true);
+    take(same, false); take(all, false);
+    return out.slice(0,k);
+  }
+  function buildQuestions(pool, mode, n){
+    var list=shuffle(pool.slice());
+    if(mode==='cloze') list=list.filter(function(e){ return !!clozeInfo(e); });
+    if(mode==='spell'||mode==='zh2en'||mode==='listen') list=list.filter(function(e){ return headVariants(e).length && /[A-Za-z]/.test(e.word); });
+    if(n>0) list=list.slice(0,n); else list=list.slice(0,200);
+    return list.map(function(e){
+      var q={e:e, mode:mode};
+      if(mode==='en2zh'||mode==='listen'||mode==='zh2en'){
+        var ds=distractors(e, mode, 3);
+        q.opts=shuffle([e].concat(ds));
+      }
+      if(mode==='cloze') q.cz=clozeInfo(e);
+      return q;
+    });
+  }
+
+  /* ---------- 學習紀錄回寫 ---------- */
+  function applyResult(e, correct){
+    if(!S.quizAffects) return false;
+    var id=e.id, before=statusMap[id]||'';
+    UX.quiet=true;
+    try{
+      if(!correct){
+        statusMap[id]='review'; saveStatus();
+        if(typeof srsGrade==='function') srsGrade(id,false);
+        try{ window.KIN_STRENGTH && window.KIN_STRENGTH.record(id,'wrong'); }catch(x){}
+      }else if(before==='review'){
+        statusMap[id]='ok'; saveStatus();
+        if(typeof srsGrade==='function') srsGrade(id,true);
+      }else if(before==='ok'){
+        if(typeof srsGrade==='function') srsGrade(id,true);
+      }else{
+        try{ window.KIN_STRENGTH && window.KIN_STRENGTH.record(id,'view'); }catch(x){}
+        UX.quiet=false; return false;   // 未學習答對：不改標記，改由測驗紀錄計入今日量
+      }
+    }finally{ UX.quiet=false; }
+    try{ updateStats(); refreshAllStatusUI(); if(typeof srsBadge==='function') srsBadge(); }catch(x){}
+    return true;
+  }
+
+  /* ---------- 畫面 ---------- */
+  function open(opts){
+    preset=(opts&&opts.ids&&opts.ids.length)?{ids:opts.ids, label:opts.label||'指定單字'}:null;
+    if(opts&&opts.mode) sel.mode=opts.mode;
+    if(!DATA||!DATA.length){ toast('尚未載入書籍'); return; }
+    try{ hardStopAllPlayback(); }catch(e){}
+    document.body.classList.add('ux-quiz-open');
+    $('uxQuiz').classList.add('show');
+    showSetup();
+    window.scrollTo(0,0);
+  }
+  function close(){
+    clearTimeout(advTimer);
+    document.body.classList.remove('ux-quiz-open');
+    $('uxQuiz').classList.remove('show');
+    try{ hardStopAllPlayback(); }catch(e){}
+    Q=null; preset=null;
+  }
+  UX.openQuiz=open; UX.closeQuiz=close;
+
+  function show(part){ ['uxQzSetup','uxQzPlay','uxQzResult'].forEach(function(id){ $(id).classList.toggle('ux-hide', id!==part); }); }
+  function paintSel(){
+    qsa('#uxQzMode button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v')===sel.mode); });
+    qsa('#uxQzSrc button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v')===sel.src); b.disabled=!!preset; });
+    qsa('#uxQzN button').forEach(function(b){ b.classList.toggle('on', parseInt(b.getAttribute('data-v'),10)===sel.n); });
+    $('uxQzModeNote').textContent=MODE_NOTE[sel.mode]||'';
+    var pool=poolFor(sel.src), usable=pool;
+    if(sel.mode==='cloze') usable=pool.filter(function(e){ return !!clozeInfo(e); });
+    var note=$('uxQzSrcNote');
+    note.textContent = preset ? ('指定：'+preset.label+'　共 '+usable.length+' 字') : ((typeof levelLabel==='function'&&sel.src==='range')?(levelLabel()+'　'):'')+'可出題 '+usable.length+' 字'+(sel.mode==='cloze'&&usable.length<pool.length?('（其中 '+(pool.length-usable.length)+' 字例句不適合挖空，已略過）'):'');
+    $('uxQzStart').disabled = usable.length < (sel.mode==='spell'||sel.mode==='cloze' ? 1 : 4);
+    $('uxQzStart').textContent = usable.length ? '開始測驗' : '此範圍沒有可出題的字';
+  }
+  function showSetup(){
+    show('uxQzSetup');
+    $('uxQzTitle').textContent='測驗'; $('uxQzSub').textContent=preset?('範圍：'+preset.label):'選擇題型、範圍與題數後開始';
+    paintSel();
+  }
+  qsa('#uxQzMode button').forEach(function(b){ b.addEventListener('click', function(){ sel.mode=b.getAttribute('data-v'); paintSel(); }); });
+  qsa('#uxQzSrc button').forEach(function(b){ b.addEventListener('click', function(){ if(preset) return; sel.src=b.getAttribute('data-v'); paintSel(); }); });
+  qsa('#uxQzN button').forEach(function(b){ b.addEventListener('click', function(){ sel.n=parseInt(b.getAttribute('data-v'),10); paintSel(); }); });
+  $('uxQzClose').addEventListener('click', function(){ if(Q && !Q.done && Q.i>0){ finish(true); } else close(); });
+  $('uxQzStart').addEventListener('click', function(){ start(); });
+
+  function start(){
+    var pool=poolFor(sel.src), qs=buildQuestions(pool, sel.mode, sel.n);
+    if(!qs.length){ toast('沒有可出題的單字'); return; }
+    Q={mode:sel.mode, src:sel.src, qs:qs, i:0, ok:0, ng:0, wrong:[], hinted:0, start:Date.now(), done:false, graded:0, answered:false};
+    show('uxQzPlay');
+    var names={en2zh:'英 → 中',zh2en:'中 → 英',listen:'聽力 → 中',spell:'拼字聽寫',cloze:'例句填空'};
+    $('uxQzTitle').textContent=names[Q.mode]||'測驗';
+    $('uxQzSub').textContent=(preset?preset.label:qsa('#uxQzSrc button.on')[0].textContent)+'　'+qs.length+' 題';
+    render();
+  }
+  function paintMeta(){
+    $('uxQzIdx').textContent=Math.min(Q.i+1,Q.qs.length); $('uxQzTot').textContent=Q.qs.length;
+    $('uxQzOk').textContent=Q.ok; $('uxQzNg').textContent=Q.ng;
+    $('uxQzBar').style.width=(((Q.i+(Q.answered?1:0))/Q.qs.length)*100).toFixed(1)+'%';
+  }
+  var SPK='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  function speak(e){ try{ if(UX.playWordClip && UX.playWordClip(e)) return; if(typeof playPart==='function') playPart(e,'word'); }catch(x){} }
+  function posTag(p){ return p ? '<span class="pos">'+esc(p)+'</span>' : ''; }
+  function meanHtml(e){ var t=meanText(e); return (typeof posTagHtml==='function') ? posTagHtml(t) : esc(t); }
+
+  function render(){
+    clearTimeout(advTimer);
+    var q=Q.qs[Q.i], e=q.e; Q.answered=false; Q.attempts=0; Q.hintN=0;
+    paintMeta();
+    $('uxQzFb').className='ux-fb'; $('uxQzFb').innerHTML='';
+    var card=$('uxQzCard'), ch=$('uxQzChoices'), sp=$('uxQzSpell');
+    var lv='<div class="lv">'+esc(e.id)+'　'+esc(e.level_label||e.level||'')+'</div>';
+    ch.innerHTML=''; sp.classList.add('ux-hide'); ch.classList.remove('ux-hide');
+    if(q.mode==='en2zh'){
+      card.innerHTML=lv+'<div class="w">'+esc(e.word)+'</div>'+(e.phon?'<div class="ph">'+esc(e.phon)+'</div>':'')+posTag(e.pos)+'<button type="button" class="spk" aria-label="播放發音">'+SPK+'</button>';
+      renderChoices(q, function(x){ return meanHtml(x); });
+    }else if(q.mode==='zh2en'){
+      card.innerHTML=lv+'<div class="w zh">'+meanHtml(e)+'</div>'+posTag(e.pos);
+      renderChoices(q, function(x){ return esc(x.word); });
+    }else if(q.mode==='listen'){
+      card.innerHTML=lv+'<div class="w" id="uxQzListenW">🔊 請聽音檔</div><div class="ph">點喇叭可重聽</div>'+posTag(e.pos)+'<button type="button" class="spk" aria-label="播放發音">'+SPK+'</button>';
+      renderChoices(q, function(x){ return meanHtml(x); });
+      if(Q.i===0) speak(e); else setTimeout(function(){ speak(e); }, 250);
+    }else if(q.mode==='spell'){
+      ch.classList.add('ux-hide'); sp.classList.remove('ux-hide');
+      card.innerHTML=lv+'<div class="w zh">'+meanHtml(e)+'</div>'+posTag(e.pos)+'<div class="hint" id="uxQzHintLine"></div><button type="button" class="spk" aria-label="播放發音">'+SPK+'</button>';
+      $('uxQzReplay').classList.remove('ux-hide');
+      setupInput('聽音檔後拼出單字');
+      if(Q.i===0) speak(e); else setTimeout(function(){ speak(e); }, 250);
+    }else if(q.mode==='cloze'){
+      ch.classList.add('ux-hide'); sp.classList.remove('ux-hide');
+      var cz=q.cz;
+      card.innerHTML=lv+'<div class="cloze">'+esc(cz.pre)+'<span class="bl" id="uxQzBlank">'+'_'.repeat(Math.min(12,Math.max(4,cz.ans.length)))+'</span>'+esc(cz.post)+'</div>'+
+        '<div class="zh">'+esc(e.ja||'')+'</div>'+(e.pos?'<div style="text-align:left">'+posTag(e.pos)+'</div>':'')+'<div class="hint" id="uxQzHintLine"></div>';
+      $('uxQzReplay').classList.add('ux-hide');
+      setupInput('填入空格的單字');
+    }
+    var spk=card.querySelector('.spk'); if(spk) spk.addEventListener('click', function(ev){ ev.stopPropagation(); speak(e); });
+  }
+  function renderChoices(q, labelFn){
+    var ch=$('uxQzChoices');
+    ch.innerHTML=q.opts.map(function(x,i){ return '<button type="button" data-i="'+i+'"><span class="k">'+(i+1)+'</span>'+labelFn(x)+'</button>'; }).join('');
+    qsa('button', ch).forEach(function(b){ b.addEventListener('click', function(){ choose(parseInt(b.getAttribute('data-i'),10)); }); });
+  }
+  function setupInput(ph){
+    var inp=$('uxQzIn'); inp.value=''; inp.className=''; inp.placeholder=ph; inp.disabled=false;
+    $('uxQzCheck').disabled=false; $('uxQzHint').disabled=false; $('uxQzGiveUp').disabled=false;
+    setTimeout(function(){ try{ inp.focus(); }catch(x){} }, 80);
+  }
+
+  function answerOf(q){ return q.mode==='cloze' ? q.cz.ans : headVariants(q.e)[0]; }
+  function accepts(q, v){
+    var n=normAns(v); if(!n) return false;
+    var list = q.mode==='cloze' ? q.cz.accept : headVariants(q.e);
+    return list.some(function(a){ return normAns(a)===n; });
+  }
+  function choose(i){
+    if(Q.answered) return;
+    var q=Q.qs[Q.i], x=q.opts[i], correct=(x.id===q.e.id);
+    Q.answered=true;
+    qsa('#uxQzChoices button').forEach(function(b,j){
+      b.disabled=true;
+      if(q.opts[j].id===q.e.id) b.classList.add('ok');
+      else if(j===i) b.classList.add('ng'); else b.classList.add('dim');
+    });
+    settle(correct);
+  }
+  function check(){
+    if(Q.answered) return;
+    var q=Q.qs[Q.i], inp=$('uxQzIn'), v=inp.value;
+    if(!normAns(v)){ inp.classList.remove('ng'); void inp.offsetWidth; inp.classList.add('ng'); return; }
+    Q.attempts++;
+    if(accepts(q, v)){
+      Q.answered=true; inp.className='ok'; inp.disabled=true;
+      var hinted = Q.hintN>0;
+      if(hinted) Q.hinted++;
+      settle(true, hinted ? '（用了 '+Q.hintN+' 個提示）' : '');
+    }else{
+      inp.classList.remove('ng'); void inp.offsetWidth; inp.classList.add('ng');
+      var fb=$('uxQzFb'); fb.className='ux-fb show';
+      fb.innerHTML='<div class="t ng">再試一次</div><div class="ux-diff">'+diffHtml(v, answerOf(q))+'</div><div class="exz">紅色是打錯的位置。可按「提示一個字母」或「看答案」。</div>';
+      haptic([15,40,15]);
+      if(Q.attempts>=3){ giveUp(); }
+    }
+  }
+  function diffHtml(user, ans){
+    var u=normAns(user), a=normAns(ans), out='';
+    var L=Math.max(u.length,a.length);
+    for(var i=0;i<L;i++){
+      var uc=u[i]||'', ac=a[i]||'';
+      if(uc && uc===ac) out+='<span class="g">'+esc(uc)+'</span>';
+      else if(uc) out+='<span class="r">'+esc(uc)+'</span>';
+      else out+='<span class="m">·</span>';
+    }
+    return out;
+  }
+  function hint(){
+    if(Q.answered) return;
+    var q=Q.qs[Q.i], ans=answerOf(q);
+    Q.hintN=Math.min(ans.length, Q.hintN+1);
+    var line=$('uxQzHintLine'); if(line) line.textContent=ans.slice(0,Q.hintN)+'·'.repeat(Math.max(0,ans.length-Q.hintN));
+    if(Q.hintN>=ans.length){ giveUp(); }
+    try{ $('uxQzIn').focus(); }catch(x){}
+  }
+  function giveUp(){
+    if(Q.answered) return;
+    Q.answered=true;
+    var inp=$('uxQzIn'); inp.disabled=true; inp.className='ng'; inp.value=answerOf(Q.qs[Q.i]);
+    settle(false, '（顯示答案）');
+  }
+  function settle(correct, extra){
+    var q=Q.qs[Q.i], e=q.e;
+    if(correct) Q.ok++; else { Q.ng++; Q.wrong.push(e.id); }
+    if(applyResult(e, correct)) Q.graded++;
+    haptic(correct?8:[20,40,20]);
+    if(q.mode==='listen'){ var w=$('uxQzListenW'); if(w) w.textContent=e.word; }
+    if(q.mode==='cloze'){ var bl=$('uxQzBlank'); if(bl) bl.textContent=q.cz.ans; }
+    var fb=$('uxQzFb'); fb.className='ux-fb show';
+    var note=String(e.note||''); if(note.length>90) note=note.slice(0,90)+'…';
+    fb.innerHTML='<div class="t '+(correct?'ok':'ng')+'">'+(correct?'✓ 正確':'✗ 答錯了')+' '+esc(extra||'')+'</div>'+
+      '<div class="ex"><b>'+esc(e.word)+'</b>'+(e.phon?' <span style="color:#999;font-size:12px;font-family:Consolas,monospace">'+esc(e.phon)+'</span>':'')+'　'+meanHtml(e)+'</div>'+
+      (e.en && q.mode!=='cloze' ? '<div class="ex" style="margin-top:6px">'+esc(e.en)+'</div><div class="exz">'+esc(e.ja||'')+'</div>' : (q.mode==='cloze'?'<div class="exz" style="margin-top:6px">'+esc(e.en)+'</div>':''))+
+      (note?'<div class="nt">◎ '+esc(note)+'</div>':'')+
+      '<div class="row"><button type="button" id="uxQzSpk2">🔊 發音</button><button type="button" id="uxQzDetail">解說</button><button type="button" class="pri" id="uxQzNext">'+(Q.i+1>=Q.qs.length?'看結果':'下一題 →')+'</button></div>';
+    $('uxQzSpk2').addEventListener('click', function(){ speak(e); });
+    $('uxQzDetail').addEventListener('click', function(){ var id=e.id; finish(true); close(); setTimeout(function(){ try{ openDetail(id); }catch(x){} },60); });
+    $('uxQzNext').addEventListener('click', next);
+    if(q.mode==='spell'||q.mode==='cloze') $('uxQzReplay').classList.remove('ux-hide');
+    if(correct && !extra){ advTimer=setTimeout(next, q.mode==='listen'?1500:1200); }
+    else if(!correct && (q.mode==='spell'||q.mode==='cloze')) setTimeout(function(){ try{ speak(e); }catch(x){} }, 250);
+    paintMeta();
+  }
+  function next(){
+    clearTimeout(advTimer);
+    if(!Q || !Q.answered) return;
+    Q.i++;
+    if(Q.i>=Q.qs.length){ finish(false); return; }
+    render();
+    window.scrollTo(0,0);
+  }
+  function finish(early){
+    clearTimeout(advTimer);
+    if(!Q){ close(); return; }
+    var answered=Q.ok+Q.ng;
+    if(!answered){ close(); return; }
+    Q.done=true;
+    var secs=Math.round((Date.now()-Q.start)/1000), pct=Math.round(Q.ok/answered*100);
+    show('uxQzResult');
+    $('uxQzScore').textContent=pct;
+    $('uxQzResSub').textContent=(early?'提前結束　':'')+'答對 '+Q.ok+' / '+answered+' 題　用時 '+fmt(secs)+(Q.hinted?('　提示 '+Q.hinted+' 題'):'');
+    var g = pct===100?'S　完美！':(pct>=90?'A　很穩':(pct>=75?'B　不錯':(pct>=60?'C　再加油':'D　多複習幾次')));
+    $('uxQzGrade').textContent=g;
+    var wl=$('uxQzWrong'), card=$('uxQzWrongCard');
+    if(Q.wrong.length){
+      card.classList.remove('ux-hide');
+      wl.innerHTML=Q.wrong.map(function(id){ var e=UX.entryById(id); if(!e) return ''; return '<li><span class="w">'+esc(e.word)+'<small>'+esc(meanText(e))+'</small></span><button type="button" data-id="'+esc(id)+'">解說</button></li>'; }).join('');
+      qsa('button', wl).forEach(function(b){ b.addEventListener('click', function(){ var id=b.getAttribute('data-id'); close(); setTimeout(function(){ try{ openDetail(id); }catch(x){} },60); }); });
+    }else{ card.classList.add('ux-hide'); }
+    $('uxQzRetryWrong').classList.toggle('ux-hide', !Q.wrong.length);
+    if(pct===100 && answered>=5){ UX.confetti(); haptic([30,60,30]); }
+    var rec={d:UX.dayStr(UX.today()), m:Q.mode, n:answered, c:Q.ok, s:secs, g:Q.graded, w:Q.wrong.slice(0,50), b:UX.bookId()};
+    if(UX.logQuiz) UX.logQuiz(rec);
+    try{ updateStats(); }catch(x){}
+    window.scrollTo(0,0);
+  }
+  function fmt(s){ return s>=60 ? (Math.floor(s/60)+' 分 '+(s%60)+' 秒') : (s+' 秒'); }
+  $('uxQzCheck').addEventListener('click', check);
+  $('uxQzHint').addEventListener('click', hint);
+  $('uxQzGiveUp').addEventListener('click', giveUp);
+  $('uxQzReplay').addEventListener('click', function(){ if(Q) speak(Q.qs[Q.i].e); });
+  $('uxQzIn').addEventListener('keydown', function(ev){
+    ev.stopPropagation();
+    if(ev.key==='Enter'){ ev.preventDefault(); if(Q && Q.answered) next(); else check(); }
+    else if(ev.key==='Escape'){ ev.preventDefault(); ev.target.blur(); }
+  }, true);
+  $('uxQzRetryWrong').addEventListener('click', function(){ if(!Q) return; var ids=Q.wrong.slice(); var m=Q.mode; preset={ids:ids,label:'剛答錯的字'}; sel.mode=m; sel.n=0; start(); });
+  $('uxQzAgain').addEventListener('click', function(){ start(); });
+  $('uxQzBack').addEventListener('click', function(){ Q=null; showSetup(); });
+
+  // 測驗中的鍵盤：1–4 選答案、Enter／→ 下一題、Esc 關閉
+  document.addEventListener('keydown', function(ev){
+    if(!document.body.classList.contains('ux-quiz-open')) return;
+    if(ev.ctrlKey||ev.metaKey||ev.altKey) return;
+    if(UX.isTyping(ev.target)) return;
+    var k=ev.key;
+    if(k==='Escape'){ ev.preventDefault(); ev.stopImmediatePropagation(); if(Q && !Q.done && Q.i>0) finish(true); else close(); return; }
+    if(!Q || Q.done) return;
+    if(/^[1-4]$/.test(k) && !Q.answered && Q.qs[Q.i].opts){ ev.preventDefault(); ev.stopImmediatePropagation(); choose(parseInt(k,10)-1); return; }
+    if((k==='Enter'||k===' '||k==='ArrowRight') && Q.answered){ ev.preventDefault(); ev.stopImmediatePropagation(); next(); return; }
+    if(k==='/'||k==='p'||k==='P'){ ev.preventDefault(); ev.stopImmediatePropagation(); speak(Q.qs[Q.i].e); return; }
+  }, true);
+
+  UX._tq={clozeInfo:clozeInfo, normAns:normAns, distractors:distractors, buildQuestions:buildQuestions, poolFor:poolFor, diffHtml:diffHtml, headVariants:headVariants};
+  // 儀表板加入測驗入口
+  (function(){
+    var due=document.querySelector('#srsScreen .srs-due'); if(!due || $('uxSrsQuizBtn')) return;
+    var b=document.createElement('button'); b.type='button'; b.id='uxSrsQuizBtn'; b.className='srs-btn'; b.style.marginTop='8px';
+    b.textContent='用測驗複習到期單字'; b.onclick=function(){ open({}); sel.src='due'; paintSel(); };
+    due.appendChild(b);
+  })();
+})();
+
+</script>
+<script>
+
+/* ===================================================================
+   UX 強化模組 v2.0 — 熱力圖、學習時間、成就徽章、學習結算
+   =================================================================== */
+(function(){
+  'use strict';
+  var UX=window.UX, $=UX.$, qsa=UX.qsa, esc=UX.esc, S=UX.S, toast=UX.toast, haptic=UX.haptic;
+  var dayStr=UX.dayStr, today=UX.today, uid=UX.uid, lsGet=UX.lsGet, lsSet=UX.lsSet;
+
+  function qKey(){ return 'kinQuizLog:'+uid(); }
+  function tKey(){ return 'kinTime:'+uid(); }
+  function aKey(){ return 'kinAch:'+uid(); }
+  function gKey(){ return 'kinGoalDays:'+uid(); }
+  function quizLog(){ var a=lsGet(qKey(), []); return Array.isArray(a)?a:[]; }
+  function timeLog(){ return lsGet(tKey(), {}); }
+  function achMap(){ return lsGet(aKey(), {}); }
+
+  /* ---------- 彙整每日學習量：標記（跨書） + 測驗中未回寫的答題 ---------- */
+  function dailyCounts(){
+    var out=UX.allSrsLogs();
+    quizLog().forEach(function(r){ var extra=Math.max(0,(r.n||0)-(r.g||0)); if(extra) out[r.d]=(out[r.d]||0)+extra; });
+    return out;
+  }
+  UX.dailyCounts=dailyCounts;
+  UX.extraToday=function(){ var t=dayStr(today()), n=0; quizLog().forEach(function(r){ if(r.d===t) n+=Math.max(0,(r.n||0)-(r.g||0)); }); return n; };
+  function streak(counts){
+    counts=counts||dailyCounts();
+    var n=0, d=today();
+    if(!counts[dayStr(d)]) d=new Date(+d-864e5);
+    while(counts[dayStr(d)]){ n++; d=new Date(+d-864e5); }
+    return n;
+  }
+  UX.streak=function(){ return streak(); };
+
+  /* ---------- 熱力圖 ---------- */
+  function heatmapHTML(weeks, counts, compact){
+    counts=counts||dailyCounts();
+    var t=today(), dow=(t.getDay()+6)%7;             // 週一 = 0
+    var end=new Date(+t+(6-dow)*864e5);              // 本週日
+    var start=new Date(+end-(weeks*7-1)*864e5);
+    var g=S.goal||20, cells='', months='', lastM=-1, tk=dayStr(t), total=0, active=0, best=0, bestDay='';
+    for(var w=0;w<weeks;w++){
+      var wd=new Date(+start+w*7*864e5), m=wd.getMonth();
+      if(m!==lastM && (w===0 || wd.getDate()<=7)){ months+='<span>'+(m+1)+'月</span>'; lastM=m; } else months+='<span></span>';
+      for(var r=0;r<7;r++){
+        var d=new Date(+start+(w*7+r)*864e5), k=dayStr(d), v=counts[k]||0, cls='';
+        if(d>t) cls='future';
+        else{
+          total+=v; if(v){ active++; if(v>best){ best=v; bestDay=k; } }
+          cls = v===0?'':(v<g*0.5?'l1':(v<g?'l2':(v<g*2?'l3':'l4')));
+          if(k===tk) cls+=' today';
+        }
+        cells+='<i class="'+cls+'" data-d="'+k+'" data-v="'+v+'" title="'+k+'　'+v+' 字"></i>';
+      }
+    }
+    var wdl=compact?'':'<div class="wd"><span>一</span><span></span><span>三</span><span></span><span>五</span><span></span><span>日</span></div>';
+    return {html:'<div class="ux-heat'+(compact?' compact':'')+'"><div class="mo">'+months+'</div><div class="gd">'+wdl+'<div class="cells">'+cells+'</div></div>'+
+      (compact?'':'<div class="lg">少 <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i> 多　（依每日目標 '+g+' 字分級）</div>')+'</div>',
+      total:total, active:active, best:best, bestDay:bestDay};
+  }
+  function bindHeatTap(root){
+    if(!root) return;
+    root.addEventListener('click', function(ev){
+      var i=ev.target.closest('.cells i'); if(!i) return;
+      ev.stopPropagation();
+      var d=i.getAttribute('data-d'), v=i.getAttribute('data-v');
+      if(i.classList.contains('future')) return;
+      toast(d.slice(5).replace('-','/')+'　'+(v==='0'?'沒有學習紀錄':('學了 '+v+' 字')));
+    });
+  }
+  UX.paintMiniHeat=function(){
+    var box=$('uxMiniHeatBox'); if(!box) return;
+    var h=heatmapHTML(20, null, true);
+    box.innerHTML=h.html;
+    var s=$('uxMiniHeatSum'); if(s) s.textContent='活躍 '+h.active+' 天　共 '+h.total+' 字';
+    if(!box._bound){ box._bound=true; bindHeatTap(box); }
+  };
+
+  /* ---------- 學習時間（前景且近 3 分鐘內有操作才計） ---------- */
+  var lastAct=Date.now(), sessSecs=0;
+  ['keydown','touchstart','click','scroll','pointerdown'].forEach(function(ev){ window.addEventListener(ev, function(){ lastAct=Date.now(); }, {passive:true, capture:true}); });
+  setInterval(function(){
+    if(document.visibilityState!=='visible') return;
+    if(Date.now()-lastAct>180000) return;
+    var tl=timeLog(), k=dayStr(today()); tl[k]=(tl[k]||0)+15; lsSet(tKey(), tl); sessSecs+=15;
+    checkAch('time');
+  }, 15000);
+  function totalSecs(){ var tl=timeLog(), n=0; for(var k in tl) n+=tl[k]||0; return n; }
+  function fmtH(sec){ var h=Math.floor(sec/3600), m=Math.round((sec%3600)/60); return h ? (h+' 小時 '+m+' 分') : (m+' 分'); }
+  UX.totalSecs=totalSecs;
+
+  /* ---------- 成就 ---------- */
+  var ACH=[
+    {id:'first',   ic:'🌱', n:'第一步',       d:'完成第一次標記',          f:function(c){ return c.marks>=1; }},
+    {id:'m100',    ic:'📚', n:'百字',         d:'累計標記 100 次',          f:function(c){ return c.marks>=100; }},
+    {id:'m500',    ic:'🏛️', n:'五百字',       d:'累計標記 500 次',          f:function(c){ return c.marks>=500; }},
+    {id:'m1000',   ic:'🏔️', n:'千字',         d:'累計標記 1,000 次',        f:function(c){ return c.marks>=1000; }},
+    {id:'s3',      ic:'🔥', n:'連續 3 天',    d:'連續學習 3 天',            f:function(c){ return c.streak>=3; }},
+    {id:'s7',      ic:'⚡', n:'連續 7 天',    d:'連續學習 7 天',            f:function(c){ return c.streak>=7; }},
+    {id:'s30',     ic:'🌙', n:'連續 30 天',   d:'連續學習 30 天',           f:function(c){ return c.streak>=30; }},
+    {id:'s100',    ic:'👑', n:'連續 100 天',  d:'連續學習 100 天',          f:function(c){ return c.streak>=100; }},
+    {id:'day50',   ic:'🚀', n:'單日 50',      d:'一天內學習 50 字',         f:function(c){ return c.bestDay>=50; }},
+    {id:'goal7',   ic:'🎯', n:'目標達人',     d:'連續 7 天達成每日目標',    f:function(c){ return c.goalStreak>=7; }},
+    {id:'q1',      ic:'📝', n:'初試身手',     d:'完成第一次測驗',           f:function(c){ return c.quizzes>=1; }},
+    {id:'q10',     ic:'🧠', n:'測驗常客',     d:'完成 10 次測驗',           f:function(c){ return c.quizzes>=10; }},
+    {id:'perfect', ic:'💯', n:'滿分',         d:'測驗滿分（10 題以上）',    f:function(c){ return c.perfect>=1; }},
+    {id:'spell',   ic:'✍️', n:'拼字高手',     d:'拼字聽寫答對 50 題',       f:function(c){ return c.spellOk>=50; }},
+    {id:'mature100',ic:'🌳', n:'鞏固百字',    d:'本書鞏固 100 字（間隔 ≥21 天）', f:function(c){ return c.mature>=100; }},
+    {id:'time10h', ic:'⏳', n:'十小時',       d:'累積學習 10 小時',         f:function(c){ return c.secs>=36000; }}
+  ];
+  function ctx(){
+    var counts=dailyCounts(), marks=0, best=0;
+    for(var k in counts){ marks+=counts[k]; if(counts[k]>best) best=counts[k]; }
+    var ql=quizLog(), perfect=0, spellOk=0;
+    ql.forEach(function(r){ if(r.n>=10 && r.c===r.n) perfect++; if(r.m==='spell') spellOk+=(r.c||0); });
+    var mature=0; try{ DATA.forEach(function(e){ var c=srsMap[e.id]; if(c && c.ivl>=21) mature++; }); }catch(e){}
+    return {marks:marks, bestDay:best, streak:streak(counts), quizzes:ql.length, perfect:perfect, spellOk:spellOk, mature:mature, secs:totalSecs(), goalStreak:goalStreak()};
+  }
+  var pendingAch=[];
+  function checkAch(reason){
+    var have=achMap(), c=null, got=[];
+    ACH.forEach(function(a){
+      if(have[a.id]) return;
+      if(!c) c=ctx();
+      var ok=false; try{ ok=!!a.f(c); }catch(e){}
+      if(ok){ have[a.id]=dayStr(today()); got.push(a); }
+    });
+    if(got.length){
+      lsSet(aKey(), have);
+      got.forEach(function(a, i){ setTimeout(function(){ toast('🏅 解鎖成就　'+a.ic+' '+a.n+'：'+a.d, 2800, true); haptic([20,40,20,40,40]); }, 600+i*1400); });
+      pendingAch=pendingAch.concat(got);
+    }
+    return got;
+  }
+  UX.checkAch=checkAch;
+  function goalStreak(){
+    var days=lsGet(gKey(), {}), n=0, d=today();
+    if(!days[dayStr(d)]) d=new Date(+d-864e5);
+    while(days[dayStr(d)]){ n++; d=new Date(+d-864e5); }
+    return n;
+  }
+  UX.onGoalDone=function(){ var days=lsGet(gKey(), {}); days[dayStr(today())]=1; lsSet(gKey(), days); checkAch('goal'); };
+
+  /* ---------- 學習階段（結算） ---------- */
+  var sess={ok:0, rev:0, ids:[], at:0, quizN:0, quizOk:0};
+  function touchSess(){ var now=Date.now(); if(sess.at && now-sess.at>10*60000){ sess={ok:0,rev:0,ids:[],at:now,quizN:0,quizOk:0}; sessSecs=0; } sess.at=now; }
+  UX.onMark=function(id, before, after){
+    touchSess();
+    if(after==='ok') sess.ok++; else if(after==='review') sess.rev++;
+    if(after && sess.ids.indexOf(id)<0) sess.ids.push(id);
+    checkAch('mark');
+  };
+  UX.onUndo=function(u){ if(u.after==='ok' && sess.ok>0) sess.ok--; if(u.after==='review' && sess.rev>0) sess.rev--; };
+  UX.logQuiz=function(rec){
+    var a=quizLog(); a.push(rec); if(a.length>300) a=a.slice(-300); lsSet(qKey(), a);
+    touchSess(); sess.quizN+=rec.n; sess.quizOk+=rec.c;
+    checkAch('quiz');
+    try{ UX.paintGoal(); }catch(e){}
+  };
+  var sumShownFor=0;
+  UX.onShowList=function(){
+    // 從解說返回一覽時，累積達 5 次標記就顯示結算
+    var n=sess.ok+sess.rev;
+    if(n>=5 && n!==sumShownFor){ sumShownFor=n; setTimeout(showSummary, 350); }
+  };
+  function showSummary(){
+    var box=$('uxSum'); if(!box) return;
+    $('uxSumOk').textContent=sess.ok; $('uxSumRev').textContent=sess.rev; $('uxSumMin').textContent=Math.max(1, Math.round(sessSecs/60));
+    var counts=dailyCounts(), tn=counts[dayStr(today())]||0, st=streak(counts);
+    $('uxSumLine').innerHTML='今日累計 <b>'+tn+'</b> 字　目標 <b>'+(S.goal||20)+'</b> 字'+(tn>=(S.goal||20)?'　🎉 已達標':'')+'<br>連續學習 <b>'+st+'</b> 天　累積學習 <b>'+fmtH(totalSecs())+'</b>'+(sess.quizN?('<br>本次測驗 <b>'+sess.quizOk+'/'+sess.quizN+'</b> 題'):'');
+    var ach=$('uxSumAch');
+    if(pendingAch.length){ ach.classList.remove('ux-hide'); ach.innerHTML='🏅 新成就：'+pendingAch.map(function(a){ return a.ic+' '+esc(a.n); }).join('　'); pendingAch=[]; }
+    else ach.classList.add('ux-hide');
+    $('uxSumQuiz').classList.toggle('ux-hide', sess.ids.length<4);
+    box.classList.add('show');
+    haptic(8);
+  }
+  function hideSummary(){ var b=$('uxSum'); if(b) b.classList.remove('show'); sess.ok=0; sess.rev=0; sumShownFor=0; }
+  $('uxSumX').addEventListener('click', hideSummary);
+  $('uxSumClose').addEventListener('click', hideSummary);
+  $('uxSumQuiz').addEventListener('click', function(){ var ids=sess.ids.slice(); hideSummary(); sess.ids=[]; UX.openQuiz && UX.openQuiz({ids:ids, label:'剛學的 '+ids.length+' 字'}); });
+  UX.showSummary=showSummary;
+
+  /* ---------- 儀表板擴充：KPI、熱力圖、成就 ---------- */
+  function ensureDashCards(){
+    var scr=$('srsScreen'); if(!scr || $('uxDashHeat')) return;
+    var kpi=scr.querySelector('.srs-kpi');
+    var k4=document.createElement('div'); k4.className='ux-kpi4'; k4.id='uxDashKpi';
+    k4.innerHTML='<div><div class="v" id="uxKpiTime">0 分</div><div class="k">累積學習時間</div></div><div><div class="v" id="uxKpiAll">0</div><div class="k">跨書累計標記</div></div>';
+    if(kpi && kpi.parentNode) kpi.parentNode.insertBefore(k4, kpi.nextSibling);
+    var chart=scr.querySelector('#srsChart'); var chartCard=chart ? chart.closest('.srs-card') : null;
+    var heat=document.createElement('div'); heat.className='srs-card'; heat.id='uxDashHeat';
+    heat.innerHTML='<h3>學習熱力圖　近 26 週（所有書籍）</h3><div id="uxDashHeatBox"></div><div class="ux-heat-sum" id="uxDashHeatSum"></div>';
+    if(chartCard && chartCard.parentNode) chartCard.parentNode.insertBefore(heat, chartCard.nextSibling); else scr.appendChild(heat);
+    var ach=document.createElement('div'); ach.className='srs-card'; ach.id='uxDashAch';
+    ach.innerHTML='<h3>成就徽章　<span id="uxAchCnt" style="font-weight:500"></span></h3><div class="ux-badges" id="uxBadges"></div>';
+    heat.parentNode.insertBefore(ach, heat.nextSibling);
+    var qz=document.createElement('div'); qz.className='srs-card'; qz.id='uxDashQuiz';
+    qz.innerHTML='<h3>最近測驗</h3><ul class="srs-tough" id="uxQuizHist" style="list-style:none;padding:0;margin:0"></ul>';
+    ach.parentNode.insertBefore(qz, ach.nextSibling);
+    bindHeatTap($('uxDashHeatBox'));
+  }
+  function paintDash(){
+    ensureDashCards();
+    var h=heatmapHTML(26, null, false);
+    var box=$('uxDashHeatBox'); if(box){ box.innerHTML=h.html; box.scrollLeft=box.scrollWidth; }
+    var sum=$('uxDashHeatSum'); if(sum) sum.innerHTML='活躍 <b>'+h.active+'</b> 天　累計 <b>'+h.total+'</b> 字'+(h.best?('　單日最高 <b>'+h.best+'</b> 字（'+h.bestDay.slice(5).replace('-','/')+'）'):'')+'　連續 <b>'+streak()+'</b> 天';
+    var kt=$('uxKpiTime'); if(kt) kt.textContent=fmtH(totalSecs());
+    var c=ctx(); var ka=$('uxKpiAll'); if(ka) ka.textContent=c.marks;
+    var have=achMap(), bad=$('uxBadges');
+    if(bad){
+      bad.innerHTML=ACH.map(function(a){ var on=!!have[a.id]; return '<div class="ux-badge'+(on?' on':'')+'" title="'+esc(a.d)+'"><div class="ic">'+a.ic+'</div><div class="n">'+esc(a.n)+'</div><div class="d">'+(on?esc(have[a.id].slice(5).replace('-','/')):esc(a.d))+'</div></div>'; }).join('');
+      var cnt=$('uxAchCnt'); if(cnt) cnt.textContent=Object.keys(have).length+' / '+ACH.length;
+    }
+    var ql=quizLog().slice(-8).reverse(), hist=$('uxQuizHist');
+    if(hist){
+      var names={en2zh:'英→中',zh2en:'中→英',listen:'聽力',spell:'拼字',cloze:'填空'};
+      hist.innerHTML = ql.length ? ql.map(function(r){ var p=r.n?Math.round(r.c/r.n*100):0; return '<li><span class="w">'+esc(names[r.m]||r.m)+'<span class="m">'+esc(r.d.slice(5).replace('-','/'))+'　'+r.c+'/'+r.n+' 題</span></span><span class="x" style="'+(p>=90?'background:#eef8f0;color:#2a9d4a':'')+'">'+p+'%</span></li>'; }).join('')
+        : '<div class="srs-empty">還沒有測驗紀錄，從首頁「測驗」開始</div>';
+    }
+  }
+  if(typeof window.srsRender==='function'){
+    var _srsRender=window.srsRender;
+    window.srsRender=function(){ var r=_srsRender.apply(this, arguments); try{ paintDash(); }catch(e){ console.warn('UX dash', e); } return r; };
+  }
+  UX.paintDash=paintDash;
+  UX._tp={heatmapHTML:heatmapHTML, dailyCounts:dailyCounts, streak:streak, ctx:ctx, ACH:ACH};
+  setTimeout(function(){ try{ UX.paintMiniHeat(); }catch(e){} }, 0);
+})();
+
+</script>
+<script>
+
+/* ===================================================================
+   UX 強化模組 v2.0 — 離線快取（Service Worker）與使用者專區設定
+   =================================================================== */
+(function(){
+  'use strict';
+  var UX=window.UX, $=UX.$, qsa=UX.qsa, esc=UX.esc, S=UX.S, toast=UX.toast;
+  var AUDIO_CACHE='kin-audio-v1';
+  var swOK = !!(navigator.serviceWorker && navigator.serviceWorker.register) && /^https?:$/.test(location.protocol) && ('caches' in window);
+  var reg=null, cancelDl=false, dlBusy=false;
+
+  /* ---------- Service Worker ---------- */
+  if(swOK){
+    navigator.serviceWorker.register('./sw.js').then(function(r){
+      reg=r;
+      r.addEventListener('updatefound', function(){
+        var nw=r.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            toast('已下載新版本，重新整理後生效', 3200);
+            var st=$('uxOffSt'); if(st) st.innerHTML='有新版本可用。<button type="button" class="btn" id="uxReloadBtn" style="margin-left:6px">重新整理</button>';
+            var b=$('uxReloadBtn'); if(b) b.onclick=function(){ location.reload(); };
+          }
+        });
+      });
+    }).catch(function(e){ console.warn('SW 註冊失敗', e); });
+  }
+  window.addEventListener('online', function(){ toast('已恢復連線'); });
+  window.addEventListener('offline', function(){ toast('目前離線：已快取的音檔仍可播放', 2600); });
+
+  /* ---------- 音檔下載管理 ---------- */
+  function clipFiles(list){
+    var files={}, base=(typeof AUDIO_BASE!=='undefined')?AUDIO_BASE:'audio/kin1000/CLIPS/';
+    list.forEach(function(e){
+      var cm=UX.clipFor(e); if(!cm) return;
+      (cm.words&&cm.words.length?cm.words:(cm.word?[cm.word]:[])).forEach(function(f){ files[base+f]=1; });
+      (cm.phrases||[]).forEach(function(f){ files[base+f]=1; });
+    });
+    return Object.keys(files);
+  }
+  function absUrl(rel){ try{ return new URL(rel, location.href).href; }catch(e){ return rel; } }
+  function cachedSet(){
+    if(!swOK) return Promise.resolve({});
+    return caches.open(AUDIO_CACHE).then(function(c){ return c.keys(); }).then(function(reqs){ var m={}; reqs.forEach(function(r){ m[r.url]=1; }); return m; }).catch(function(){ return {}; });
+  }
+  function paintOffline(){
+    var st=$('uxOffSt'); if(!st) return;
+    if(!swOK){ st.textContent='離線功能需以 https 網址（例如 GitHub Pages）開啟；用檔案直接開啟時不支援。'; $('uxDlBtn').disabled=true; $('uxDlAllBtn').disabled=true; $('uxClrBtn').disabled=true; return; }
+    var rangeFiles=clipFiles(filtered()), allFiles=clipFiles(DATA);
+    cachedSet().then(function(m){
+      var have=rangeFiles.filter(function(f){ return m[absUrl(f)]; }).length;
+      var haveAll=allFiles.filter(function(f){ return m[absUrl(f)]; }).length;
+      var total=Object.keys(m).length;
+      st.innerHTML='目前範圍：已快取 <b>'+have+'</b> / '+rangeFiles.length+' 個音檔　全書：<b>'+haveAll+'</b> / '+allFiles.length+
+        '<br>裝置上共 '+total+' 個音檔（約 '+(total*13/1024).toFixed(1)+' MB）'+(navigator.onLine?'':'　目前離線');
+      $('uxDlBtn').textContent='下載目前範圍（'+(rangeFiles.length-have)+' 個，約 '+((rangeFiles.length-have)*13/1024).toFixed(1)+' MB）';
+      $('uxDlBtn').disabled = dlBusy || have>=rangeFiles.length;
+      $('uxDlAllBtn').textContent='下載全書（'+(allFiles.length-haveAll)+' 個，約 '+((allFiles.length-haveAll)*13/1024).toFixed(1)+' MB）';
+      $('uxDlAllBtn').disabled = dlBusy || haveAll>=allFiles.length;
+      $('uxClrBtn').disabled = dlBusy || !total;
+    });
+  }
+  function download(files){
+    if(dlBusy || !swOK) return;
+    dlBusy=true; cancelDl=false;
+    var bar=$('uxDlBar'), fill=bar.querySelector('i'), msg=$('uxDlMsg'), cancel=$('uxDlCancel');
+    bar.style.display='block'; cancel.classList.remove('ux-hide'); $('uxDlBtn').disabled=true; $('uxDlAllBtn').disabled=true;
+    caches.open(AUDIO_CACHE).then(function(cache){
+      return cachedSet().then(function(m){
+        var todo=files.filter(function(f){ return !m[absUrl(f)]; }), done=0, fail=0, i=0, CONC=4;
+        if(!todo.length){ msg.textContent='都已下載完成。'; return; }
+        msg.textContent='下載中 0 / '+todo.length;
+        function worker(){
+          if(cancelDl || i>=todo.length) return Promise.resolve();
+          var f=todo[i++];
+          return fetch(f, {cache:'no-store'}).then(function(res){
+            if(!res.ok) throw new Error(res.status);
+            return cache.put(new Request(absUrl(f)), res);
+          }).catch(function(){ fail++; }).then(function(){
+            done++; fill.style.width=(done/todo.length*100).toFixed(1)+'%'; msg.textContent='下載中 '+done+' / '+todo.length+(fail?('　失敗 '+fail):'');
+            return worker();
+          });
+        }
+        var ws=[]; for(var k=0;k<CONC;k++) ws.push(worker());
+        return Promise.all(ws).then(function(){ msg.textContent=(cancelDl?'已取消。':'完成。')+'成功 '+(done-fail)+'，失敗 '+fail+'。'; if(!cancelDl&&!fail) toast('音檔已可離線播放'); });
+      });
+    }).catch(function(e){ msg.textContent='下載失敗：'+e.message; }).then(function(){ dlBusy=false; cancel.classList.add('ux-hide'); paintOffline(); });
+  }
+  function clearAudio(){
+    if(!swOK) return;
+    if(!confirm('確定清除這台裝置快取的所有音檔嗎？學習紀錄不受影響。')) return;
+    caches.delete(AUDIO_CACHE).then(function(){ toast('已清除音檔快取'); paintOffline(); });
+  }
+
+  /* ---------- 使用者專區：互動體驗設定 ---------- */
+  function buildSettings(){
+    var msgEl=$('usMsg'); if(!msgEl || $('uxSet')) return;
+    var h4=document.createElement('h4'); h4.textContent='互動體驗與離線';
+    var box=document.createElement('div'); box.className='ux-set'; box.id='uxSet';
+    box.innerHTML=
+      '<div class="row"><span>遮蔽自測</span><div class="ux-seg" id="uxSetMaskSeg"><button type="button" data-m="none">關</button><button type="button" data-m="zh">遮中文</button><button type="button" data-m="en">遮英文</button></div></div>'+
+      '<div class="row"><span>洗牌（打亂順序）</span><input type="checkbox" id="uxSetShuffle"></div>'+
+      '<div class="row"><span>每日目標（字）</span><span class="ctl"><button type="button" data-d="-5">−</button><span id="uxSetGoal">20</span><button type="button" data-d="5">＋</button></span></div>'+
+      '<div class="row"><span>字體大小</span><span class="ctl"><button type="button" id="uxSetFsDn">A−</button><span id="uxSetFs">100%</span><button type="button" id="uxSetFsUp">A+</button></span></div>'+
+      '<div class="row"><span>觸覺回饋（支援的手機）</span><input type="checkbox" id="uxSetHaptic"></div>'+
+      '<div class="row"><span>測驗結果回寫標記與排程</span><input type="checkbox" id="uxSetQuiz"></div>'+
+      '<div class="note">測驗答錯會標為「要複習」並降低排程間隔；答對的「要複習」字會升為「習得」。未學習的字答對不會自動標記，但會計入今日學習量。</div>'+
+      '<div class="row"><span>手勢教學</span><button type="button" class="btn" id="uxSetCoach">重看一次</button></div>'+
+      '<div class="row" style="margin-top:6px"><span>離線音檔</span><button type="button" class="btn warn" id="uxClrBtn">清除快取</button></div>'+
+      '<div class="st" id="uxOffSt">檢查中…</div>'+
+      '<div class="pbar" id="uxDlBar" style="display:none"><i></i></div><div class="st" id="uxDlMsg"></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn" id="uxDlBtn">下載目前範圍</button><button type="button" class="btn" id="uxDlAllBtn">下載全書</button><button type="button" class="btn ux-hide" id="uxDlCancel">取消</button></div>'+
+      '<div class="note">下載後即使沒有網路也能播放。App 本身（頁面與單字資料）在第一次開啟後就會自動快取。</div>'+
+      '<div class="note" style="margin-top:8px;color:#c0b8b0">UX 強化模組 v2.0　快捷鍵：F 搜尋　M 遮蔽　R 洗牌　Z 復原　Q 測驗　N 筆記　T 聽力工具　H 完整說明</div>';
+    msgEl.parentNode.insertBefore(h4, msgEl);
+    msgEl.parentNode.insertBefore(box, msgEl);
+
+    qsa('#uxSetMaskSeg button').forEach(function(b){ b.addEventListener('click', function(){ UX.setMask(b.getAttribute('data-m')); }); });
+    $('uxSetShuffle').addEventListener('change', function(){ if(!!S.shuffle!==this.checked) UX.toggleShuffle(); });
+    qsa('#uxSet .ctl button[data-d]').forEach(function(b){ b.addEventListener('click', function(){ UX.setGoal(S.goal+parseInt(b.getAttribute('data-d'),10)); }); });
+    $('uxSetFsDn').addEventListener('click', function(){ UX.setScale(S.scale-0.1); });
+    $('uxSetFsUp').addEventListener('click', function(){ UX.setScale(S.scale+0.1); });
+    $('uxSetHaptic').addEventListener('change', function(){ S.haptic=this.checked; UX.saveS(); if(S.haptic) UX.haptic(15); });
+    $('uxSetQuiz').addEventListener('change', function(){ S.quizAffects=this.checked; UX.saveS(); });
+    $('uxSetCoach').addEventListener('click', function(){ if(typeof usClose==='function') usClose(); UX.showCoach(); });
+    $('uxDlBtn').addEventListener('click', function(){ download(clipFiles(filtered())); });
+    $('uxDlAllBtn').addEventListener('click', function(){ download(clipFiles(DATA)); });
+    $('uxDlCancel').addEventListener('click', function(){ cancelDl=true; });
+    $('uxClrBtn').addEventListener('click', clearAudio);
+    paintSettings();
+  }
+  function paintSettings(){
+    if(!$('uxSet')) return;
+    qsa('#uxSetMaskSeg button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-m')===S.mask); });
+    $('uxSetShuffle').checked=!!S.shuffle;
+    $('uxSetGoal').textContent=S.goal;
+    $('uxSetFs').textContent=Math.round(S.scale*100)+'%';
+    $('uxSetHaptic').checked=!!S.haptic;
+    $('uxSetQuiz').checked=!!S.quizAffects;
+  }
+  UX.paintSettings=paintSettings;
+  if(typeof window.usOpen==='function'){
+    var _usOpen=window.usOpen;
+    window.usOpen=function(){ var r=_usOpen.apply(this, arguments); try{ buildSettings(); paintSettings(); paintOffline(); }catch(e){ console.warn('UX settings', e); } return r; };
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', buildSettings); else buildSettings();
+})();
+
 </script>
 </body>
 </html>
