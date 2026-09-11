@@ -1,0 +1,1 @@
+C區完整修正版：books/kin1000.js 修正 PDF 雙欄排序與音檔對應；index.html 以 TTS 補 C-010 oven；sw.js 升 kin-shell-v6。

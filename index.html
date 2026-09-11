@@ -2391,6 +2391,11 @@ function playCurrent(autoContinue){
     var times=(typeof getPhraseTimes==='function')?getPhraseTimes():1;
     var cm=(typeof CLIP_MAP!=='undefined')?(CLIP_MAP[e.id]||CLIP_MAP[String(e.id)]):null;
     if(!cm&&e.id!=null){var sid=String(e.id);if(/^\d+$/.test(sid))cm=CLIP_MAP[('000'+sid).slice(-3)]||CLIP_MAP[String(parseInt(sid,10))];}
+    // C-010 原始音檔只收錄 microwave，缺少 oven；改用 TTS 唸完整 microwave oven。
+    if(e.id==='C-010' && typeof speakEntry==='function'){
+      var ttsEntry=Object.assign({},e,{word:String(e.word||'').replace(/[()（）]/g,'').replace(/\s+/g,' ').trim()});
+      if(speakEntry(ttsEntry,times,function(){var done=window._kinAfterEntry;window._kinAfterEntry=null;if(typeof done==='function')setTimeout(done,120);}))return;
+    }
     if(cm&&(cm.word||(cm.words&&cm.words.length))){
       var wordFiles=(cm.words&&cm.words.length)?cm.words:[cm.word];
       var files=[],titles=[];
