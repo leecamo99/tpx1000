@@ -9379,12 +9379,6 @@ window.UX = window.UX || {};
     else{sc+=overlap(meanText(e),meanText(x))*45;var ep=zhParts(e),xp=zhParts(x);if(ep.some(function(a){return xp.some(function(b){return a===b||a.indexOf(b)>=0||b.indexOf(a)>=0;});}))sc+=35;}
     sc+=Math.random()*8;return sc;
   }
-<<<<<<< HEAD
-  function distractors(e,mode,k){
-    var answerKey=mode==='zh2en'?normAns(e.word):meanText(e),used={};used[answerKey]=1;
-    var c=DATA.filter(function(x){if(x.id===e.id)return false;var key=mode==='zh2en'?normAns(x.word):meanText(x);if(!key||used[key])return false;if(mode==='listen'&&!meaningIsChinese(x))return false;return true;}).map(function(x){return {e:x,s:distractScore(e,x,mode)};});
-    c.sort(function(a,b){return b.s-a.s;});var out=[];for(var i=0;i<c.length&&out.length<k;i++){var x=c[i].e,key=mode==='zh2en'?normAns(x.word):meanText(x);if(used[key])continue;used[key]=1;out.push(x);}return out;
-=======
   function distractors(e,mode,k,diff){
     diff=diff||sel.diff||'easy';
     var answerKey=mode==='zh2en'?normAns(e.word):meanText(e),used={};used[answerKey]=1;
@@ -9411,21 +9405,12 @@ window.UX = window.UX || {};
       if(used[key])continue;used[key]=1;out.push(x);
     }
     return out;
->>>>>>> d9a23219dafa74d993118bd273c2b12d53e14987
   }
   function weightedQuestions(pool){
     var K=window.KIN_STRENGTH,SN=window.KIN_SENSE,weak={};if(SN)try{SN.weakList().forEach(function(r){weak[r.e.id]=1;});}catch(x){}
     return pool.map(function(e){var w=1;if(statusOf(e.id)==='review')w+=3;if(weak[e.id])w+=4;if(K)try{var lv=K.level(e.id);if(lv<=2)w+=3;if(K.isRelapse(e.id))w+=3;}catch(x){}return {e:e,key:Math.pow(Math.random(),1/w)};}).sort(function(a,b){return b.key-a.key;}).map(function(r){return r.e;});
   }
   function buildQuestions(pool,mode,n){
-<<<<<<< HEAD
-    var list=weightedQuestions(pool.slice());
-    if(mode==='cloze')list=list.filter(function(e){return !!clozeInfo(e);});
-    if(mode==='spell'||mode==='zh2en'||mode==='listen')list=list.filter(function(e){return headVariants(e).length&&/[A-Za-z]/.test(e.word);});
-    if(mode==='listen')list=list.filter(meaningIsChinese);
-    if(n>0)list=list.slice(0,n);else list=list.slice(0,200);
-    return list.map(function(e){var q={e:e,mode:mode};if(mode==='en2zh'||mode==='listen'||mode==='zh2en'){q.opts=shuffle([e].concat(distractors(e,mode,3)));}if(mode==='cloze')q.cz=clozeInfo(e);return q;});
-=======
     var diff=sel.diff||'easy',list=weightedQuestions(pool.slice());
     if(mode==='cloze')list=list.filter(function(e){return !!clozeInfo(e);});
     if(mode==='spell'||mode==='zh2en'||mode==='listen')list=list.filter(function(e){return headVariants(e).length&&/[A-Za-z]/.test(e.word);});
@@ -9445,7 +9430,6 @@ window.UX = window.UX || {};
       out.push(q);
     }
     return out;
->>>>>>> d9a23219dafa74d993118bd273c2b12d53e14987
   }
 
   /* ---------- v3.2 拼字近音提示 ---------- */
@@ -9800,11 +9784,7 @@ window.UX = window.UX || {};
     if(k==='/'||k==='p'||k==='P'){ ev.preventDefault(); ev.stopImmediatePropagation(); speak(Q.qs[Q.i].e); return; }
   }, true);
 
-<<<<<<< HEAD
-  UX._tq={clozeInfo:clozeInfo,normAns:normAns,distractors:distractors,distractScore:distractScore,meaningIsChinese:meaningIsChinese,weightedQuestions:weightedQuestions,soundAlikes:soundAlikes,soundKey:soundKey,buildQuestions:buildQuestions,poolFor:poolFor,diffHtml:diffHtml,headVariants:headVariants};
-=======
   UX._tq={clozeInfo:clozeInfo,normAns:normAns,distractors:distractors,distractScore:distractScore,meaningIsChinese:meaningIsChinese,ambiguousEntry:ambiguousEntry,optionAmbiguous:optionAmbiguous,sameSemanticFamily:sameSemanticFamily,semanticTokens:semanticTokens,weightedQuestions:weightedQuestions,soundAlikes:soundAlikes,soundKey:soundKey,buildQuestions:buildQuestions,poolFor:poolFor,diffHtml:diffHtml,headVariants:headVariants};
->>>>>>> d9a23219dafa74d993118bd273c2b12d53e14987
   // 儀表板加入測驗入口
   (function(){
     var due=document.querySelector('#srsScreen .srs-due'); if(!due || $('uxSrsQuizBtn')) return;
@@ -10591,6 +10571,64 @@ window.KIN_STATUS_FILTER={get:function(){return value;},set:set,reset:function()
 function quick(id,v){var e=document.getElementById(id);if(!e)return;e.style.cursor='pointer';e.setAttribute('role','button');e.addEventListener('click',function(){try{setListMode('browse');}catch(x){}setTimeout(function(){set(v);},80);});}
 function boot(){load();paint();quick('statNew',NEW);quick('statRev',REVIEW);quick('statOk',OK);[100,350,800,1500].forEach(function(t){setTimeout(paint,t);});var title=document.getElementById('bookTitle');if(title&&window.MutationObserver)new MutationObserver(function(){lastBook='';setTimeout(function(){paint();redraw();},80);}).observe(title,{childList:true,subtree:true,characterData:true});document.addEventListener('click',function(ev){if(ev.target.closest('#itemList .mark,#itemList [onclick*="cycleStatus"]'))setTimeout(function(){paint();if(value!==ALL)redraw();},90);},true);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+
+
+<script>
+/* TPX1000 2026-09-12 hotfix: dynamic categories and per-book/user filter state */
+(function(){
+  'use strict';
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id && window.KIN_USER.id()) || 'paul'; }
+  function bid(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
+  function levelKey(){ return 'kinLevels:' + uid() + ':' + bid(); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function categories(){
+    var map=new Map();
+    (window.DATA||[]).forEach(function(e){
+      var key=String(e.section || e.level || 'OTHER');
+      var label=String(e.section_label || e.level_label || key);
+      if(!map.has(key)) map.set(key,{key:key,label:label,count:0});
+      map.get(key).count++;
+    });
+    return Array.from(map.values());
+  }
+  function loadLevels(){
+    var v=null;
+    try{ v=JSON.parse(localStorage.getItem(levelKey())||'null'); }catch(e){}
+    var valid=new Set(categories().map(function(x){return x.key;}));
+    if(!Array.isArray(v)||!v.length) v=['all'];
+    v=v.filter(function(x){return x==='all'||valid.has(String(x));});
+    if(!v.length) v=['all'];
+    window.currentLevels=v;
+    window.currentLevel=v.length===1?v[0]:'all';
+  }
+  function saveLevels(){ try{ localStorage.setItem(levelKey(),JSON.stringify(window.currentLevels||['all'])); }catch(e){} }
+  function rebuild(){
+    var modal=document.getElementById('filterModal'); if(!modal)return;
+    var h=modal.querySelector('h2');
+    Array.from(modal.querySelectorAll('label.opt')).forEach(function(x){x.remove();});
+    var all=document.createElement('label'); all.className='opt';
+    all.innerHTML='<div><div>全部</div><div class="sub" id="fAll">'+(window.DATA||[]).length+'</div></div><input type="checkbox" name="fl" value="all">';
+    modal.querySelector('.modal').insertBefore(all,h.nextSibling);
+    categories().forEach(function(c){
+      var row=document.createElement('label'); row.className='opt';
+      row.innerHTML='<div><div>'+esc(c.label)+'</div><div class="sub">'+c.count+'</div></div><input type="checkbox" name="fl" value="'+esc(c.key)+'">';
+      modal.querySelector('.modal').insertBefore(row,modal.querySelector('.modal').lastElementChild);
+    });
+    modal.querySelectorAll('input[name="fl"]').forEach(function(cb){
+      cb.checked=(window.currentLevels||['all']).indexOf(cb.value)>=0;
+      cb.onchange=function(){ if(typeof window.setLevel==='function')window.setLevel(cb.value); saveLevels(); };
+    });
+  }
+  function apply(){ loadLevels(); rebuild(); try{ if(typeof syncLevelUI==='function')syncLevelUI(); }catch(e){} try{ if(typeof updateStats==='function')updateStats(); }catch(e){} }
+  var oldOpen=window.openFilter;
+  window.openFilter=function(){ rebuild(); if(oldOpen)return oldOpen.apply(this,arguments); };
+  var oldSet=window.setLevel;
+  window.setLevel=function(lv){ var r=oldSet?oldSet.apply(this,arguments):undefined; saveLevels(); rebuild(); return r; };
+  var last='';
+  setInterval(function(){ var now=bid()+'|'+uid(); if(now!==last){last=now;setTimeout(apply,0);} },250);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
 })();
 </script>
 

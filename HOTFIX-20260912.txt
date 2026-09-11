@@ -1,0 +1,11 @@
+TPX1000 Complete Hotfix 2026-09-12
+
+修復項目：
+1. 清除 index.html 內 3 組 Git 合併衝突。
+2. 恢復所有 inline JavaScript 語法正常。
+3. 章節分類改為依目前書籍 DATA 的 section/section_label 動態建立。
+4. 分類選擇改為每位使用者、每本書分開保存。
+5. 移除缺少 books/test001.js 的測試書籍宣告。
+6. 更新 Service Worker 快取版本。
+
+注意：此包只包含上傳來源內實際存在的正式書籍 kin1000；未提供的其他書籍資料無法憑空加入。
