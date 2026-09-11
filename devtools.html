@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>音檔核對 — 開發者模式</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  background:#16161a;color:#e8e4de;line-height:1.6;padding-bottom:170px;font-size:15px}
+
+header{position:sticky;top:0;z-index:20;background:#1f1f24;border-bottom:1px solid #2e2e34;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 12px 10px}
+header h1{margin:0;font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+header h1 .tag{font-size:10px;background:#c45c1a;padding:2px 7px;border-radius:5px;font-weight:700}
+header a{color:#8fb7e0;text-decoration:none;font-size:12px}
+.stat{font-size:12px;color:#8d8a85;margin-top:4px}
+.stat b{color:#e8e4de}
+
+.tools{padding:10px 12px;display:flex;flex-direction:column;gap:8px;
+  background:#1b1b20;border-bottom:1px solid #2e2e34}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.row label{font-size:11px;color:#8d8a85;margin-right:2px}
+select,input[type=text]{background:#26262c;border:1px solid #38383f;color:#e8e4de;
+  border-radius:7px;padding:7px 9px;font-size:13px;font-family:inherit;min-height:36px}
+select{flex:1;min-width:120px}
+.chip{border:1px solid #38383f;background:#26262c;color:#a8a49e;border-radius:999px;
+  padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;min-height:32px}
+.chip.on{background:#c45c1a;border-color:#c45c1a;color:#fff}
+
+.list{padding:8px 12px}
+.it{background:#1e1e23;border:1px solid #2b2b31;border-left:4px solid #3a3a42;
+  border-radius:10px;padding:12px;margin-bottom:9px}
+.it.cur{border-color:#c45c1a;border-left-color:#c45c1a;box-shadow:0 0 0 1px #c45c1a}
+.it.st-ok{border-left-color:#3a9d5d}
+.it.st-shift{border-left-color:#e0563f}
+.it.st-half{border-left-color:#e8a33d}
+.it.st-none{border-left-color:#8e6bc9}
+.it.st-other{border-left-color:#4a9ec4}
+
+.hd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:3px}
+.hd .id{font:700 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:#c45c1a;
+  background:#2e2119;padding:3px 7px;border-radius:5px}
+.hd .w{font-size:18px;font-weight:700;flex:1;min-width:0;word-break:break-word}
+.hd .w .paren{color:#e8a33d}
+.hd .sec{font-size:10px;color:#6f6c68;border:1px solid #38383f;padding:1px 6px;border-radius:4px}
+.mean{font-size:13px;color:#9a968f;margin-bottom:8px}
+
+.clips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px}
+.clip{background:#26262c;border:1px solid #38383f;color:#c8c4be;border-radius:7px;
+  padding:7px 11px;font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+  cursor:pointer;min-height:36px;display:flex;align-items:center;gap:5px}
+.clip:active{background:#32323a}
+.clip.playing{background:#c45c1a;border-color:#c45c1a;color:#fff}
+.clip.multi{border-color:#e8a33d;color:#e8a33d}
+.clip .d{font-size:10px;opacity:.6}
+
+.marks{display:flex;gap:5px;flex-wrap:wrap}
+.mk{flex:1;min-width:62px;min-height:40px;border:1px solid #38383f;background:#26262c;
+  color:#9a968f;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:3px}
+.mk:active{transform:scale(.96)}
+.mk small{font-size:9px;opacity:.5}
+.mk.on[data-v=ok]{background:#1e3a28;border-color:#3a9d5d;color:#7fd4a0}
+.mk.on[data-v=shift]{background:#3a1f1a;border-color:#e0563f;color:#ff9b85}
+.mk.on[data-v=half]{background:#3a2e18;border-color:#e8a33d;color:#f0c579}
+.mk.on[data-v=none]{background:#2c2340;border-color:#8e6bc9;color:#c3a8e8}
+.mk.on[data-v=other]{background:#1c3340;border-color:#4a9ec4;color:#8fcce8}
+
+.heard{margin-top:8px;display:none}
+.heard.show{display:block}
+.heard input{width:100%}
+.heard .hint{font-size:11px;color:#6f6c68;margin-top:3px}
+
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#1f1f24;
+  border-top:1px solid #2e2e34;padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px))}
+.bar .prog{height:5px;background:#2b2b31;border-radius:3px;overflow:hidden;margin-bottom:8px;display:flex}
+.bar .prog i{height:100%}
+.bar .btns{display:flex;gap:6px}
+.bar button{flex:1;min-height:44px;border-radius:9px;border:1px solid #38383f;
+  background:#26262c;color:#c8c4be;font-size:13px;font-weight:600;cursor:pointer}
+.bar button.pri{background:#c45c1a;border-color:#c45c1a;color:#fff}
+.bar button:disabled{opacity:.35}
+
+.empty{padding:40px 16px;text-align:center;color:#6f6c68;font-size:13px}
+.kbd{font-size:11px;color:#6f6c68;padding:8px 12px;line-height:2}
+.kbd b{background:#26262c;border:1px solid #38383f;border-radius:4px;padding:2px 6px;
+  font:600 10px/1 ui-monospace,monospace;color:#a8a49e}
+
+.toast{position:fixed;left:50%;bottom:176px;transform:translateX(-50%) translateY(20px);
+  background:#e8e4de;color:#16161a;padding:10px 18px;border-radius:9px;font-size:13px;
+  font-weight:600;opacity:0;transition:.22s;z-index:50;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+dialog{border:0;border-radius:12px;background:#1e1e23;color:#e8e4de;max-width:92vw;width:640px;padding:0}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+dialog .dh{padding:13px 16px;border-bottom:1px solid #2e2e34;font-weight:700;font-size:15px}
+dialog .db{padding:14px 16px;max-height:62vh;overflow:auto}
+dialog .df{padding:12px 16px;border-top:1px solid #2e2e34;display:flex;gap:8px}
+dialog button{flex:1;min-height:42px;border-radius:8px;border:1px solid #38383f;
+  background:#26262c;color:#c8c4be;font-size:13px;font-weight:600;cursor:pointer}
+dialog button.pri{background:#c45c1a;border-color:#c45c1a;color:#fff}
+textarea{width:100%;height:230px;background:#16161a;border:1px solid #38383f;color:#c8c4be;
+  border-radius:8px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+  resize:vertical}
+.sum{font-size:13px;line-height:1.9}
+.sum code{background:#26262c;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="tag">DEV</span> 音檔核對<a href="./index.html" style="margin-left:auto">← 回 App</a></h1>
+  <div class="stat" id="stat">載入中…</div>
+</header>
+
+<div class="tools">
+  <div class="row">
+    <select id="book"></select>
+    <select id="sec"><option value="">全部區塊</option></select>
+  </div>
+  <div class="row" id="filters">
+    <label>篩選</label>
+    <button class="chip on" data-f="all">全部</button>
+    <button class="chip" data-f="todo">未核對</button>
+    <button class="chip" data-f="bad">有問題</button>
+    <button class="chip" data-f="paren">含括號</button>
+    <button class="chip" data-f="multi">多音檔</button>
+    <button class="chip" data-f="slash">含斜線</button>
+  </div>
+  <div class="row">
+    <input type="text" id="q" placeholder="搜尋單字或編號…" style="flex:1">
+  </div>
+</div>
+
+<div class="kbd">
+  <b>空白</b> 播放　<b>1</b> 正確　<b>2</b> 錯位　<b>3</b> 只唸一半　<b>4</b> 沒聲音　<b>5</b> 其他　<b>↑↓</b> 上下筆
+</div>
+
+<div class="list" id="list"></div>
+
+<div class="bar">
+  <div class="prog" id="prog"></div>
+  <div class="btns">
+    <button id="jump">跳到未核對</button>
+    <button id="clear">清除標記</button>
+    <button class="pri" id="exp">匯出偵錯表</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<dialog id="dlg">
+  <div class="dh">偵錯表</div>
+  <div class="db">
+    <div class="sum" id="sum"></div>
+    <textarea id="out" readonly></textarea>
+  </div>
+  <div class="df">
+    <button id="copy">複製到剪貼簿</button>
+    <button class="pri" id="dl">下載 JSON</button>
+    <button id="cls">關閉</button>
+  </div>
+</dialog>
+
+<audio id="au" preload="none"></audio>
+
+<script src="books.js"></script>
+<script>
+(function(){
+'use strict';
+var $ = function(id){ return document.getElementById(id); };
+var BOOKS = window.BOOKS || [];
+var book = null, DATA = [], CLIP = {}, base = '';
+var marks = {};              // id -> {s:狀態, h:聽到的內容, t:時間}
+var view = [], curId = null, filter = 'all', sec = '', q = '';
+var KEY = '';
+
+var LABELS = {
+  ok:    ['正確',     '1'],
+  shift: ['錯位',     '2'],
+  half:  ['只唸一半', '3'],
+  none:  ['沒聲音',   '4'],
+  other: ['其他',     '5']
+};
+
+function toast(m){
+  var t = $('toast'); t.textContent = m; t.classList.add('on');
+  clearTimeout(t._x); t._x = setTimeout(function(){ t.classList.remove('on'); }, 1500);
+}
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+  });
+}
+
+/* ---------- 載入書籍 ---------- */
+function loadBook(b){
+  book = b;
+  base = b.audioBase || '';
+  KEY = 'tpxAudioCheck:' + b.id;
+  try{ marks = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }catch(e){ marks = {}; }
+
+  var old = document.getElementById('bookjs');
+  if(old) old.remove();
+  window.registerBook = function(bk){
+    DATA = bk.data || [];
+    /* 套用 audioFix 後才是實際播放用的對照表，這樣才測得到真實行為 */
+    CLIP = JSON.parse(JSON.stringify(bk.clipMap || {}));
+    if(typeof bk.audioFix === 'function'){
+      try{ bk.audioFix(CLIP); }catch(e){ console.warn('audioFix', e); }
+    }
+    buildSections();
+    render();
+  };
+  var s = document.createElement('script');
+  s.id = 'bookjs'; s.src = b.file;
+  s.onerror = function(){
+    $('list').innerHTML = '<div class="empty">讀不到 ' + esc(b.file) +
+      '<br><br>請確認本頁與 books.js、books/ 在同一層，且以 http/https 開啟。</div>';
+  };
+  document.head.appendChild(s);
+}
+
+function buildSections(){
+  var seen = [], m = {};
+  DATA.forEach(function(e){
+    var k = e.section || '—';
+    if(!m[k]){ m[k] = 0; seen.push(k); }
+    m[k]++;
+  });
+  $('sec').innerHTML = '<option value="">全部區塊（' + DATA.length + '）</option>' +
+    seen.map(function(k){
+      return '<option value="' + esc(k) + '">' + esc(e2label(k)) + '（' + m[k] + '）</option>';
+    }).join('');
+}
+function e2label(k){
+  var f = DATA.filter(function(e){ return (e.section || '—') === k; })[0];
+  return f && f.section_label ? (k + '　' + f.section_label.replace(/\s+/g, ' ')) : k;
+}
+
+/* ---------- 音檔查詢 ---------- */
+function clipsOf(id){
+  var c = CLIP[id];
+  if(!c) return [];
+  if(Array.isArray(c.words) && c.words.length) return c.words.slice();
+  if(c.word) return [c.word];
+  return [];
+}
+function phrasesOf(id){
+  var c = CLIP[id];
+  return (c && Array.isArray(c.phrases)) ? c.phrases.slice() : [];
+}
+
+/* ---------- 篩選 ---------- */
+function passes(e){
+  if(sec && (e.section || '—') !== sec) return false;
+  if(q){
+    var s = q.toLowerCase();
+    if(String(e.id).toLowerCase().indexOf(s) < 0 &&
+       String(e.word || '').toLowerCase().indexOf(s) < 0 &&
+       String(e.mean || '').indexOf(q) < 0) return false;
+  }
+  var mk = marks[e.id];
+  if(filter === 'todo')  return !mk;
+  if(filter === 'bad')   return mk && mk.s !== 'ok';
+  if(filter === 'paren') return /[(（]/.test(e.word || '');
+  if(filter === 'multi') return clipsOf(e.id).length > 1;
+  if(filter === 'slash') return /[\/／]/.test(e.word || '');
+  return true;
+}
+
+/* ---------- 繪製 ---------- */
+function render(){
+  view = DATA.filter(passes);
+  var done = 0, bad = 0;
+  DATA.forEach(function(e){
+    var mk = marks[e.id];
+    if(mk){ done++; if(mk.s !== 'ok') bad++; }
+  });
+  $('stat').innerHTML = '本頁 <b>' + view.length + '</b> 筆　已核對 <b>' + done + '</b> / ' +
+    DATA.length + '　有問題 <b>' + bad + '</b>';
+
+  var pd = DATA.length ? (done - bad) / DATA.length * 100 : 0;
+  var pb = DATA.length ? bad / DATA.length * 100 : 0;
+  $('prog').innerHTML = '<i style="width:' + pd + '%;background:#3a9d5d"></i>' +
+                        '<i style="width:' + pb + '%;background:#e0563f"></i>';
+
+  if(!view.length){
+    $('list').innerHTML = '<div class="empty">這個條件沒有項目。</div>';
+    return;
+  }
+
+  /* 一次最多畫 300 筆，避免手機卡頓 */
+  var slice = view.slice(0, 300);
+  $('list').innerHTML = slice.map(function(e){
+    var mk = marks[e.id] || {};
+    var cl = clipsOf(e.id), ph = phrasesOf(e.id);
+    var wordHtml = esc(e.word || '').replace(/([(（][^)）]*[)）])/g, '<span class="paren">$1</span>');
+
+    var clipsHtml = cl.map(function(f, i){
+      return '<button class="clip' + (cl.length > 1 ? ' multi' : '') + '" data-f="' + esc(f) + '">' +
+             '▶ ' + esc(f) + (cl.length > 1 ? '<span class="d">第' + (i + 1) + '段</span>' : '') + '</button>';
+    }).join('');
+    if(!cl.length) clipsHtml = '<span style="font-size:12px;color:#8e6bc9">對照表沒有這筆的音檔</span>';
+    var phHtml = ph.map(function(f, i){
+      return '<button class="clip" data-f="' + esc(f) + '"><span class="d">例' + (i + 1) + '</span></button>';
+    }).join('');
+
+    var marksHtml = Object.keys(LABELS).map(function(k){
+      return '<button class="mk' + (mk.s === k ? ' on' : '') + '" data-v="' + k + '" data-id="' + esc(e.id) + '">' +
+             LABELS[k][0] + '<small>' + LABELS[k][1] + '</small></button>';
+    }).join('');
+
+    return '<div class="it' + (mk.s ? ' st-' + mk.s : '') + (curId === e.id ? ' cur' : '') +
+           '" data-id="' + esc(e.id) + '">' +
+      '<div class="hd"><span class="id">' + esc(e.id) + '</span>' +
+      '<span class="w">' + wordHtml + '</span>' +
+      '<span class="sec">' + esc(e.section || '') + '</span></div>' +
+      '<div class="mean">' + esc(e.mean || '') + '</div>' +
+      '<div class="clips">' + clipsHtml + phHtml + '</div>' +
+      '<div class="marks">' + marksHtml + '</div>' +
+      '<div class="heard' + (mk.s && mk.s !== 'ok' ? ' show' : '') + '">' +
+        '<input type="text" placeholder="實際聽到什麼？（選填，但很有幫助）" ' +
+        'value="' + esc(mk.h || '') + '" data-id="' + esc(e.id) + '">' +
+        '<div class="hint">例：只唸了 microwave、唸的是下一個字 refrigerator、完全沒聲音</div>' +
+      '</div></div>';
+  }).join('') + (view.length > 300 ?
+    '<div class="empty">只顯示前 300 筆，請用區塊或搜尋縮小範圍。</div>' : '');
+}
+
+/* ---------- 播放 ---------- */
+var au = $('au'), playingBtn = null;
+function play(file, btn){
+  if(playingBtn) playingBtn.classList.remove('playing');
+  playingBtn = btn || null;
+  if(playingBtn) playingBtn.classList.add('playing');
+  au.src = base + file;
+  au.play().catch(function(){ toast('播不出來：' + file); });
+}
+au.addEventListener('ended', function(){
+  if(playingBtn) playingBtn.classList.remove('playing');
+  playingBtn = null;
+});
+
+/* ---------- 標記 ---------- */
+function setMark(id, v){
+  if(marks[id] && marks[id].s === v){
+    delete marks[id];
+    toast('已取消標記');
+  }else{
+    marks[id] = { s: v, h: (marks[id] || {}).h || '', t: new Date().toISOString().slice(0, 16) };
+    toast(LABELS[v][0]);
+  }
+  save();
+  var el = document.querySelector('.it[data-id="' + id + '"]');
+  if(el){
+    el.className = 'it' + (marks[id] ? ' st-' + marks[id].s : '') + (curId === id ? ' cur' : '');
+    el.querySelectorAll('.mk').forEach(function(b){
+      b.classList.toggle('on', !!marks[id] && b.getAttribute('data-v') === marks[id].s);
+    });
+    el.querySelector('.heard').classList.toggle('show', !!marks[id] && marks[id].s !== 'ok');
+  }
+  updateStat();
+}
+function updateStat(){
+  var done = 0, bad = 0;
+  DATA.forEach(function(e){
+    var mk = marks[e.id];
+    if(mk){ done++; if(mk.s !== 'ok') bad++; }
+  });
+  $('stat').innerHTML = '本頁 <b>' + view.length + '</b> 筆　已核對 <b>' + done + '</b> / ' +
+    DATA.length + '　有問題 <b>' + bad + '</b>';
+  var pd = DATA.length ? (done - bad) / DATA.length * 100 : 0;
+  var pb = DATA.length ? bad / DATA.length * 100 : 0;
+  $('prog').innerHTML = '<i style="width:' + pd + '%;background:#3a9d5d"></i>' +
+                        '<i style="width:' + pb + '%;background:#e0563f"></i>';
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(marks)); }catch(e){} }
+
+/* ---------- 事件 ---------- */
+$('list').addEventListener('click', function(ev){
+  var it = ev.target.closest('.it');
+  if(it) curId = it.getAttribute('data-id');
+
+  var c = ev.target.closest('.clip');
+  if(c){ play(c.getAttribute('data-f'), c); return; }
+
+  var m = ev.target.closest('.mk');
+  if(m){ setMark(m.getAttribute('data-id'), m.getAttribute('data-v')); return; }
+});
+$('list').addEventListener('input', function(ev){
+  var i = ev.target.closest('.heard input');
+  if(!i) return;
+  var id = i.getAttribute('data-id');
+  if(!marks[id]) marks[id] = { s: 'other', t: new Date().toISOString().slice(0, 16) };
+  marks[id].h = i.value;
+  save();
+});
+
+document.querySelectorAll('#filters .chip').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('#filters .chip').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on'); filter = b.getAttribute('data-f'); render();
+  };
+});
+$('sec').onchange = function(){ sec = this.value; render(); };
+var qt;
+$('q').oninput = function(){ clearTimeout(qt); var v = this.value; qt = setTimeout(function(){ q = v.trim(); render(); }, 250); };
+
+document.addEventListener('keydown', function(ev){
+  if(/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
+  var idx = view.findIndex(function(e){ return e.id === curId; });
+  if(ev.key === ' '){
+    ev.preventDefault();
+    var e = view[idx < 0 ? 0 : idx];
+    if(e){ var f = clipsOf(e.id)[0]; if(f) play(f, document.querySelector('.it[data-id="' + e.id + '"] .clip')); }
+    return;
+  }
+  var map = { '1':'ok', '2':'shift', '3':'half', '4':'none', '5':'other' };
+  if(map[ev.key] && curId){ ev.preventDefault(); setMark(curId, map[ev.key]); return; }
+  if(ev.key === 'ArrowDown' || ev.key === 'ArrowUp'){
+    ev.preventDefault();
+    var n = idx + (ev.key === 'ArrowDown' ? 1 : -1);
+    if(n < 0) n = 0;
+    if(n >= view.length) n = view.length - 1;
+    if(view[n]){
+      curId = view[n].id;
+      document.querySelectorAll('.it').forEach(function(x){ x.classList.remove('cur'); });
+      var el = document.querySelector('.it[data-id="' + curId + '"]');
+      if(el){ el.classList.add('cur'); el.scrollIntoView({ block:'center', behavior:'smooth' }); }
+    }
+  }
+});
+
+$('jump').onclick = function(){
+  var t = view.find(function(e){ return !marks[e.id]; });
+  if(!t){ toast('這個範圍都核對完了'); return; }
+  curId = t.id;
+  document.querySelectorAll('.it').forEach(function(x){ x.classList.remove('cur'); });
+  var el = document.querySelector('.it[data-id="' + curId + '"]');
+  if(el){ el.classList.add('cur'); el.scrollIntoView({ block:'center', behavior:'smooth' }); }
+};
+$('clear').onclick = function(){
+  if(!confirm('清除這本書的所有標記？無法復原。')) return;
+  marks = {}; save(); render(); toast('已清除');
+};
+
+/* ---------- 匯出 ---------- */
+$('exp').onclick = function(){
+  var rows = [];
+  DATA.forEach(function(e){
+    var mk = marks[e.id];
+    if(!mk) return;
+    rows.push({
+      id: e.id, word: e.word || '', mean: e.mean || '', section: e.section || '',
+      status: mk.s, heard: mk.h || '',
+      clips: clipsOf(e.id), phraseCount: phrasesOf(e.id).length
+    });
+  });
+  rows.sort(function(a, b){ return a.id < b.id ? -1 : 1; });
+
+  var bad = rows.filter(function(r){ return r.status !== 'ok'; });
+  var payload = {
+    tool: 'tpx-audio-check', v: 1,
+    book: book.id, bookTitle: book.title, audioBase: base,
+    exported: new Date().toISOString(),
+    totalEntries: DATA.length, checked: rows.length,
+    okCount: rows.length - bad.length, problemCount: bad.length,
+    runs: detectRuns(bad),
+    rows: rows
+  };
+
+  var cnt = {};
+  bad.forEach(function(r){ cnt[r.status] = (cnt[r.status] || 0) + 1; });
+  $('sum').innerHTML =
+    '已核對 <code>' + rows.length + '</code> / ' + DATA.length + ' 筆，' +
+    '其中 <code>' + bad.length + '</code> 筆有問題。<br>' +
+    Object.keys(cnt).map(function(k){ return LABELS[k][0] + ' <code>' + cnt[k] + '</code>'; }).join('　') +
+    (payload.runs.length ? '<br><br>偵測到 <code>' + payload.runs.length +
+      '</code> 段連續錯位，起點：' + payload.runs.map(function(r){
+        return '<code>' + r.from + '–' + r.to + '</code>';
+      }).join('、') : '') +
+    '<br><br>把下面內容整份貼給 Copilot，或下載 JSON 上傳。';
+  $('out').value = JSON.stringify(payload, null, 2);
+  window._payload = payload;
+  $('dlg').showModal();
+};
+
+/* 把連號的錯位聚成區間，方便一次判斷偏移量 */
+function detectRuns(bad){
+  var shift = bad.filter(function(r){ return r.status === 'shift'; })
+                 .map(function(r){ return r.id; }).sort();
+  var runs = [], cur = null;
+  function num(id){ var m = /(\d+)\s*$/.exec(id); return m ? parseInt(m[1], 10) : null; }
+  function pre(id){ return String(id).replace(/(\d+)\s*$/, ''); }
+  shift.forEach(function(id){
+    var n = num(id), p = pre(id);
+    if(cur && cur.pre === p && n === cur.lastN + 1){ cur.to = id; cur.lastN = n; cur.n++; }
+    else { if(cur) runs.push({ from: cur.from, to: cur.to, count: cur.n }); cur = { pre:p, from:id, to:id, lastN:n, n:1 }; }
+  });
+  if(cur) runs.push({ from: cur.from, to: cur.to, count: cur.n });
+  return runs.filter(function(r){ return r.count >= 2; });
+}
+
+$('copy').onclick = function(){
+  var t = $('out');
+  t.select(); t.setSelectionRange(0, 999999);
+  var okc = false;
+  try{ okc = document.execCommand('copy'); }catch(e){}
+  if(navigator.clipboard && !okc){
+    navigator.clipboard.writeText(t.value).then(function(){ toast('已複製'); });
+  }else toast(okc ? '已複製' : '請長按文字框手動複製');
+};
+$('dl').onclick = function(){
+  var blob = new Blob([JSON.stringify(window._payload, null, 2)], { type:'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'audio-check-' + book.id + '-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+};
+$('cls').onclick = function(){ $('dlg').close(); };
+
+/* ---------- 啟動 ---------- */
+if(!BOOKS.length){
+  $('list').innerHTML = '<div class="empty">讀不到 books.js。<br><br>' +
+    '請確認本頁放在專案根目錄，且以 http/https 開啟（file:// 會被瀏覽器擋下）。</div>';
+}else{
+  $('book').innerHTML = BOOKS.map(function(b, i){
+    return '<option value="' + i + '">' + esc(b.title) + '</option>';
+  }).join('');
+  $('book').onchange = function(){ loadBook(BOOKS[this.value]); };
+  loadBook(BOOKS[0]);
+}
+})();
+</script>
+</body>
+</html>
