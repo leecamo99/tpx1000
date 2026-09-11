@@ -3,9 +3,9 @@
    - 音檔（.mp3）：快取優先；支援 Range 請求，Safari 也能離線播放
    - 音檔快取名稱與 index.html 內的下載管理共用：kin-audio-v1
 */
-var VER = 'kin-shell-v3';
+var VER = 'kin-shell-v4';
 var AUDIO = 'kin-audio-v1';
-var CORE = ['./', './index.html', './books.js', './manifest.webmanifest'];
+var CORE = ['./', './index.html', './books.js', './manifest.webmanifest', './roadmap.html', './roadmap.json'];
 
 self.addEventListener('install', function(ev){
   ev.waitUntil(
@@ -91,14 +91,3 @@ self.addEventListener('fetch', function(ev){
     ev.respondWith(
       caches.open(VER).then(function(cache){
         return cache.match(req).then(function(hit){
-          var net = fetch(req).then(function(res){ if(res && res.ok) cache.put(req, res.clone()).catch(function(){}); return res; }).catch(function(){ return hit; });
-          return hit || net;
-        });
-      })
-    );
-  }
-});
-
-self.addEventListener('message', function(ev){
-  if(ev.data === 'skipWaiting') self.skipWaiting();
-});
