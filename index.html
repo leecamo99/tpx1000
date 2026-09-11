@@ -428,6 +428,44 @@ body.theme-dark .player-bar .autospk.off{background:#141416;border-color:#2a2a2c
   border-top:1px solid #e8e0d0
 }
 .db-sense .db-ex-en{border-top:none}
+/* ---- 詞義級 SRS ---- */
+.db-sense{transition:background .15s,box-shadow .15s}
+.db-sense.sn-rev{background:#fff6f5;box-shadow:inset 3px 0 0 #e05252}
+.db-sense.sn-ok{background:#f4faf5;box-shadow:inset 3px 0 0 #3a9d5d}
+.sn-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 2px}
+.sn-lb{font-size:12px;color:#9a938c}
+.sn-btn{min-height:34px;padding:5px 14px;border-radius:9px;border:1px solid #dcd6cf;
+  background:#fff;color:#8a8580;font-size:13px;font-weight:600;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+.sn-btn:active{transform:scale(.97)}
+.sn-b-ok.on{border-color:#3a9d5d;background:#eaf6ee;color:#2c7a49}
+.sn-b-rev.on{border-color:#e05252;background:#fdecec;color:#c0392b}
+.sn-due{font-size:11px;color:#b0a89f;margin-left:auto}
+.sn-sum{margin:10px 16px 0;padding:9px 12px;border-radius:9px;background:#f6f4f1;
+  color:#7d766f;font-size:12.5px;line-height:1.65}
+.sn-sum b{color:#5c5651}
+.sn-sum.warn{background:#fff6f0;color:#a8603c}
+.sn-sum.warn b.n{color:#c0392b}
+.sn-chip{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:8px;
+  background:#fdecec;color:#c0392b;font-size:10.5px;font-weight:600;vertical-align:middle}
+.sn-weak{display:flex;align-items:center;gap:8px;padding:9px 4px;
+  border-bottom:1px solid #efeae4;cursor:pointer}
+.sn-weak:last-child{border-bottom:none}
+.sn-weak b{font-size:14px;color:#3d3833;min-width:96px}
+.sn-weak .m{flex:1;font-size:12.5px;color:#8a8580}
+.sn-weak .n{font-size:11px;color:#c0392b;white-space:nowrap}
+.sn-empty{padding:14px 4px;font-size:12.5px;color:#a9a29b;line-height:1.7}
+body.theme-dark .sn-btn{background:#2a2a2c;border-color:#3d3d40;color:#9a9a9e}
+body.theme-dark .db-sense.sn-rev{background:#2e2224}
+body.theme-dark .db-sense.sn-ok{background:#1f2a22}
+body.theme-dark .sn-b-ok.on{background:#1f3a28;border-color:#3a9d5d;color:#8fe0aa}
+body.theme-dark .sn-b-rev.on{background:#4a2626;border-color:#e05252;color:#ff9b9b}
+body.theme-dark .sn-sum{background:#252527;color:#9a9a9e}
+body.theme-dark .sn-sum b{color:#d0cbc5}
+body.theme-dark .sn-sum.warn{background:#33241f;color:#e0a483}
+body.theme-dark .sn-chip{background:#4a2626;color:#ff9b9b}
+body.theme-dark .sn-weak{border-bottom-color:#2a2a2c}
+body.theme-dark .sn-weak b{color:#e5e0da}
 .db-idbar{
   background:#4a4a4a;color:#fff;font-size:11px;padding:6px 12px;
   display:flex;justify-content:space-between
@@ -2691,6 +2729,11 @@ body.mode-srs .screen-list,body.mode-srs #playerBar{display:none!important}
     <div class="srs-note">這些字在標記習得之後又被標為要複習或答錯，代表當時只是短期記住。清單依遺忘次數排序。</div>
   </div>
   <div class="srs-card">
+    <h3>不熟的詞義　多義字逐個意思</h3>
+    <div id="snWeakBox"></div>
+    <div class="srs-note">accommodate 這類多義字，可在解說頁替每個意思分別標記。任一意思不熟，整字就會維持「要複習」。</div>
+  </div>
+  <div class="srs-card">
     <h3>頑固單字 TOP 20</h3>
     <ul class="srs-tough" id="srsTough" style="list-style:none;padding:0;margin:0"></ul>
   </div>
@@ -3128,9 +3171,8 @@ function srsStartDue(){
 }
 
 /* ================= 匯出 / 匯入 ================= */
-/* v2：一併帶出收藏字卡、筆記、測驗紀錄、成就、學習時間、每日目標達成日。
-   這些鍵原本只走 GitHub 同步，改用檔案搬家的人會整批遺失。
-   uid 取法與 GitHub 同步的 userId() 一致，換裝置後才對得上。 */
+/* v2/v3：一併帶出收藏、筆記、測驗紀錄、成就、學習時間、目標達成日、詞義級排程。
+   這些鍵原本只走 GitHub 同步，改用檔案搬家的人會整批遺失。 */
 function uxUid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
 function uxRead(k, dft){
   try{ var v = JSON.parse(localStorage.getItem('kin' + k + ':' + uxUid()) || 'null'); return v === null ? dft : v; }
@@ -3141,14 +3183,15 @@ function uxWrite(k, v){
 }
 function srsExport(){
   var blob = new Blob([JSON.stringify({
-    app:'kin-app', v:2, exported:new Date().toISOString(),
+    app:'kin-app', v:3, exported:new Date().toISOString(),
     status:statusMap, cards:srsMap, log:srsLog,
-    collect:  uxRead('Collect',  []),   // 收藏字卡，跨書共用
-    notes:    uxRead('Notes',    {}),   // 個人筆記 "bookId/id" -> {t,at}
-    quizLog:  uxRead('QuizLog',  []),   // 測驗紀錄
-    ach:      uxRead('Ach',      {}),   // 成就徽章 id -> 取得日
-    time:     uxRead('Time',     {}),   // 學習時間 日 -> 秒
-    goalDays: uxRead('GoalDays', {})    // 每日目標達成日
+    collect:  uxRead('Collect',  []),
+    notes:    uxRead('Notes',    {}),
+    quizLog:  uxRead('QuizLog',  []),
+    ach:      uxRead('Ach',      {}),
+    time:     uxRead('Time',     {}),
+    goalDays: uxRead('GoalDays', {}),
+    sense:    (window.KIN_SENSE ? KIN_SENSE.exportAll() : {})
   })], {type:'application/json'});
   var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -3172,10 +3215,9 @@ function srsImport(input){
       }
       for(var d in (o.log||{})) srsLog[d] = Math.max(srsLog[d]||0, o.log[d]);
 
-      /* ---- v2 欄位；舊版檔案沒有這些鍵，會自動略過 ---- */
+      /* ---- v2/v3 欄位；舊版檔案沒有這些鍵，會自動略過 ---- */
       var n2 = 0;
-
-      if(Array.isArray(o.collect) && o.collect.length){          // 收藏字卡：依單字聯集，本機優先
+      if(Array.isArray(o.collect) && o.collect.length){
         var mineC = uxRead('Collect', []); if(!Array.isArray(mineC)) mineC = [];
         var seen = {}; mineC.forEach(function(c){ seen[String(c.word||'').trim().toLowerCase()] = 1; });
         o.collect.forEach(function(c){
@@ -3184,8 +3226,7 @@ function srsImport(input){
         });
         uxWrite('Collect', mineC);
       }
-
-      if(o.notes){                                               // 筆記：同一則取 at 較新者
+      if(o.notes){
         var mineN = uxRead('Notes', {});
         for(var kN in o.notes){
           var aN = mineN[kN], bN = o.notes[kN];
@@ -3193,8 +3234,7 @@ function srsImport(input){
         }
         uxWrite('Notes', mineN);
       }
-
-      if(Array.isArray(o.quizLog) && o.quizLog.length){          // 測驗紀錄：去重後依日期排序，維持上限 300
+      if(Array.isArray(o.quizLog) && o.quizLog.length){
         var mineQ = uxRead('QuizLog', []); if(!Array.isArray(mineQ)) mineQ = [];
         var sig = function(r){ return [r.d,r.m,r.n,r.c,r.s,r.b].join('|'); };
         var has = {}; mineQ.forEach(function(r){ has[sig(r)] = 1; });
@@ -3202,16 +3242,12 @@ function srsImport(input){
         mineQ.sort(function(x, y){ return (x.d||'') < (y.d||'') ? -1 : 1; });
         uxWrite('QuizLog', mineQ.slice(-300));
       }
-
-      if(o.ach){                                                 // 成就：保留較早取得的日期
+      if(o.ach){
         var mineA = uxRead('Ach', {});
-        for(var kA in o.ach){
-          if(!mineA[kA] || o.ach[kA] < mineA[kA]){ mineA[kA] = o.ach[kA]; n2++; }
-        }
+        for(var kA in o.ach){ if(!mineA[kA] || o.ach[kA] < mineA[kA]){ mineA[kA] = o.ach[kA]; n2++; } }
         uxWrite('Ach', mineA);
       }
-
-      if(o.time){                                                // 學習時間：同一天取較大值，避免重複匯入灌水
+      if(o.time){
         var mineT = uxRead('Time', {});
         for(var kT in o.time){
           var vT = Math.max(mineT[kT]||0, o.time[kT]||0);
@@ -3219,17 +3255,16 @@ function srsImport(input){
         }
         uxWrite('Time', mineT);
       }
-
-      if(o.goalDays){                                            // 每日目標達成日：聯集
+      if(o.goalDays){
         var mineG = uxRead('GoalDays', {});
         for(var kG in o.goalDays){ if(!mineG[kG]){ mineG[kG] = o.goalDays[kG]; n2++; } }
         uxWrite('GoalDays', mineG);
       }
+      if(o.sense && window.KIN_SENSE){ try{ n2 += KIN_SENSE.importAll(o.sense); }catch(eS){} }
 
       saveStatus(); srsSave(); srsRender();
       if(typeof updateStats === 'function') updateStats();
       if(typeof renderList === 'function') renderList();
-      if(window.UX && UX.paintDash){ try{ UX.paintDash(); }catch(e2){} }
       alert(n2 ? ('匯入完成，進度 ' + n + ' 筆、學習紀錄 ' + n2 + ' 筆。')
                : ('匯入完成，更新 ' + n + ' 筆。'));
     }catch(e){ alert('檔案格式不正確，請選擇匯出的進度檔。'); }
@@ -3556,6 +3591,7 @@ function srsBadge(){
       'kinAch:' + userId(),                              // 成就徽章（UX 模組）
       'kinTime:' + userId(),                             // 學習時間（UX 模組）
       'kinGoalDays:' + userId(),                         // 每日目標達成日（UX 模組）
+      'kinSense:' + userId(),                            // 詞義級 SRS（多義字逐個意思）
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
@@ -8303,6 +8339,7 @@ body.theme-dark .ux-set .st{color:#a8a49f}
           <button type="button" data-v="review">要複習</button>
           <button type="button" data-v="due">今日到期</button>
           <button type="button" data-v="weak">弱點字</button>
+          <button type="button" data-v="senseweak">弱點詞義</button>
           <button type="button" data-v="learned">已習得（抽查）</button>
           <button type="button" data-v="recent">最近學過</button>
         </div>
@@ -9131,9 +9168,16 @@ window.UX = window.UX || {};
     else if(src==='review') list=DATA.filter(function(e){ return statusOf(e.id)==='review'; });
     else if(src==='due') list=(typeof srsDueList==='function')?srsDueList():[];
     else if(src==='learned') list=DATA.filter(function(e){ return statusOf(e.id)==='ok'; });
+    else if(src==='senseweak'){
+      var seenS={}; list=[];
+      if(window.KIN_SENSE) KIN_SENSE.weakList().forEach(function(r){
+        if(!seenS[r.e.id]){ seenS[r.e.id]=1; list.push(r.e); }
+      });
+    }
     else if(src==='weak'){
-      var K=window.KIN_STRENGTH;
-      list=DATA.filter(function(e){ if(statusOf(e.id)==='review') return true; if(!K) return false; try{ return K.level(e.id)<=2 || K.isRelapse(e.id); }catch(x){ return false; } });
+      var K=window.KIN_STRENGTH, SNW={};
+      if(window.KIN_SENSE) KIN_SENSE.weakList().forEach(function(r){ SNW[r.e.id]=1; });
+      list=DATA.filter(function(e){ if(statusOf(e.id)==='review') return true; if(SNW[e.id]) return true; if(!K) return false; try{ return K.level(e.id)<=2 || K.isRelapse(e.id); }catch(x){ return false; } });
     }
     else if(src==='recent'){
       var lim=UX.dayStr(new Date(+UX.today()-3*864e5));
@@ -9871,6 +9915,374 @@ window.UX = window.UX || {};
     window.usOpen=function(){ var r=_usOpen.apply(this, arguments); try{ buildSettings(); paintSettings(); paintOffline(); }catch(e){ console.warn('UX settings', e); } return r; };
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', buildSettings); else buildSettings();
+})();
+
+/* ===================================================================
+   詞義級 SRS（Meaning-level SRS）
+   -------------------------------------------------------------------
+   多義字如 accommodate 同時有「接受、配合」與「容納」兩個意思。
+   原本只記錄整字熟不熟，會出現「懂 A 不懂 B 卻被判為習得」的盲點。
+   本模組替每個 sense 各留一份 SM-2 排程，再彙總回單字層級：
+
+     任一 sense 為 review  → 整字 review
+     全部 sense 為 ok      → 整字 ok
+     只標了一部分          → 不動整字狀態（保留使用者原本的判斷）
+
+   不改動 statusMap / srsMap 既有格式，彙總結果仍寫回 statusMap。
+   資料存於 kinSense:<使用者>，已納入 GitHub 同步與匯出／匯入。
+   =================================================================== */
+window.KIN_SENSE = (function(){
+  'use strict';
+  var cache = null, cacheUid = '', timer = 0;
+
+  /* DATA 以 let 宣告於全域詞法作用域，不是 window 的屬性，必須直接引用 */
+  function allData(){ try{ return (typeof DATA !== 'undefined' && DATA) || []; }catch(e){ return []; } }
+
+  function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
+  function key(){ return 'kinSense:' + uid(); }
+  function k(id, i){ return String(id) + '#' + i; }
+  function dayStr(d){
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  function addDays(n){ var d = new Date(); d.setDate(d.getDate() + n); return dayStr(d); }
+
+  function load(){
+    if(cache && cacheUid === uid()) return cache;
+    try{ cache = JSON.parse(localStorage.getItem(key()) || '{}') || {}; }catch(e){ cache = {}; }
+    cacheUid = uid();
+    return cache;
+  }
+  function save(){ clearTimeout(timer); timer = setTimeout(flush, 250); }
+  function flush(){
+    clearTimeout(timer);
+    try{ localStorage.setItem(key(), JSON.stringify(cache || {})); }catch(e){}
+  }
+
+  function isMulti(e){ return !!(e && e.senses && e.senses.length > 1); }
+  function get(id, i){ return load()[k(id, i)] || null; }
+  function st(id, i){ var c = get(id, i); return c ? (c.st || '') : ''; }
+
+  /* SM-2，參數與整字版一致，但每個 sense 各自累積 */
+  function grade(id, i, good){
+    var m = load(), kk = k(id, i);
+    var c = m[kk] || { st:'', ease:2.5, ivl:0, reps:0, lapses:0, due:'', last:'' };
+    if(good){
+      c.reps++;
+      c.ivl = c.reps === 1 ? 1 : (c.reps === 2 ? 3 : Math.round(c.ivl * c.ease));
+      c.ease = Math.min(2.8, c.ease + 0.1);
+      c.st = 'ok';
+    }else{
+      c.lapses++; c.reps = 0; c.ivl = 1;
+      c.ease = Math.max(1.3, c.ease - 0.2);
+      c.st = 'review';
+    }
+    c.last = dayStr(new Date());
+    c.due = addDays(c.ivl);
+    m[kk] = c; save();
+    return c;
+  }
+
+  /* 直接設定狀態，不動排程數值（給整字 cascade 用） */
+  function setSt(id, i, v){
+    var m = load(), kk = k(id, i);
+    if(!v){ delete m[kk]; save(); return; }
+    var c = m[kk] || { ease:2.5, ivl:0, reps:0, lapses:0, due:'', last:'' };
+    c.st = v; c.last = dayStr(new Date());
+    m[kk] = c; save();
+  }
+
+  /* 彙總：status 為 'review' / 'ok' / null（null = 不改動整字） */
+  function summary(e){
+    if(!isMulti(e)) return { status:null, ok:0, review:0, none:0, total:0 };
+    var ok = 0, rev = 0, none = 0;
+    for(var i = 0; i < e.senses.length; i++){
+      var v = st(e.id, i);
+      if(v === 'ok') ok++; else if(v === 'review') rev++; else none++;
+    }
+    return { status: rev > 0 ? 'review' : (none === 0 && ok > 0 ? 'ok' : null),
+             ok:ok, review:rev, none:none, total:e.senses.length };
+  }
+
+  /* 把彙總結果寫回整字狀態；回傳是否有變動 */
+  function apply(e){
+    var sm = summary(e);
+    if(sm.status === null) return false;
+    if(typeof statusMap === 'undefined') return false;
+    if((statusMap[e.id] || '') === sm.status) return false;
+    statusMap[e.id] = sm.status;
+    if(typeof saveStatus === 'function') saveStatus();
+    if(typeof srsGrade === 'function'){ try{ srsGrade(e.id, sm.status === 'ok'); }catch(x){} }
+    return true;
+  }
+
+  /* 整字標記時覆寫全部 sense，兩套操作不打架 */
+  function cascade(e, v){
+    if(!isMulti(e)) return;
+    for(var i = 0; i < e.senses.length; i++) setSt(e.id, i, v);
+    flush();
+  }
+  function clearWord(id){
+    var m = load();
+    for(var kk in m){ if(kk.indexOf(String(id) + '#') === 0) delete m[kk]; }
+    flush();
+  }
+
+  /* 弱點詞義：依 lapses 由高到低 */
+  function weakList(){
+    var m = load(), out = [];
+    allData().forEach(function(e){
+      if(!isMulti(e)) return;
+      e.senses.forEach(function(s, i){
+        var c = m[k(e.id, i)];
+        if(c && c.st === 'review') out.push({ e:e, s:s, i:i, lapses:c.lapses || 0, due:c.due || '' });
+      });
+    });
+    out.sort(function(a, b){ return (b.lapses - a.lapses) || (a.due < b.due ? -1 : 1); });
+    return out;
+  }
+  function dueList(){
+    var m = load(), t = dayStr(new Date()), out = [];
+    allData().forEach(function(e){
+      if(!isMulti(e)) return;
+      e.senses.forEach(function(s, i){
+        var c = m[k(e.id, i)];
+        if(c && c.due && c.due <= t) out.push({ e:e, s:s, i:i });
+      });
+    });
+    return out;
+  }
+
+  function stats(){
+    var m = load(), r = { words:0, total:0, ok:0, review:0, none:0 };
+    allData().forEach(function(e){
+      if(!isMulti(e)) return;
+      r.words++;
+      for(var i = 0; i < e.senses.length; i++){
+        r.total++;
+        var c = m[k(e.id, i)];
+        if(c && c.st === 'ok') r.ok++;
+        else if(c && c.st === 'review') r.review++;
+        else r.none++;
+      }
+    });
+    return r;
+  }
+
+  function exportAll(){ return JSON.parse(JSON.stringify(load())); }
+  function importAll(inc){
+    if(!inc || typeof inc !== 'object') return 0;
+    var m = load(), n = 0;
+    for(var kk in inc){
+      var b = inc[kk];
+      if(!b || typeof b !== 'object') continue;
+      var a = m[kk];
+      if(!a || (b.last || '') > (a.last || '')){ m[kk] = b; n++; }   // 取 last 較新者
+    }
+    if(n) flush();
+    return n;
+  }
+
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden') flush();
+  });
+
+  return { isMulti:isMulti, get:get, st:st, grade:grade, setSt:setSt,
+           summary:summary, apply:apply, cascade:cascade, clearWord:clearWord,
+           weakList:weakList, dueList:dueList, stats:stats,
+           exportAll:exportAll, importAll:importAll, flush:flush, key:key };
+})();
+
+/* ===================================================================
+   詞義級 SRS：介面掛勾
+   =================================================================== */
+(function(){
+  'use strict';
+  var SN = window.KIN_SENSE;
+  function cur(){ return (typeof currentList !== 'undefined' && currentList[currentIdx]) || null; }
+
+  /* ---------- 解說頁：每個意思一組按鈕 ---------- */
+  function paint(){
+    var e = cur();
+    var host = document.getElementById('detailBody') || document;
+    var blocks = host.querySelectorAll('.db-sense');
+    if(!e || !blocks.length) return;
+
+    if(!SN.isMulti(e)){
+      blocks.forEach(function(b){
+        var o = b.querySelector('.sn-bar'); if(o) o.remove();
+        b.classList.remove('sn-rev', 'sn-ok');
+      });
+      var os = host.querySelector('.sn-sum'); if(os) os.remove();
+      return;
+    }
+
+    blocks.forEach(function(block, i){
+      var v = SN.st(e.id, i), c = SN.get(e.id, i);
+      var bar = block.querySelector('.sn-bar');
+      if(!bar){
+        block.insertAdjacentHTML('beforeend',
+          '<div class="sn-bar">' +
+            '<span class="sn-lb">這個意思</span>' +
+            '<button type="button" class="sn-btn sn-b-ok" data-i="' + i + '" data-v="ok">熟悉 ✓</button>' +
+            '<button type="button" class="sn-btn sn-b-rev" data-i="' + i + '" data-v="review">不熟 ❗</button>' +
+            '<span class="sn-due"></span>' +
+          '</div>');
+        bar = block.querySelector('.sn-bar');
+        bar.addEventListener('click', function(ev){
+          var btn = ev.target.closest && ev.target.closest('.sn-btn');
+          if(!btn) return;
+          ev.stopPropagation(); ev.preventDefault();   // 不要觸發例句播放
+          onMark(e, parseInt(btn.getAttribute('data-i'), 10), btn.getAttribute('data-v'));
+        }, true);
+      }
+      bar.querySelectorAll('.sn-btn').forEach(function(b){
+        b.classList.toggle('on', b.getAttribute('data-v') === v);
+      });
+      bar.querySelector('.sn-due').textContent = (c && c.due && v) ? ('下次 ' + c.due.slice(5)) : '';
+      block.classList.toggle('sn-rev', v === 'review');
+      block.classList.toggle('sn-ok', v === 'ok');
+    });
+
+    paintSummary(e, host);
+  }
+
+  function paintSummary(e, host){
+    var sm = SN.summary(e);
+    var box = host.querySelector('.sn-sum');
+    if(!box){
+      var bs = host.querySelectorAll('.db-sense'), last = bs[bs.length - 1];
+      if(!last) return;
+      last.insertAdjacentHTML('afterend', '<div class="sn-sum"></div>');
+      box = host.querySelector('.sn-sum');
+    }
+    if(!box) return;
+    if(sm.review > 0){
+      box.innerHTML = '這個字有 <b>' + sm.total + '</b> 個意思，其中 <b class="n">' + sm.review +
+        '</b> 個還不熟。整字狀態維持「要複習」，測驗會優先考不熟的那個意思。';
+    }else if(sm.none === 0){
+      box.innerHTML = '這個字的 <b>' + sm.total + '</b> 個意思都標記為熟悉，整字已轉為「習得」。';
+    }else{
+      box.innerHTML = '這個字有 <b>' + sm.total + '</b> 個意思，還有 <b>' + sm.none +
+        '</b> 個沒標記。全部標記後才會自動更新整字狀態。';
+    }
+    box.classList.toggle('warn', sm.review > 0);
+  }
+
+  function onMark(e, i, v){
+    var same = SN.st(e.id, i) === v;
+    if(same) SN.setSt(e.id, i, '');          // 再點一次＝取消
+    else SN.grade(e.id, i, v === 'ok');
+    if(SN.apply(e)){
+      if(typeof updateStats === 'function') updateStats();
+      if(typeof refreshAllStatusUI === 'function') refreshAllStatusUI();
+      if(typeof renderList === 'function') renderList();
+    }
+    paint();
+    if(window.UX && UX.toast){
+      var label = (e.senses[i] && e.senses[i].mean) || ('意思 ' + (i + 1));
+      UX.toast(same ? ('已清除：' + label) : (v === 'ok' ? ('熟悉：' + label) : ('不熟：' + label)));
+    }
+  }
+
+  /* ---------- 掛在既有流程上 ---------- */
+  if(typeof window.showDetail === 'function'){
+    var _sd = window.showDetail;
+    window.showDetail = function(){
+      var r = _sd.apply(this, arguments);
+      try{ paint(); }catch(x){ console.warn('sense paint', x); }
+      return r;
+    };
+  }
+  if(typeof window.markStatus === 'function'){
+    var _ms = window.markStatus;
+    window.markStatus = function(v){
+      var e = cur();
+      var r = _ms.apply(this, arguments);
+      try{ if(e && SN.isMulti(e)){ SN.cascade(e, v || ''); paint(); } }catch(x){}
+      return r;
+    };
+  }
+
+  /* ---------- 一覽頁：多義字弱點標籤 ---------- */
+  if(typeof window.renderList === 'function'){
+    var _rl = window.renderList;
+    window.renderList = function(){
+      var r = _rl.apply(this, arguments);
+      try{ tagList(); }catch(x){}
+      return r;
+    };
+  }
+  function tagList(){
+    if(typeof DATA === 'undefined' || !DATA) return;
+    var byId = {};
+    DATA.forEach(function(e){ if(SN.isMulti(e)) byId[String(e.id)] = e; });
+    document.querySelectorAll('#list [data-id]').forEach(function(row){
+      var old = row.querySelector('.sn-chip'); if(old) old.remove();
+      var e = byId[String(row.getAttribute('data-id'))];
+      if(!e) return;
+      var sm = SN.summary(e);
+      if(sm.review > 0){
+        var t = document.createElement('span');
+        t.className = 'sn-chip';
+        t.textContent = '義 ' + sm.review + '/' + sm.total + ' 不熟';
+        (row.querySelector('.li-word') || row.querySelector('.li-main') || row).appendChild(t);
+      }
+    });
+  }
+
+  /* ---------- 儀表板：不熟的詞義清單 ---------- */
+  function paintDash(){
+    var box = document.getElementById('snWeakBox');
+    if(!box) return;
+    var list = SN.weakList();
+    if(!list.length){
+      box.innerHTML = '<div class="sn-empty">目前沒有標記為不熟的詞義。多義字可在解說頁逐個意思標記。</div>';
+      return;
+    }
+    box.innerHTML = list.slice(0, 30).map(function(r){
+      return '<div class="sn-weak" data-id="' + r.e.id + '">' +
+               '<b>' + r.e.word + '</b>' +
+               '<span class="m">' + (r.s.mean || '') + '</span>' +
+               (r.lapses ? '<span class="n">忘 ' + r.lapses + ' 次</span>' : '') +
+             '</div>';
+    }).join('');
+    box.querySelectorAll('.sn-weak').forEach(function(el){
+      el.onclick = function(){
+        var id = el.getAttribute('data-id');
+        if(typeof openDetailById === 'function') openDetailById(id);
+        else if(typeof jumpToId === 'function') jumpToId(id);
+      };
+    });
+  }
+
+  function boot(){
+    if(window.UX && UX.paintDash){
+      var _pd = UX.paintDash;
+      UX.paintDash = function(){
+        var r = _pd.apply(this, arguments);
+        try{ paintDash(); }catch(x){}
+        return r;
+      };
+    }
+    if(window.UX && UX.onQuizAnswer){          // 測驗答錯時同步標記該詞義
+      var _oa = UX.onQuizAnswer;
+      UX.onQuizAnswer = function(entry, correct, senseIdx){
+        var r = _oa.apply(this, arguments);
+        try{
+          if(entry && SN.isMulti(entry) && typeof senseIdx === 'number'){
+            SN.grade(entry.id, senseIdx, !!correct);
+            SN.apply(entry);
+          }
+        }catch(x){}
+        return r;
+      };
+    }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  window.KIN_SENSE_UI = { paint:paint, paintDash:paintDash, tagList:tagList };
 })();
 
 </script>
