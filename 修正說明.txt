@@ -1,1 +1,77 @@
-C區完整修正版：books/kin1000.js 修正 PDF 雙欄排序與音檔對應；index.html 以 TTS 補 C-010 oven；sw.js 升 kin-shell-v6。
+C 區（Column 2）音檔錯亂修正
+================================
+
+【結論先講】
+資料順序完全正確，不需要改。問題純粹出在音檔切割。
+
+【怎麼查出來的】
+用你提供的 en08 原始音軌做三步分析：
+
+1. 能量門檻偵測發音單位
+   門檻 -38dB 到 -50dB、合併間隔 100ms 到 250ms，全部都得到 83 個單位，
+   結果非常穩定，不是參數湊出來的。
+
+2. 對照 PDF 欄序
+   Column 2 共 77 個條目，其中 6 個會唸兩次：
+     refrigerator (fridge)
+     bookcase / bookshelf
+     perfume / fragrance
+     mobile / cell phone
+     photocopier / copy machine
+     garbage / trash
+   77 + 6 = 83，與偵測數字完全吻合。
+   再用音長與音節數交叉驗證，相關係數 0.784。
+
+3. 把現有 77 個切片做頻譜比對，定位回 en08 時間軸
+   77 個全部定位成功、時間單調遞增、平均相似度 0.827。
+
+三者交叉比對後，對應關係可以完全確定，不需要再靠試聽猜測。
+
+【問題一：45 個切片對應錯誤】
+原本的 audioFix() 是手工逐段加位移，補到一半沒接上，
+又漏算了 5 個斜線條目各佔兩個發音單位，造成連鎖錯位。
+
+而且更麻煩的是，有 6 個切片橫跨了兩個不同條目，
+檔案本身就混了兩個字，無論怎麼改對應表都救不回來：
+
+  C-021 檔案內含 backpack 尾段 + bookcase 前半
+  C-022 檔案內含 bookshelf 後半 + briefcase
+  C-056 檔案內含 mobile/cell phone 的兩段
+  C-057 檔案內含 photocopier/copy machine 的兩段
+  C-059 檔案內含 tablet computer + 下一字開頭
+  C-065 檔案內含 fire extinguisher + fire pit
+
+因此改為從 en08 重新切割全部 77 個切片。
+重新切割後再跑一次比對，錯位 0 / 77。
+
+斜線條目的兩種唸法都含在同一個檔裡，例如：
+  C-011 refrigerator (fridge)      2.64 秒
+  C-055 mobile / cell phone        2.69 秒
+  C-070 garbage / trash            2.32 秒
+
+audioFix() 的 Column 2 段落因此簡化為單純的 1:1 對應。
+Column 1（C1-）原有的 9 筆檔名校正保持不動，主表 1~1000 也未受影響。
+
+【問題二：C-010 microwave (oven) 缺少 oven】
+你的判斷是對的，但原因跟一開始猜的不一樣，而且修不了。
+
+三個獨立證據都指向同一結論：
+  1. 你直接聽到的結果
+  2. 音長 0.92 秒，「microwave」估 0.86 秒、「microwave oven」估 1.43 秒
+  3. 波形音節核偵測結果為 3 個，「microwave」正好 3 音節，
+     「microwave oven」為 5 音節
+
+比對其他括號條目（laptop computer、medical checkup、food dehydrator 等）
+都有正常唸出括號內容，唯獨這一筆沒有。
+
+結論：oven 這段錄音原本就不存在，不是切割時被切掉。
+要補只能另外用 TTS 生成一個 C-010_w.mp3 覆蓋上去。
+
+【檔案清單】
+books/kin1000.js                  覆蓋（audioFix 已簡化）
+audio/kin1000/CLIPS/C-001_w.mp3   覆蓋
+  ～ C-077_w.mp3                  （共 77 個檔）
+
+【部署】
+解壓後覆蓋到專案相同路徑，然後 commit、push。
+記得把 sw.js 的 VER 往上加一版，否則舊快取會擋住新音檔。

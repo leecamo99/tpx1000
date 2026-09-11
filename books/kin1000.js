@@ -13,43 +13,15 @@ window.registerBook({
   Object.keys(map).forEach(function(id){M[id]={word:map[id],phrases:[]};});
 })();
 
-// Column 2 音檔校正：依實際語音內容重新建立完整對應。
-(function fixColumn2AudioSequence(){
-  
-  // refrigerator、fridge 分成兩個檔案。
-  M['C-011']={words:['C-011_w.mp3','C-012_w.mp3'],word:'C-011_w.mp3',phrases:[]};
-  M['C-11']=M['C-011'];
-  // C-013_w.mp3 本身已完整念 vacuum cleaner，不再串 C-014，避免多播 washing machine。
-  M['C-012']={word:'C-013_w.mp3',phrases:[]};
-  M['C-12']=M['C-012'];
-  // C-013 到 C-021 受 refrigerator/fridge 影響，順延一格。
-  for(var n=13;n<=21;n++){
-    var id='C-'+('000'+n).slice(-3),shortId='C-'+n;
-    var audioId='C-'+('000'+(n+1)).slice(-3)+'_w.mp3';
-    M[id]={word:audioId,phrases:[]}; M[shortId]=M[id];
+// Column 2 音檔對應：C 區切片已於 2026-09-11 依 en08 原始語音重新切割，
+  // 每個切片剛好對應一個條目，斜線／括號條目的兩種唸法都含在同一檔內，
+  // 因此不再需要任何位移校正。
+  (function fixColumn2Audio(){
+    for(var n=1;n<=77;n++){
+      var id='C-'+('000'+n).slice(-3);
+      M[id]={word:id+'_w.mp3',phrases:[]};
+      M['C-'+n]=M[id];
+    }
+  })();
   }
-  // C-022 briefcase 對應 C-023_w.mp3；C-022 到 C-032 均順延一格。
-  for(var k=22;k<=32;k++){
-    var kid='C-'+('000'+k).slice(-3),kshort='C-'+k;
-    var kaudio='C-'+('000'+(k+1)).slice(-3)+'_w.mp3';
-    M[kid]={word:kaudio,phrases:[]}; M[kshort]=M[kid];
-  }
-  // perfume、fragrance 分成兩個檔案，承接前段順延一格。
-  M['C-033']={words:['C-034_w.mp3','C-035_w.mp3'],word:'C-034_w.mp3',phrases:[]};
-  M['C-33']=M['C-033'];
-  // C-034 起再加 perfume/fragrance 的額外一格，累計順延兩格。
-  for(var m=34;m<=45;m++){
-    var mid='C-'+('000'+m).slice(-3),mshort='C-'+m;
-    var maudio='C-'+('000'+(m+2)).slice(-3)+'_w.mp3';
-    M[mid]={word:maudio,phrases:[]}; M[mshort]=M[mid];
-  }
-})();
-  
-// 2026-09-11 Column 2 最終校正：依原稿 PDF 分類欄序與人工試聽。
-for(var z1=1;z1<=10;z1++){var zid1='C-'+('000'+z1).slice(-3);M[zid1]={word:zid1+'_w.mp3',phrases:[]};M['C-'+z1]=M[zid1];}
-M['C-011']={words:['C-011_w.mp3','C-012_w.mp3'],word:'C-011_w.mp3',phrases:[]};M['C-11']=M['C-011'];
-M['C-012']={word:'C-013_w.mp3',phrases:[]};M['C-12']=M['C-012'];
-for(var z2=13;z2<=20;z2++){var zid2='C-'+('000'+z2).slice(-3),zf2='C-'+('000'+(z2+1)).slice(-3)+'_w.mp3';M[zid2]={word:zf2,phrases:[]};M['C-'+z2]=M[zid2];}
-for(var z3=21;z3<=77;z3++){var zid3='C-'+('000'+z3).slice(-3);M[zid3]={word:zid3+'_w.mp3',phrases:[]};M['C-'+z3]=M[zid3];}
-}
 });
