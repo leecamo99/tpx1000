@@ -10403,5 +10403,42 @@ window.KIN_SENSE = (function(){
 })();
 
 </script>
+
+<style id="kinStatusFilterStyle">
+#kinStatusFilter{display:flex;gap:8px;width:100%;box-sizing:border-box;padding:8px 12px 10px;overflow-x:auto;overflow-y:hidden;background:var(--bg,#fff);border-bottom:1px solid rgba(128,128,128,.18);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#kinStatusFilter::-webkit-scrollbar{display:none}.kin-status-chip{flex:0 0 auto;min-height:36px;padding:0 12px;border:1.5px solid #d0d0d2;border-radius:999px;background:#fff;color:#666;font:inherit;font-size:12px;font-weight:750;white-space:nowrap;touch-action:manipulation}.kin-status-chip:active{transform:scale(.96)}.kin-status-chip .n{margin-left:4px;opacity:.72;font-variant-numeric:tabular-nums}
+.kin-status-chip.on[data-s="all"]{background:#e86f00;border-color:#e86f00;color:#fff}.kin-status-chip.on[data-s="active"]{background:#fff2e8;border-color:#ed741d;color:#c85b08}.kin-status-chip.on[data-s="new"]{background:#ececef;border-color:#888;color:#333}.kin-status-chip.on[data-s="review"]{background:#fff0f1;border-color:#e44e57;color:#d13e47}.kin-status-chip.on[data-s="ok"]{background:#edfff3;border-color:#36ae65;color:#248d4e}
+body.theme-dark #kinStatusFilter{background:#0d0d0e;border-bottom-color:#29292c}body.theme-dark .kin-status-chip{background:#1b1b1d;border-color:#444449;color:#aaa}body.theme-dark .kin-status-chip.on[data-s="all"]{background:#de670f;border-color:#ff8128;color:#fff}body.theme-dark .kin-status-chip.on[data-s="active"]{background:#321e10;border-color:#ff8128;color:#ff9b54}body.theme-dark .kin-status-chip.on[data-s="new"]{background:#303033;border-color:#8b8b90;color:#eee}body.theme-dark .kin-status-chip.on[data-s="review"]{background:#351719;border-color:#ed515a;color:#ff737b}body.theme-dark .kin-status-chip.on[data-s="ok"]{background:#102d1c;border-color:#38ba6d;color:#58d486}
+.kin-status-empty{margin:28px 16px;padding:24px 16px;border:1px solid rgba(128,128,128,.24);border-radius:14px;text-align:center;color:#888}.kin-status-empty b{display:block;margin-bottom:8px;font-size:16px}.kin-status-empty button{margin-top:14px;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:#e86f00;color:#fff;font:inherit;font-weight:700}
+</style>
+<script>
+(function(){
+'use strict';if(window.KIN_STATUS_FILTER)return;
+var ALL='all',ACTIVE='active',NEW='new',REVIEW='review',OK='ok',value=ALL,lastBook='',painting=false;
+var oldFiltered=window.filtered,oldRender=window.renderList;
+function uid(){try{return window.KIN_USER&&KIN_USER.id?KIN_USER.id():'paul';}catch(e){return 'paul';}}
+function book(){return window.CURRENT_BOOK&&CURRENT_BOOK.id?String(CURRENT_BOOK.id):'kin1000';}
+function key(){return 'kinStatusFilter:'+book()+':'+uid();}
+function load(){try{value=localStorage.getItem(key())||ALL;}catch(e){value=ALL;}if([ALL,ACTIVE,NEW,REVIEW,OK].indexOf(value)<0)value=ALL;}
+function save(){try{localStorage.setItem(key(),value);}catch(e){}}
+function st(e){return String(statusMap&&statusMap[e.id]||'');}
+function match(e){var x=st(e);if(value===ACTIVE)return x===''||x===REVIEW;if(value===NEW)return x==='';if(value===REVIEW)return x===REVIEW;if(value===OK)return x===OK;return true;}
+window.filtered=function(){var a=oldFiltered.apply(this,arguments)||[];return value===ALL?a:a.filter(match);};
+function categoryBase(){var lv=(currentLevels&&currentLevels.length)?currentLevels:['all'];if(lv.indexOf('all')>=0)return DATA.slice();return DATA.filter(function(e){return lv.indexOf(e.level)>=0;});}
+function counts(){var c={all:0,active:0,new:0,review:0,ok:0};categoryBase().forEach(function(e){c.all++;var x=st(e);if(x===OK)c.ok++;else if(x===REVIEW){c.review++;c.active++;}else{c.new++;c.active++;}});return c;}
+function chip(s,label,n){return '<button type="button" class="kin-status-chip '+(value===s?'on':'')+'" data-s="'+s+'">'+label+'<span class="n">'+n+'</span></button>';}
+function ensure(){var b=document.getElementById('kinStatusFilter');if(b)return b;var bar=document.getElementById('uxBar');if(!bar)return null;b=document.createElement('div');b.id='kinStatusFilter';b.setAttribute('aria-label','學習狀態過濾');bar.insertAdjacentElement('afterend',b);b.addEventListener('click',function(ev){var x=ev.target.closest('.kin-status-chip');if(x)set(x.getAttribute('data-s'));});return b;}
+function paint(){if(painting)return;painting=true;try{if(book()!==lastBook){lastBook=book();load();}var b=ensure();if(!b)return;var c=counts();b.innerHTML=chip(ALL,'全部',c.all)+chip(ACTIVE,'未讀＋複習',c.active)+chip(NEW,'未學習',c.new)+chip(REVIEW,'要複習',c.review)+chip(OK,'已習得',c.ok);}finally{painting=false;}}
+function empty(){var box=document.getElementById('itemList');if(!box||value===ALL||window.filtered().length)return;var lab={active:'未讀＋複習',new:'未學習',review:'要複習',ok:'已習得'};box.innerHTML='<div class="kin-status-empty"><b>「'+lab[value]+'」目前沒有單字</b><div>可以切換其他狀態，或顯示全部。</div><button type="button" id="kinStatusAll">顯示全部</button></div>';var x=document.getElementById('kinStatusAll');if(x)x.onclick=function(){set(ALL);};}
+function redraw(){try{currentList=window.filtered();oldRender.call(window);}catch(e){console.warn('status filter',e);}paint();empty();var q=document.getElementById('uxSearchIn');if(q)q.dispatchEvent(new Event('input',{bubbles:true}));}
+function set(v){if([ALL,ACTIVE,NEW,REVIEW,OK].indexOf(v)<0)v=ALL;value=v;save();redraw();}
+window.renderList=function(){var r=oldRender.apply(this,arguments);setTimeout(function(){paint();empty();},0);return r;};
+window.KIN_STATUS_FILTER={get:function(){return value;},set:set,reset:function(){set(ALL);},counts:counts,refresh:redraw};
+function quick(id,v){var e=document.getElementById(id);if(!e)return;e.style.cursor='pointer';e.setAttribute('role','button');e.addEventListener('click',function(){try{setListMode('browse');}catch(x){}setTimeout(function(){set(v);},80);});}
+function boot(){load();paint();quick('statNew',NEW);quick('statRev',REVIEW);quick('statOk',OK);[100,350,800,1500].forEach(function(t){setTimeout(paint,t);});var title=document.getElementById('bookTitle');if(title&&window.MutationObserver)new MutationObserver(function(){lastBook='';setTimeout(function(){paint();redraw();},80);}).observe(title,{childList:true,subtree:true,characterData:true});document.addEventListener('click',function(ev){if(ev.target.closest('#itemList .mark,#itemList [onclick*="cycleStatus"]'))setTimeout(function(){paint();if(value!==ALL)redraw();},90);},true);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+
 </body>
 </html>
