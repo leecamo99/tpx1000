@@ -980,6 +980,17 @@ body.theme-dark .ap-box{background:#0e0e0e;border-color:#242426}
 body.theme-dark .ap-sw{color:#d8d5d1}
 body.theme-dark .ap-note{color:#6a6661}
 </style>
+
+<style id="kinGestureAndStickyReturn">
+/* 手勢預設關閉：只有明確開啟時才顯示可滑動提示。 */
+body:not(.kin-gestures-on) #gestureGuide{display:none!important}
+/* 「回到 XXX 繼續讀」跟著內容捲動，永遠停在解說頂列下方。 */
+#screen-detail #cardExtra{overflow:visible}
+#screen-detail .cx-return-sticky{position:sticky;top:calc(58px + env(safe-area-inset-top));z-index:86;margin-top:0;border-color:#e37a2d;background:rgba(255,248,240,.97);box-shadow:0 6px 18px rgba(0,0,0,.10);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+#screen-detail .cx-return-sticky .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.theme-dark #screen-detail .cx-return-sticky{background:rgba(42,29,18,.97);border-color:#ff9142;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+</style>
+
 </head>
 <body class="mode-study">
 <script>
@@ -3444,6 +3455,16 @@ function srsBadge(){
 
 
 <script>
+/* 手勢預設關閉；設定保存在 kinUX.gestures。 */
+window.KIN_GESTURES={
+  enabled:function(){try{var s=JSON.parse(localStorage.getItem('kinUX')||'{}');return s.gestures===true;}catch(e){return false;}},
+  set:function(on){try{var s=JSON.parse(localStorage.getItem('kinUX')||'{}');s.gestures=!!on;localStorage.setItem('kinUX',JSON.stringify(s));}catch(e){}document.body.classList.toggle('kin-gestures-on',!!on);},
+  paint:function(){document.body.classList.toggle('kin-gestures-on',this.enabled());}
+};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){KIN_GESTURES.paint();});else KIN_GESTURES.paint();
+</script>
+
+<script>
 /* ===== 手機滑動手勢 =====
    上滑=習得，下滑=要複習，右滑=下一個，左滑=上一個，輕點空白處=播放 */
 (function(){
@@ -3469,6 +3490,7 @@ function srsBadge(){
     var card=document.getElementById('detailBook'); if(!card||card._gestureBound)return;
     card._gestureBound=true;
     card.addEventListener('touchstart',function(e){
+      if(!window.KIN_GESTURES||!KIN_GESTURES.enabled()){tracking=false;resetCard();return;}
       if(!detailActive()||e.touches.length!==1||interactive(e.target)){tracking=false;return;}
       var t=e.touches[0];sx=lx=t.clientX;sy=ly=t.clientY;started=Date.now();tracking=true;moved=false;
     },{passive:true});
@@ -3477,7 +3499,7 @@ function srsBadge(){
       var t=e.touches[0];lx=t.clientX;ly=t.clientY;
       var dx=lx-sx,dy=ly-sy;
       if(Math.abs(dx)>12||Math.abs(dy)>12)moved=true;
-      /* detailBook 是專用手勢卡，阻止瀏覽器把上下滑當成頁面捲動 */
+      /* 只有手勢開啟時才阻止頁面捲動；預設關閉時，上下滑正常瀏覽資訊。 */
       if(moved)e.preventDefault();
       var ax=Math.abs(dx),ay=Math.abs(dy),tx=0,ty=0;
       if(ax>ay){tx=Math.max(-45,Math.min(45,dx*.18));}
@@ -5627,7 +5649,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var jst = jumpLoad();
     var top = jst.length ? jst[jst.length - 1] : null;
     if(top && e && top.id !== String(e.id)){
-      html += '<button type="button" class="cx-row" onclick="__kinJumpBack()">'
+      html += '<button type="button" class="cx-row cx-return-sticky" onclick="__kinJumpBack()">'
            +  '<span class="ic">' + ICON_BACK + '</span>'
            +  '<span class="t">回到 <b>' + esc(top.id) + ' ' + esc(top.word || '') + '</b> 繼續讀'
            +  (jst.length > 1 ? '<span class="lv">還有 ' + (jst.length - 1) + ' 層</span>' : '')
@@ -8381,6 +8403,15 @@ body.theme-dark .ux-set .st{color:#a8a49f}
         <div class="ux-note-sm" id="uxQzModeNote">看英文選出正確中文意思。答錯會自動標為「要複習」並進入弱點清單。</div>
       </div>
       <div class="ux-card">
+        <h3>難度</h3>
+        <div class="ux-opts" id="uxQzDiff">
+          <button type="button" data-v="easy" class="on">簡單</button>
+          <button type="button" data-v="normal">標準</button>
+          <button type="button" data-v="hard">挑戰</button>
+        </div>
+        <div class="ux-note-sm" id="uxQzDiffNote">選項差異明顯，並排除多重答案、同義重疊與題意不清的題目。</div>
+      </div>
+      <div class="ux-card">
         <h3>出題範圍</h3>
         <div class="ux-opts" id="uxQzSrc">
           <button type="button" data-v="range" class="on">目前範圍</button>
@@ -8523,7 +8554,7 @@ window.UX = window.UX || {};
 
   /* ---------- 設定（裝置層級） ---------- */
   var S = lsGet('kinUX', {});
-  var DEF = { mask:'none', shuffle:false, seed:1, haptic:true, goal:20, scale:1, quizAffects:true, repeat:1, gap:0, coachSeen:false, goalDoneDay:'' };
+  var DEF = { mask:'none', shuffle:false, seed:1, haptic:true, gestures:false, goal:20, scale:1, quizAffects:true, repeat:1, gap:0, coachSeen:false, goalDoneDay:'' };
   Object.keys(DEF).forEach(function(k){ if(S[k]===undefined) S[k]=DEF[k]; });
   function saveS(){ lsSet('kinUX', S); }
   UX.S=S; UX.saveS=saveS;
@@ -8956,7 +8987,7 @@ window.UX = window.UX || {};
   var coachLater=false;
   function showCoach(force){
     var isTouch=('ontouchstart' in window)||(navigator.maxTouchPoints>0);
-    if(!force && (S.coachSeen || coachLater || !isTouch)) return;
+    if(!force && (S.coachSeen || coachLater || !isTouch || !S.gestures)) return;
     var c=$('uxCoach'); if(c) c.classList.add('show');
   }
   UX.showCoach=function(){ showCoach(true); };
@@ -9217,7 +9248,7 @@ window.UX = window.UX || {};
     spell:'聽音檔後拼出單字。可逐字母提示；輸入正確才進下一題。',
     cloze:'例句挖空，依中文翻譯與語境填入單字（接受例句中的原形或變化形）。'
   };
-  var Q=null, preset=null, advTimer=0, sel={mode:'en2zh', src:'range', n:10};
+  var Q=null, preset=null, advTimer=0, sel={mode:'en2zh', src:'range', n:10, diff:'easy'};
 
   /* ---------- 題庫 ---------- */
   function statusOf(id){ return statusMap[id]||''; }
@@ -9249,6 +9280,67 @@ window.UX = window.UX || {};
   function meanText(e){ return String(e.mean||e.pos||'').replace(/\s+/g,' ').trim(); }
   function headVariants(e){ return String(e.word||'').split(/[\/／]/).map(function(x){ return x.trim(); }).filter(Boolean); }
   function normAns(s){ return String(s||'').toLowerCase().replace(/[’‘]/g,"'").replace(/\s+/g,' ').trim().replace(/[.,!?;:]+$/,'').trim(); }
+  function cleanMeaning(e){return meanText(e).replace(/^[動名形副介接代冠]\s*/,'').replace(/[（(][^）)]*[）)]/g,'').replace(/\s+/g,' ').trim();}
+  function senseParts(e){return cleanMeaning(e).split(/[、，；;／\/]/).map(function(x){return x.trim();}).filter(function(x){return x.length>=2;});}
+  /* 簡單模式語意群：同群詞義不可互相當選項。 */
+  var EASY_SEMANTIC_GROUPS=[
+    ['預測','預報','推測','預估','估計','預見'],
+    ['假定','假設','設想','推定','認定'],
+    ['預期','期待','期望','盼望'],
+    ['要求','規定','命令','請求','需求','必要條件'],
+    ['允許','准許','許可','同意'],
+    ['拒絕','否決','駁回','謝絕'],
+    ['增加','提高','提升','增長','上升'],
+    ['減少','降低','下降','削減'],
+    ['購買','採購','買進'],
+    ['取消','中止','終止','撤銷'],
+    ['安排','規劃','排定','預定'],
+    ['確認','證實','查明','核實'],
+    ['通知','告知','通報','宣告'],
+    ['修理','修繕','維修','整修'],
+    ['容納','收容','接納','提供住宿'],
+    ['適應','調整','配合','使適合'],
+    ['職員','員工','人員','工作人員'],
+    ['顧客','客戶','消費者'],
+    ['延後','延期','推遲'],
+    ['提前','提早','預先']
+  ];
+  function semanticTokens(e){
+    var text=cleanMeaning(e),out=[];
+    EASY_SEMANTIC_GROUPS.forEach(function(g,gi){if(g.some(function(w){return text.indexOf(w)>=0;}))out.push('g'+gi);});
+    senseParts(e).forEach(function(x){if(x.length>=2)out.push('t:'+x);});
+    return out;
+  }
+  function sameSemanticFamily(a,b){
+    var A=semanticTokens(a),B=semanticTokens(b),set={};A.forEach(function(x){set[x]=1;});
+    if(B.some(function(x){return set[x];}))return true;
+    var am=cleanMeaning(a),bm=cleanMeaning(b);
+    // 中文字義高度重疊時，即使不在人工群組也視為太近。
+    return overlap(am,bm)>=0.28;
+  }
+  function ambiguousEntry(e,mode){
+    var heads=headVariants(e),parts=senseParts(e),m=cleanMeaning(e);
+    if(!heads.length||!m)return true;
+    if(heads.length>1)return true;                         // 斜線並列字可能有多個正解
+    if(parts.length>3)return true;                         // 過多詞義不適合簡單模式
+    if(mode==='zh2en'){
+      var key=m.toLowerCase();
+      var same=DATA.filter(function(x){return x.id!==e.id&&cleanMeaning(x).toLowerCase()===key;});
+      if(same.length)return true;                          // 相同中文可對應多個英文
+    }
+    return false;
+  }
+  function optionAmbiguous(answer,x,mode){
+    if(!x||x.id===answer.id)return true;
+    if(sameSemanticFamily(answer,x))return true;
+    if(mode==='zh2en'){
+      if(normAns(x.word)===normAns(answer.word))return true;
+      if(editSim(x.word,answer.word)>=0.58)return true; // 簡單模式避免近形英文
+    }
+    var a=senseParts(answer),b=senseParts(x);
+    if(!a.length||!b.length)return true;
+    return a.some(function(x1){return b.some(function(x2){return x1===x2||x1.indexOf(x2)>=0||x2.indexOf(x1)>=0;});});
+  }
 
   function clozeInfo(e){
     var sent=String(e.en||'').trim(); if(!sent) return null;
@@ -9287,22 +9379,73 @@ window.UX = window.UX || {};
     else{sc+=overlap(meanText(e),meanText(x))*45;var ep=zhParts(e),xp=zhParts(x);if(ep.some(function(a){return xp.some(function(b){return a===b||a.indexOf(b)>=0||b.indexOf(a)>=0;});}))sc+=35;}
     sc+=Math.random()*8;return sc;
   }
+<<<<<<< HEAD
   function distractors(e,mode,k){
     var answerKey=mode==='zh2en'?normAns(e.word):meanText(e),used={};used[answerKey]=1;
     var c=DATA.filter(function(x){if(x.id===e.id)return false;var key=mode==='zh2en'?normAns(x.word):meanText(x);if(!key||used[key])return false;if(mode==='listen'&&!meaningIsChinese(x))return false;return true;}).map(function(x){return {e:x,s:distractScore(e,x,mode)};});
     c.sort(function(a,b){return b.s-a.s;});var out=[];for(var i=0;i<c.length&&out.length<k;i++){var x=c[i].e,key=mode==='zh2en'?normAns(x.word):meanText(x);if(used[key])continue;used[key]=1;out.push(x);}return out;
+=======
+  function distractors(e,mode,k,diff){
+    diff=diff||sel.diff||'easy';
+    var answerKey=mode==='zh2en'?normAns(e.word):meanText(e),used={};used[answerKey]=1;
+    var c=DATA.filter(function(x){
+      if(x.id===e.id)return false;
+      var key=mode==='zh2en'?normAns(x.word):meanText(x);
+      if(!key||used[key])return false;
+      if(mode==='listen'&&!meaningIsChinese(x))return false;
+      if(diff==='easy'){
+        if(optionAmbiguous(e,x,mode))return false;
+        // 簡單模式優先不同詞性；若同詞性，中文相似度必須非常低。
+        if(e.pos&&x.pos===e.pos&&overlap(cleanMeaning(e),cleanMeaning(x))>0.08)return false;
+      }
+      return true;
+    }).map(function(x){return {e:x,s:distractScore(e,x,mode)};});
+    c.sort(function(a,b){
+      if(diff==='easy'){var ap=(e.pos&&a.e.pos===e.pos)?20:0,bp=(e.pos&&b.e.pos===e.pos)?20:0;return (a.s+ap)-(b.s+bp);} // 不同詞性＋差異大
+      if(diff==='normal')return Math.abs(a.s-42)-Math.abs(b.s-42);
+      return b.s-a.s;                                     // 高相似度，挑戰模式
+    });
+    var out=[];
+    for(var i=0;i<c.length&&out.length<k;i++){
+      var x=c[i].e,key=mode==='zh2en'?normAns(x.word):meanText(x);
+      if(used[key])continue;used[key]=1;out.push(x);
+    }
+    return out;
+>>>>>>> d9a23219dafa74d993118bd273c2b12d53e14987
   }
   function weightedQuestions(pool){
     var K=window.KIN_STRENGTH,SN=window.KIN_SENSE,weak={};if(SN)try{SN.weakList().forEach(function(r){weak[r.e.id]=1;});}catch(x){}
     return pool.map(function(e){var w=1;if(statusOf(e.id)==='review')w+=3;if(weak[e.id])w+=4;if(K)try{var lv=K.level(e.id);if(lv<=2)w+=3;if(K.isRelapse(e.id))w+=3;}catch(x){}return {e:e,key:Math.pow(Math.random(),1/w)};}).sort(function(a,b){return b.key-a.key;}).map(function(r){return r.e;});
   }
   function buildQuestions(pool,mode,n){
+<<<<<<< HEAD
     var list=weightedQuestions(pool.slice());
     if(mode==='cloze')list=list.filter(function(e){return !!clozeInfo(e);});
     if(mode==='spell'||mode==='zh2en'||mode==='listen')list=list.filter(function(e){return headVariants(e).length&&/[A-Za-z]/.test(e.word);});
     if(mode==='listen')list=list.filter(meaningIsChinese);
     if(n>0)list=list.slice(0,n);else list=list.slice(0,200);
     return list.map(function(e){var q={e:e,mode:mode};if(mode==='en2zh'||mode==='listen'||mode==='zh2en'){q.opts=shuffle([e].concat(distractors(e,mode,3)));}if(mode==='cloze')q.cz=clozeInfo(e);return q;});
+=======
+    var diff=sel.diff||'easy',list=weightedQuestions(pool.slice());
+    if(mode==='cloze')list=list.filter(function(e){return !!clozeInfo(e);});
+    if(mode==='spell'||mode==='zh2en'||mode==='listen')list=list.filter(function(e){return headVariants(e).length&&/[A-Za-z]/.test(e.word);});
+    if(mode==='listen')list=list.filter(meaningIsChinese);
+    if(diff==='easy')list=list.filter(function(e){return !ambiguousEntry(e,mode);});
+    var limit=n>0?n:200,out=[];
+    for(var i=0;i<list.length&&out.length<limit;i++){
+      var e=list[i],q={e:e,mode:mode,diff:diff};
+      if(mode==='en2zh'||mode==='listen'||mode==='zh2en'){
+        var ds=distractors(e,mode,3,diff);
+        if(ds.length<3)continue;                           // 不足四個唯一答案就排除
+        q.opts=shuffle([e].concat(ds));
+        var keys=q.opts.map(function(x){return mode==='zh2en'?normAns(x.word):meanText(x);});
+        if((new Set(keys)).size!==4)continue;              // 重複選項／多重答案排除
+      }
+      if(mode==='cloze')q.cz=clozeInfo(e);
+      out.push(q);
+    }
+    return out;
+>>>>>>> d9a23219dafa74d993118bd273c2b12d53e14987
   }
 
   /* ---------- v3.2 拼字近音提示 ---------- */
@@ -9371,6 +9514,8 @@ window.UX = window.UX || {};
   function show(part){ ['uxQzSetup','uxQzPlay','uxQzResult'].forEach(function(id){ $(id).classList.toggle('ux-hide', id!==part); }); }
   function paintSel(){
     qsa('#uxQzMode button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v')===sel.mode); });
+    qsa('#uxQzDiff button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v')===sel.diff); });
+    $('uxQzDiffNote').textContent=sel.diff==='easy'?'選項使用不同語意類別，排除近義群、多重答案與題意不清。':(sel.diff==='normal'?'保留合理相近選項，但避免重複答案。':'優先使用近義、同詞性與近形選項。');
     qsa('#uxQzSrc button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-v')===sel.src); b.disabled=!!preset; });
     qsa('#uxQzN button').forEach(function(b){ b.classList.toggle('on', parseInt(b.getAttribute('data-v'),10)===sel.n); });
     $('uxQzModeNote').textContent=MODE_NOTE[sel.mode]||'';
@@ -9387,6 +9532,7 @@ window.UX = window.UX || {};
     paintSel();
   }
   qsa('#uxQzMode button').forEach(function(b){ b.addEventListener('click', function(){ sel.mode=b.getAttribute('data-v'); paintSel(); }); });
+  qsa('#uxQzDiff button').forEach(function(b){ b.addEventListener('click', function(){ sel.diff=b.getAttribute('data-v'); paintSel(); }); });
   qsa('#uxQzSrc button').forEach(function(b){ b.addEventListener('click', function(){ if(preset) return; sel.src=b.getAttribute('data-v'); paintSel(); }); });
   qsa('#uxQzN button').forEach(function(b){ b.addEventListener('click', function(){ sel.n=parseInt(b.getAttribute('data-v'),10); paintSel(); }); });
   $('uxQzClose').addEventListener('click', function(){ if(Q && !Q.done && Q.i>0){ finish(true); } else close(); });
@@ -9585,7 +9731,7 @@ window.UX = window.UX || {};
     $('uxQzAi').disabled=false; $('uxQzAi').textContent=quizAiKey()?'請 AI 分析本次測驗':'請 AI 分析（先設定 Gemini Key）';
     $('uxQzAiCard').classList.add('ux-hide'); $('uxQzAiOut').textContent='';
     if(pct===100 && answered>=5){ UX.confetti(); haptic([30,60,30]); }
-    var rec={d:UX.dayStr(UX.today()), m:Q.mode, n:answered, c:Q.ok, s:secs, g:Q.graded, w:Q.wrong.slice(0,50), b:UX.bookId()};
+    var rec={d:UX.dayStr(UX.today()), m:Q.mode, diff:Q.qs[0]&&Q.qs[0].diff||sel.diff, n:answered, c:Q.ok, s:secs, g:Q.graded, w:Q.wrong.slice(0,50), b:UX.bookId()};
     if(UX.logQuiz) UX.logQuiz(rec);
     try{ updateStats(); }catch(x){}
     window.scrollTo(0,0);
@@ -9654,7 +9800,11 @@ window.UX = window.UX || {};
     if(k==='/'||k==='p'||k==='P'){ ev.preventDefault(); ev.stopImmediatePropagation(); speak(Q.qs[Q.i].e); return; }
   }, true);
 
+<<<<<<< HEAD
   UX._tq={clozeInfo:clozeInfo,normAns:normAns,distractors:distractors,distractScore:distractScore,meaningIsChinese:meaningIsChinese,weightedQuestions:weightedQuestions,soundAlikes:soundAlikes,soundKey:soundKey,buildQuestions:buildQuestions,poolFor:poolFor,diffHtml:diffHtml,headVariants:headVariants};
+=======
+  UX._tq={clozeInfo:clozeInfo,normAns:normAns,distractors:distractors,distractScore:distractScore,meaningIsChinese:meaningIsChinese,ambiguousEntry:ambiguousEntry,optionAmbiguous:optionAmbiguous,sameSemanticFamily:sameSemanticFamily,semanticTokens:semanticTokens,weightedQuestions:weightedQuestions,soundAlikes:soundAlikes,soundKey:soundKey,buildQuestions:buildQuestions,poolFor:poolFor,diffHtml:diffHtml,headVariants:headVariants};
+>>>>>>> d9a23219dafa74d993118bd273c2b12d53e14987
   // 儀表板加入測驗入口
   (function(){
     var due=document.querySelector('#srsScreen .srs-due'); if(!due || $('uxSrsQuizBtn')) return;
@@ -10005,7 +10155,7 @@ window.UX = window.UX || {};
       '<div class="row"><span>觸覺回饋（支援的手機）</span><input type="checkbox" id="uxSetHaptic"></div>'+
       '<div class="row"><span>測驗結果回寫標記與排程</span><input type="checkbox" id="uxSetQuiz"></div>'+
       '<div class="note">測驗答錯會標為「要複習」並降低排程間隔；答對的「要複習」字會升為「習得」。未學習的字答對不會自動標記，但會計入今日學習量。</div>'+
-      '<div class="row"><span>手勢教學</span><button type="button" class="btn" id="uxSetCoach">重看一次</button></div>'+
+      '<div class="row"><span>解說頁滑動手勢</span><input type="checkbox" id="uxSetGestures"></div>'+      '<div class="note">預設關閉，避免上下捲動閱讀時誤判。開啟後：上滑習得、下滑複習、左右切換單字。</div>'+      '<div class="row"><span>手勢教學</span><button type="button" class="btn" id="uxSetCoach">重看一次</button></div>'+
       '<div class="row" style="margin-top:6px"><span>離線音檔</span><button type="button" class="btn warn" id="uxClrBtn">清除快取</button></div>'+
       '<div class="st" id="uxOffSt">檢查中…</div>'+
       '<div class="pbar" id="uxDlBar" style="display:none"><i></i></div><div class="st" id="uxDlMsg"></div>'+
@@ -10021,8 +10171,9 @@ window.UX = window.UX || {};
     $('uxSetFsDn').addEventListener('click', function(){ UX.setScale(S.scale-0.1); });
     $('uxSetFsUp').addEventListener('click', function(){ UX.setScale(S.scale+0.1); });
     $('uxSetHaptic').addEventListener('change', function(){ S.haptic=this.checked; UX.saveS(); if(S.haptic) UX.haptic(15); });
+    $('uxSetGestures').addEventListener('change', function(){ S.gestures=this.checked; UX.saveS(); if(window.KIN_GESTURES) KIN_GESTURES.set(S.gestures); if(S.gestures){ UX.toast('滑動手勢已開啟'); } else { UX.toast('滑動手勢已關閉，可正常上下捲動'); } });
     $('uxSetQuiz').addEventListener('change', function(){ S.quizAffects=this.checked; UX.saveS(); });
-    $('uxSetCoach').addEventListener('click', function(){ if(typeof usClose==='function') usClose(); UX.showCoach(); });
+    $('uxSetCoach').addEventListener('click', function(){ if(!S.gestures){UX.toast('請先開啟滑動手勢');return;} if(typeof usClose==='function') usClose(); UX.showCoach(); });
     $('uxDlBtn').addEventListener('click', function(){ download(clipFiles(filtered())); });
     $('uxDlAllBtn').addEventListener('click', function(){ download(clipFiles(DATA)); });
     $('uxDlCancel').addEventListener('click', function(){ cancelDl=true; });
@@ -10036,6 +10187,9 @@ window.UX = window.UX || {};
     $('uxSetGoal').textContent=S.goal;
     $('uxSetFs').textContent=Math.round(S.scale*100)+'%';
     $('uxSetHaptic').checked=!!S.haptic;
+    $('uxSetGestures').checked=!!S.gestures;
+    $('uxSetCoach').disabled=!S.gestures;
+    $('uxSetCoach').title=S.gestures?'重看手勢操作':'請先開啟滑動手勢';
     $('uxSetQuiz').checked=!!S.quizAffects;
   }
   UX.paintSettings=paintSettings;
