@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TPX1000 開發進度</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif;
+  background:#faf8f5;color:#3d3833;line-height:1.7;padding-bottom:60px}
+header{position:sticky;top:0;z-index:9;background:#c45c1a;color:#fff;
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));
+  padding-top:calc(14px + env(safe-area-inset-top,0px));box-shadow:0 2px 8px rgba(0,0,0,.12)}
+header h1{margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+header .sub{font-size:12px;opacity:.85;margin-top:3px}
+header a.back{color:#fff;text-decoration:none;font-size:13px;opacity:.9}
+.wrap{max-width:860px;margin:0 auto;padding:16px}
+.bar{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.pct{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.pct b{font-size:30px;color:#c45c1a;line-height:1}
+.pct span{font-size:12.5px;color:#8a8580}
+.track{height:9px;border-radius:5px;background:#eee9e3;overflow:hidden;display:flex}
+.track i{display:block;height:100%}
+.track .d{background:#3a9d5d}
+.track .g{background:#e8a33d}
+.legend{display:flex;gap:14px;margin-top:9px;font-size:12px;color:#8a8580;flex-wrap:wrap}
+.legend b{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:middle}
+.filters{display:flex;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.filters button{flex:1;min-width:74px;min-height:38px;border:1px solid #e3ddd5;background:#fff;
+  border-radius:9px;font-size:13px;font-weight:600;color:#8a8580;cursor:pointer}
+.filters button.on{background:#c45c1a;border-color:#c45c1a;color:#fff}
+.ver{background:#fff;border-radius:12px;margin-bottom:14px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.vh{padding:13px 16px;border-bottom:1px solid #f0ece6;cursor:pointer;
+  display:flex;align-items:center;gap:9px}
+.vh h2{margin:0;font-size:15px;font-weight:700;flex:1}
+.vh .tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;
+  background:#f0ece6;color:#8a8580;white-space:nowrap}
+.vh .tag.all{background:#e6f4ea;color:#2c7a49}
+.vh .tag.some{background:#fdf1e0;color:#b0762a}
+.vh .cv{font-size:12px;color:#b5aea6;transition:transform .2s}
+.vh.open .cv{transform:rotate(90deg)}
+.vd{padding:10px 16px 0;font-size:12.5px;color:#8a8580}
+.items{padding:6px 16px 14px;display:none}
+.items.open{display:block}
+.it{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #f5f2ed;align-items:flex-start}
+.it:last-child{border-bottom:none}
+.dot{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:2px solid #ddd7cf;
+  background:#fff;cursor:pointer;font-size:13px;line-height:22px;text-align:center;
+  color:transparent;transition:all .15s;margin-top:1px}
+.dot:active{transform:scale(.9)}
+.it.done .dot{background:#3a9d5d;border-color:#3a9d5d;color:#fff}
+.it.doing .dot{background:#e8a33d;border-color:#e8a33d;color:#fff}
+.tx{flex:1;min-width:0}
+.tx .t{font-size:14px;font-weight:600}
+.it.done .tx .t{color:#a9a29b;text-decoration:line-through}
+.it.doing .tx .t{color:#b0762a}
+.tx .d{font-size:12px;color:#9a938c;margin-top:3px;word-break:break-word}
+.chk{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.chk h3{margin:0 0 9px;font-size:14px}
+.chk li{font-size:12.5px;color:#7d766f;margin-bottom:5px}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.acts button{flex:1;min-width:120px;min-height:42px;border-radius:10px;border:1px solid #e3ddd5;
+  background:#fff;font-size:13px;font-weight:600;color:#6d665f;cursor:pointer}
+.acts button.pri{background:#c45c1a;border-color:#c45c1a;color:#fff}
+.hint{font-size:12px;color:#a9a29b;line-height:1.75;margin-bottom:10px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);
+  background:#3d3833;color:#fff;padding:11px 20px;border-radius:10px;font-size:13px;
+  opacity:0;transition:all .25s;z-index:99;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(prefers-color-scheme:dark){
+  body{background:#151517;color:#e5e0da}
+  .bar,.ver,.chk{background:#1e1e20;box-shadow:none}
+  .vh{border-bottom-color:#2a2a2c}
+  .it{border-bottom-color:#252527}
+  .filters button{background:#1e1e20;border-color:#2f2f32;color:#9a9a9e}
+  .acts button{background:#1e1e20;border-color:#2f2f32;color:#c5c0ba}
+  .track{background:#2a2a2c}
+  .dot{background:#1e1e20;border-color:#3a3a3e}
+  .vh .tag{background:#2a2a2c;color:#9a9a9e}
+  .vh .tag.all{background:#1f3a28;color:#8fe0aa}
+  .vh .tag.some{background:#3a2e1c;color:#e0b878}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>TPX1000 開發進度</h1>
+  <div class="sub"><a href="./index.html" class="back">← 回到單字 App</a>　·　<span id="upd"></span></div>
+</header>
+
+<div class="wrap">
+
+  <div class="bar">
+    <div class="pct"><b id="pn">0%</b><span id="ps"></span></div>
+    <div class="track"><i class="d" id="bd"></i><i class="g" id="bg"></i></div>
+    <div class="legend">
+      <span><b style="background:#3a9d5d"></b>已完成 <em id="cd">0</em></span>
+      <span><b style="background:#e8a33d"></b>進行中 <em id="cg">0</em></span>
+      <span><b style="background:#ddd7cf"></b>未開始 <em id="ct">0</em></span>
+    </div>
+  </div>
+
+  <div class="filters">
+    <button data-f="all" class="on">全部</button>
+    <button data-f="todo">未完成</button>
+    <button data-f="doing">進行中</button>
+    <button data-f="done">已完成</button>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="chk">
+    <h3>每次進版必做</h3>
+    <ul id="ck"></ul>
+  </div>
+
+  <p class="hint">
+    點圓圈可切換狀態，順序是<b>未開始 → 進行中 → 已完成</b>。
+    修改只存在這台裝置。改完請按「匯出 roadmap.json」，
+    把檔案覆蓋到專案根目錄再 commit，這樣換裝置或下次找 Copilot 接手時都讀得到同一份進度。
+  </p>
+
+  <div class="acts">
+    <button class="pri" id="ex">匯出 roadmap.json</button>
+    <button id="im">匯入 roadmap.json</button>
+    <button id="rs">重設為檔案內容</button>
+  </div>
+
+</div>
+
+<input type="file" id="fi" accept=".json,application/json" style="display:none">
+<div class="toast" id="tt"></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='tpxRoadmap', base=null, data=null, filter='all', openSet={};
+
+function toast(m){var t=document.getElementById('tt');t.textContent=m;t.classList.add('on');
+  clearTimeout(t._x);t._x=setTimeout(function(){t.classList.remove('on');},1900);}
+
+/* 本機只存狀態覆寫，其餘一律以 roadmap.json 為準，
+   這樣我改了文案或新增項目，你的進度不會被舊快取蓋掉 */
+function loadOverride(){
+  try{return JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){return {};}
+}
+function saveOverride(o){
+  try{localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}
+}
+
+function apply(){
+  var ov=loadOverride();
+  data=JSON.parse(JSON.stringify(base));
+  data.versions.forEach(function(v){
+    v.items.forEach(function(i){ if(ov[i.id]) i.s=ov[i.id]; });
+  });
+}
+
+function counts(){
+  var c={done:0,doing:0,todo:0,total:0};
+  data.versions.forEach(function(v){v.items.forEach(function(i){
+    c[i.s]=(c[i.s]||0)+1;c.total++;});});
+  return c;
+}
+
+function render(){
+  var c=counts();
+  var pd=c.total?Math.round(c.done/c.total*100):0;
+  var pg=c.total?Math.round(c.doing/c.total*100):0;
+  document.getElementById('pn').textContent=pd+'%';
+  document.getElementById('ps').textContent='共 '+c.total+' 項，已完成 '+c.done+' 項';
+  document.getElementById('bd').style.width=pd+'%';
+  document.getElementById('bg').style.width=pg+'%';
+  document.getElementById('cd').textContent=c.done;
+  document.getElementById('cg').textContent=c.doing;
+  document.getElementById('ct').textContent=c.todo;
+  document.getElementById('upd').textContent='資料日期 '+(data.updated||'—');
+
+  var h='';
+  data.versions.forEach(function(v){
+    var vis=v.items.filter(function(i){
+      return filter==='all'||(filter==='todo'?i.s!=='done':i.s===filter);});
+    if(!vis.length) return;
+    var d=v.items.filter(function(i){return i.s==='done';}).length;
+    var cls=d===v.items.length?'all':(d?'some':'');
+    var op=(openSet[v.id]!==false);
+    h+='<div class="ver"><div class="vh'+(op?' open':'')+'" data-v="'+v.id+'">'+
+       '<span class="cv">▶</span><h2>'+v.id+'　'+esc(v.title)+'</h2>'+
+       '<span class="tag '+cls+'">'+d+'/'+v.items.length+'</span></div>'+
+       (v.desc?'<div class="vd">'+esc(v.desc)+'</div>':'')+
+       '<div class="items'+(op?' open':'')+'" data-vi="'+v.id+'">';
+    vis.forEach(function(i){
+      h+='<div class="it '+i.s+'" data-id="'+i.id+'">'+
+         '<div class="dot">'+(i.s==='done'?'✓':(i.s==='doing'?'●':''))+'</div>'+
+         '<div class="tx"><div class="t">'+esc(i.t)+'</div>'+
+         (i.d?'<div class="d">'+esc(i.d)+'</div>':'')+'</div></div>';
+    });
+    h+='</div></div>';
+  });
+  document.getElementById('list').innerHTML=h||'<div class="bar">這個篩選沒有項目。</div>';
+
+  document.getElementById('ck').innerHTML=(data.checklist||[])
+    .map(function(s){return '<li>'+esc(s)+'</li>';}).join('');
+}
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+document.getElementById('list').addEventListener('click',function(e){
+  var vh=e.target.closest('.vh');
+  if(vh){var id=vh.getAttribute('data-v');openSet[id]=(openSet[id]===false);render();return;}
+  var dot=e.target.closest('.dot');
+  if(!dot) return;
+  var it=dot.closest('.it'), id=it.getAttribute('data-id');
+  var cur=it.classList.contains('done')?'done':(it.classList.contains('doing')?'doing':'todo');
+  var next=cur==='todo'?'doing':(cur==='doing'?'done':'todo');
+  var ov=loadOverride(); ov[id]=next; saveOverride(ov);
+  apply(); render();
+  toast(next==='done'?'已完成':(next==='doing'?'進行中':'未開始'));
+});
+
+document.querySelectorAll('.filters button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('.filters button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on'); filter=b.getAttribute('data-f'); render();
+  };
+});
+
+document.getElementById('ex').onclick=function(){
+  var out=JSON.parse(JSON.stringify(data));
+  out.updated=new Date().toISOString().slice(0,10);
+  var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='roadmap.json'; a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+  toast('已匯出，請覆蓋專案根目錄的 roadmap.json');
+};
+document.getElementById('im').onclick=function(){document.getElementById('fi').click();};
+document.getElementById('fi').onchange=function(){
+  var f=this.files&&this.files[0]; if(!f) return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var o=JSON.parse(r.result);
+      if(!o.versions) throw 0;
+      base=o; var ov={};
+      o.versions.forEach(function(v){v.items.forEach(function(i){ov[i.id]=i.s;});});
+      saveOverride(ov); apply(); render(); toast('匯入完成');
+    }catch(e){ toast('檔案格式不正確'); }
+  };
+  r.readAsText(f); this.value='';
+};
+document.getElementById('rs').onclick=function(){
+  if(!confirm('把所有狀態還原成 roadmap.json 檔案裡的內容？本機的修改會消失。')) return;
+  localStorage.removeItem(KEY); apply(); render(); toast('已重設');
+};
+
+fetch('roadmap.json?t='+Date.now()).then(function(r){return r.json();}).then(function(j){
+  base=j; apply(); render();
+}).catch(function(){
+  document.getElementById('list').innerHTML=
+    '<div class="bar">讀不到 roadmap.json。請確認該檔與本頁在同一層，'+
+    '且是透過 http/https 開啟（用 file:// 直接開會被瀏覽器擋下）。</div>';
+});
+})();
+</script>
+</body>
+</html>

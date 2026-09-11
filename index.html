@@ -428,6 +428,16 @@ body.theme-dark .player-bar .autospk.off{background:#141416;border-color:#2a2a2c
   border-top:1px solid #e8e0d0
 }
 .db-sense .db-ex-en{border-top:none}
+/* ---- 開發進度表連結 ---- */
+.rm-link{display:flex;align-items:center;gap:3px;flex-wrap:wrap;padding:12px 14px;margin:2px 0 4px;
+  border:1px solid #e8e2da;border-radius:11px;background:#fff;text-decoration:none;color:inherit}
+.rm-link:active{background:#faf7f3}
+.rm-link .rm-t{flex:1 0 auto;font-size:14px;font-weight:600;color:#3d3833}
+.rm-link .rm-a{font-size:17px;color:#c4bdb4}
+.rm-link .rm-d{flex:1 0 100%;font-size:12px;color:#9a938c;margin-top:2px}
+body.theme-dark .rm-link{background:#1e1e20;border-color:#2f2f32}
+body.theme-dark .rm-link .rm-t{color:#e5e0da}
+body.theme-dark .rm-link:active{background:#252527}
 /* ---- 詞義級 SRS ---- */
 .db-sense{transition:background .15s,box-shadow .15s}
 .db-sense.sn-rev{background:#fff6f5;box-shadow:inset 3px 0 0 #e05252}
@@ -3171,7 +3181,7 @@ function srsStartDue(){
 }
 
 /* ================= 匯出 / 匯入 ================= */
-/* v2/v3：一併帶出收藏、筆記、測驗紀錄、成就、學習時間、目標達成日、詞義級排程。
+/* v3：一併帶出收藏、筆記、測驗紀錄、成就、學習時間、目標達成日、詞義級排程。
    這些鍵原本只走 GitHub 同步，改用檔案搬家的人會整批遺失。 */
 function uxUid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
 function uxRead(k, dft){
@@ -3214,15 +3224,17 @@ function srsImport(input){
         if(!mine || (theirs.last||'') > (mine.last||'')){ srsMap[id2] = theirs; n++; }
       }
       for(var d in (o.log||{})) srsLog[d] = Math.max(srsLog[d]||0, o.log[d]);
-
-      /* ---- v2/v3 欄位；舊版檔案沒有這些鍵，會自動略過 ---- */
+      saveStatus(); srsSave(); srsRender();
+      if(typeof updateStats === 'function') updateStats();
+      if(typeof renderList === 'function') renderList();
+      /* ---- v3 欄位；舊版檔案沒有這些鍵，會自動略過 ---- */
       var n2 = 0;
       if(Array.isArray(o.collect) && o.collect.length){
         var mineC = uxRead('Collect', []); if(!Array.isArray(mineC)) mineC = [];
-        var seen = {}; mineC.forEach(function(c){ seen[String(c.word||'').trim().toLowerCase()] = 1; });
+        var seenC = {}; mineC.forEach(function(c){ seenC[String(c.word||'').trim().toLowerCase()] = 1; });
         o.collect.forEach(function(c){
           var w = String(c.word||'').trim().toLowerCase();
-          if(w && !seen[w]){ seen[w] = 1; mineC.push(c); n2++; }
+          if(w && !seenC[w]){ seenC[w] = 1; mineC.push(c); n2++; }
         });
         uxWrite('Collect', mineC);
       }
@@ -3236,9 +3248,9 @@ function srsImport(input){
       }
       if(Array.isArray(o.quizLog) && o.quizLog.length){
         var mineQ = uxRead('QuizLog', []); if(!Array.isArray(mineQ)) mineQ = [];
-        var sig = function(r){ return [r.d,r.m,r.n,r.c,r.s,r.b].join('|'); };
-        var has = {}; mineQ.forEach(function(r){ has[sig(r)] = 1; });
-        o.quizLog.forEach(function(r){ if(!has[sig(r)]){ has[sig(r)] = 1; mineQ.push(r); n2++; } });
+        var sigQ = function(r){ return [r.d,r.m,r.n,r.c,r.s,r.b].join('|'); };
+        var hasQ = {}; mineQ.forEach(function(r){ hasQ[sigQ(r)] = 1; });
+        o.quizLog.forEach(function(r){ if(!hasQ[sigQ(r)]){ hasQ[sigQ(r)] = 1; mineQ.push(r); n2++; } });
         mineQ.sort(function(x, y){ return (x.d||'') < (y.d||'') ? -1 : 1; });
         uxWrite('QuizLog', mineQ.slice(-300));
       }
@@ -3261,10 +3273,6 @@ function srsImport(input){
         uxWrite('GoalDays', mineG);
       }
       if(o.sense && window.KIN_SENSE){ try{ n2 += KIN_SENSE.importAll(o.sense); }catch(eS){} }
-
-      saveStatus(); srsSave(); srsRender();
-      if(typeof updateStats === 'function') updateStats();
-      if(typeof renderList === 'function') renderList();
       alert(n2 ? ('匯入完成，進度 ' + n + ' 筆、學習紀錄 ' + n2 + ' 筆。')
                : ('匯入完成，更新 ' + n + ' 筆。'));
     }catch(e){ alert('檔案格式不正確，請選擇匯出的進度檔。'); }
@@ -3590,8 +3598,8 @@ function srsBadge(){
       'kinQuizLog:' + userId(),                          // 測驗紀錄（UX 模組）
       'kinAch:' + userId(),                              // 成就徽章（UX 模組）
       'kinTime:' + userId(),                             // 學習時間（UX 模組）
-      'kinGoalDays:' + userId(),                         // 每日目標達成日（UX 模組）
-      'kinSense:' + userId(),                            // 詞義級 SRS（多義字逐個意思）
+      'kinGoalDays:' + userId(),
+      'kinSense:' + userId(),                            // 詞義級 SRS（多義字逐個意思）                         // 每日目標達成日（UX 模組）
       'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
@@ -4065,6 +4073,13 @@ body.theme-dark .rm-msg{color:#8a8680}
 
     <h4>本書進度</h4>
     <div class="prog" id="usProg"></div>
+
+    <h4>開發進度</h4>
+    <a class="rm-link" href="roadmap.html">
+      <span class="rm-t">開發進度表</span>
+      <span class="rm-d">看看哪些功能已完成、進行中、還沒開始</span>
+      <span class="rm-a">›</span>
+    </a>
 
     <h4>切換使用者</h4>
     <div class="uList" id="usList"></div>
@@ -9917,6 +9932,7 @@ window.UX = window.UX || {};
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', buildSettings); else buildSettings();
 })();
 
+
 /* ===================================================================
    詞義級 SRS（Meaning-level SRS）
    -------------------------------------------------------------------
@@ -10262,19 +10278,6 @@ window.KIN_SENSE = (function(){
       UX.paintDash = function(){
         var r = _pd.apply(this, arguments);
         try{ paintDash(); }catch(x){}
-        return r;
-      };
-    }
-    if(window.UX && UX.onQuizAnswer){          // 測驗答錯時同步標記該詞義
-      var _oa = UX.onQuizAnswer;
-      UX.onQuizAnswer = function(entry, correct, senseIdx){
-        var r = _oa.apply(this, arguments);
-        try{
-          if(entry && SN.isMulti(entry) && typeof senseIdx === 'number'){
-            SN.grade(entry.id, senseIdx, !!correct);
-            SN.apply(entry);
-          }
-        }catch(x){}
         return r;
       };
     }
