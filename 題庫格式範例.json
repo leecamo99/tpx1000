@@ -1,0 +1,14 @@
+{
+  "title": "TOEIC Part 7 範例題庫",
+  "source": "自建題庫",
+  "article": "The maintenance team will inspect the elevators on Friday morning.",
+  "questions": [
+    {
+      "q": "When will the elevators be inspected?",
+      "options": ["Thursday morning", "Friday morning", "Friday evening", "Saturday morning"],
+      "answer": 1,
+      "zh": "電梯何時會接受檢查？",
+      "explain": "文章明確指出 Friday morning。"
+    }
+  ]
+}

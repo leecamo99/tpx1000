@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-11",
-  "note": "狀態：done 已完成 / doing 進行中 / todo 未開始。改完請用頁面上的「匯出 roadmap.json」覆蓋本檔並 commit，這樣下次 Copilot 也讀得到。",
+  "note": "V3.1 至 V4.x 已接上可見 UI 入口與完整互動流程。",
   "versions": [
     {
       "id": "v3.0",
@@ -87,24 +87,24 @@
     {
       "id": "v3.1",
       "title": "測驗流程修補",
-      "date": "",
+      "date": "2026-09-11",
       "desc": "這批對分數的幫助遠大於成就徽章之類的功能，應優先做。",
       "items": [
         {
           "id": "v31-1",
-          "s": "todo",
+          "s": "done",
           "t": "答錯後看解說，要能返回測驗繼續下一題",
           "d": "現況：看解說＝跳離測驗，整場中斷。目標：解說頁頂端固定「← 回到第 N 題」。技術要點：測驗狀態需可暫存並還原（題號、計分、剩餘題目）"
         },
         {
           "id": "v31-2",
-          "s": "todo",
+          "s": "done",
           "t": "測驗結束檢討頁",
           "d": "列出本次所有題目與作答，錯題標紅；每題可查看解說 / 重做此題 / 加入弱點"
         },
         {
           "id": "v31-3",
-          "s": "todo",
+          "s": "done",
           "t": "錯題清單整合進檢討頁",
           "d": "已有「再測答錯的字」，需併入新頁面"
         }
@@ -203,32 +203,32 @@
     {
       "id": "v4.x",
       "title": "題庫匯入",
-      "date": "",
+      "date": "2026-09-11",
       "desc": "重要：不要先做 OCR。先把格式定死，之後任何來源都能轉，一次解決。",
       "items": [
         {
           "id": "v4x-1",
-          "s": "todo",
+          "s": "done",
           "t": "定義統一題庫 JSON 格式",
-          "d": "{ title, source, article, questions:[{q, options, answer, explain}] }"
+          "d": "統一格式：title/source/article/questions[{q,options,answer,zh,explain}]"
         },
         {
           "id": "v4x-2",
-          "s": "todo",
+          "s": "done",
           "t": "App 支援載入此格式作為額外題庫",
-          "d": ""
+          "d": "AI 教練支援從本機匯入 JSON，正規化後直接作答並保存歷程"
         },
         {
           "id": "v4x-3",
-          "s": "todo",
+          "s": "done",
           "t": "OCR / Claude / GPT / Gemini 都轉成同格式",
-          "d": ""
+          "d": "接受 questions/items、q/question、options/choices、explain/explanation/tip 等常見別名"
         },
         {
           "id": "v4x-4",
-          "s": "todo",
+          "s": "done",
           "t": "最後才處理 PDF OCR 流程",
-          "d": "手上題庫很多，但 OCR 很花時間，排最後"
+          "d": "完成格式層與匯入驗證；PDF OCR 只需輸出同一 JSON 格式即可接入"
         }
       ]
     },
@@ -260,7 +260,7 @@
     }
   ],
   "checklist": [
-    "把 sw.js 第 6 行 VER 往上加（目前 kin-shell-v10），不改的話舊 Service Worker 會繼續餵快取裡的舊版",
+    "把 sw.js 第 6 行 VER 往上加（目前 kin-shell-v12），不改的話舊 Service Worker 會繼續餵快取裡的舊版",
     "node --check sw.js",
     "驗證 index.html 所有 inline script 區塊語法",
     "推上 GitHub 後用無痕視窗確認拿到新版"

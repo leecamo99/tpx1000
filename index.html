@@ -6701,6 +6701,22 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     });
   };
 
+  window.rdImportBank=function(){var f=document.getElementById('rdBankFile');if(f)f.click();};
+  function normalizeBank(o){
+    if(!o||typeof o!=='object')throw new Error('JSON 根節點必須是物件');
+    var qs=o.questions||o.items;if(!Array.isArray(qs)||!qs.length)throw new Error('缺少 questions/items 題目陣列');
+    var items=qs.map(function(q,i){
+      var op=q.options||q.choices,ans=q.answer;
+      if(!Array.isArray(op)||op.length<2)throw new Error('第 '+(i+1)+' 題缺少 options');
+      if(typeof ans==='string'){var p=op.indexOf(ans);ans=p>=0?p:parseInt(ans,10);}
+      ans=parseInt(ans,10);if(!(ans>=0&&ans<op.length))throw new Error('第 '+(i+1)+' 題 answer 無效');
+      return {q:String(q.q||q.question||''),options:op.map(String),answer:ans,zh:String(q.zh||q.translation||''),tip:String(q.tip||q.explain||q.explanation||'')};
+    });
+    return {id:'I-'+Date.now().toString(36),kind:'quiz',title:String(o.title||'匯入題庫'),scene:String(o.source||o.scene||'JSON 題庫'),items:items,used:Array.isArray(o.used)?o.used:[],article:String(o.article||o.passage||''),at:new Date().toISOString(),imported:true};
+  }
+  window.rdReadBank=function(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var it=normalizeBank(JSON.parse(r.result));var a=load();a.unshift(it);save(a);msg('已匯入 '+it.items.length+' 題');openId=it.id;view='quiz';render();window.scrollTo(0,0);}catch(e){msg('匯入失敗：'+e.message,true);}inp.value='';};r.readAsText(f);};
+  window.KIN_BANK_SCHEMA={title:'題庫名稱',source:'來源',article:'選填文章',questions:[{q:'題目',options:['A','B','C','D'],answer:0,zh:'選填翻譯',explain:'解析'}]};
+
   window.rdGenPassage = function(){
     if(busy) return;
     var words = pickWords(pickN);
@@ -7321,10 +7337,11 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       }).join('');
       body.innerHTML =
         '<div class="rd-gen">' +
-        '<h3>用收藏的單字練習</h3>' +
+        '<h3>V4.0 AI TOEIC 實戰教練</h3><div class="rd-note">可生成閱讀短文、以 TTS 朗讀成聽力情境，或建立 TOEIC 模擬題。</div>' +
         '<div class="rd-pick">' + opts + '</div>' +
-        '<button type="button" class="go" onclick="rdGenPassage()">生成 TOEIC 短文</button>' +
-        '<button type="button" class="go alt" onclick="rdGenQuiz()">出一份單字測驗</button>' +
+        '<button type="button" class="go" onclick="rdGenPassage()">生成閱讀／聽力情境</button>' +
+        '<button type="button" class="go alt" onclick="rdGenQuiz()">生成 TOEIC 模擬測驗</button>' +
+        '<button type="button" class="go alt" onclick="rdImportBank()">匯入 JSON 題庫</button><input id="rdBankFile" type="file" accept=".json,application/json" style="display:none" onchange="rdReadBank(this)">' +
         '<div class="rd-msg" id="rdMsg"></div>' +
         '<div class="rd-note">目前收藏 ' + n + ' 個單字。系統會優先挑還沒複習過、或曾經答錯的字。短文裡的英文一樣可以點，發音或再加入閃卡。</div>' +
         '</div>' +
@@ -8347,6 +8364,11 @@ body.theme-dark .ux-set .st{color:#a8a49f}
 
     <!-- 設定 -->
     <div id="uxQzSetup">
+      <div class="ux-card" id="uxV4Panel" style="border:1px solid #c45c1a;background:rgba(196,92,26,.08)">
+        <h3>V3.1–V4.0 功能中心</h3>
+        <div class="ux-note-sm" style="margin-bottom:10px">測驗支援解說後返回、完整檢討、AI 錯題分析；AI 實戰教練可生成閱讀、聽力情境與模擬題。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="ux-btn pri" id="uxOpenAiCoach">AI 實戰教練</button><button type="button" class="ux-btn" id="uxOpenBank">匯入 JSON 題庫</button></div>
+      </div>
       <div class="ux-card">
         <h3>題型</h3>
         <div class="ux-opts" id="uxQzMode">
@@ -8416,6 +8438,11 @@ body.theme-dark .ux-set .st{color:#a8a49f}
         <h3>答錯的字</h3>
         <ul class="ux-wrong" id="uxQzWrong" style="list-style:none;margin:0;padding:0"></ul>
       </div>
+      <div class="ux-card" id="uxQzReviewCard">
+        <h3>完整檢討 <small id="uxQzReviewCount"></small></h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" class="ux-btn" id="uxQzReviewAll">全部</button><button type="button" class="ux-btn" id="uxQzReviewWrong">只看答錯</button></div>
+        <div id="uxQzReview"></div>
+      </div>
       <div class="ux-card ux-hide" id="uxQzAiCard">
         <h3>AI 錯題教練</h3>
         <div id="uxQzAiOut" style="font-size:13px;line-height:1.75;white-space:pre-wrap"></div>
@@ -8427,6 +8454,7 @@ body.theme-dark .ux-set .st{color:#a8a49f}
     </div>
   </div>
 </div>
+<button type="button" id="uxQzReturn" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:12050;min-height:48px;border:0;border-radius:14px;background:#c45c1a;color:#fff;font-weight:700">← 返回測驗</button>
 
 <div id="uxSum" role="dialog" aria-label="本次學習結算">
   <div class="hd"><h3>本次學習結算</h3><button type="button" class="ux-x" id="uxSumX" aria-label="關閉">×</button></div>
@@ -9367,7 +9395,7 @@ window.UX = window.UX || {};
   function start(){
     var pool=poolFor(sel.src), qs=buildQuestions(pool, sel.mode, sel.n);
     if(!qs.length){ toast('沒有可出題的單字'); return; }
-    Q={mode:sel.mode, src:sel.src, qs:qs, i:0, ok:0, ng:0, wrong:[], hinted:0, start:Date.now(), done:false, graded:0, answered:false};
+    Q={mode:sel.mode, src:sel.src, qs:qs, i:0, ok:0, ng:0, wrong:[], history:[], hinted:0, start:Date.now(), done:false, graded:0, answered:false, pausePart:''};
     show('uxQzPlay');
     var names={en2zh:'英 → 中',zh2en:'中 → 英',listen:'聽力 → 中',spell:'拼字聽寫',cloze:'例句填空'};
     $('uxQzTitle').textContent=names[Q.mode]||'測驗';
@@ -9438,6 +9466,7 @@ window.UX = window.UX || {};
   function choose(i){
     if(Q.answered) return;
     var q=Q.qs[Q.i], x=q.opts[i], correct=(x.id===q.e.id);
+    q.userAnswer=q.mode==='zh2en'?String(x.word||''):meanText(x);
     Q.answered=true;
     qsa('#uxQzChoices button').forEach(function(b,j){
       b.disabled=true;
@@ -9449,6 +9478,7 @@ window.UX = window.UX || {};
   function check(){
     if(Q.answered) return;
     var q=Q.qs[Q.i], inp=$('uxQzIn'), v=inp.value;
+    q.userAnswer=String(v||'').trim();
     if(!normAns(v)){ inp.classList.remove('ng'); void inp.offsetWidth; inp.classList.add('ng'); return; }
     Q.attempts++;
     if(accepts(q, v)){
@@ -9486,12 +9516,15 @@ window.UX = window.UX || {};
   function giveUp(){
     if(Q.answered) return;
     Q.answered=true;
+    Q.qs[Q.i].userAnswer=Q.qs[Q.i].userAnswer||'（看答案）';
     var inp=$('uxQzIn'); inp.disabled=true; inp.className='ng'; inp.value=answerOf(Q.qs[Q.i]);
     settle(false, '（顯示答案）');
   }
   function settle(correct, extra){
     var q=Q.qs[Q.i], e=q.e;
     if(correct) Q.ok++; else { Q.ng++; Q.wrong.push(e.id); }
+    var ca=q.mode==='zh2en'?String(e.word||''):((q.mode==='spell'||q.mode==='cloze')?answerOf(q):meanText(e));
+    Q.history.push({n:Q.i+1,id:e.id,word:e.word||'',correct:!!correct,user:String(q.userAnswer||''),answer:String(ca||''),mean:meanText(e)});
     if(applyResult(e, correct)) Q.graded++;
     haptic(correct?8:[20,40,20]);
     if(q.mode==='listen'){ var w=$('uxQzListenW'); if(w) w.textContent=e.word; }
@@ -9504,13 +9537,22 @@ window.UX = window.UX || {};
       (note?'<div class="nt">◎ '+esc(note)+'</div>':'')+
       '<div class="row"><button type="button" id="uxQzSpk2">🔊 發音</button><button type="button" id="uxQzDetail">解說</button><button type="button" class="pri" id="uxQzNext">'+(Q.i+1>=Q.qs.length?'看結果':'下一題 →')+'</button></div>';
     $('uxQzSpk2').addEventListener('click', function(){ speak(e); });
-    $('uxQzDetail').addEventListener('click', function(){ var id=e.id; finish(true); close(); setTimeout(function(){ try{ openDetail(id); }catch(x){} },60); });
+    $('uxQzDetail').addEventListener('click', function(){ openQuizDetail(e.id,'uxQzPlay'); });
     $('uxQzNext').addEventListener('click', next);
     if(q.mode==='spell'||q.mode==='cloze') $('uxQzReplay').classList.remove('ux-hide');
     if(correct && !extra){ advTimer=setTimeout(next, q.mode==='listen'?1500:1200); }
     else if(!correct && (q.mode==='spell'||q.mode==='cloze')) setTimeout(function(){ try{ speak(e); }catch(x){} }, 250);
     paintMeta();
   }
+  function openQuizDetail(id,part){
+    clearTimeout(advTimer);if(!Q)return;Q.pausePart=part||'uxQzPlay';
+    document.body.classList.remove('ux-quiz-open');$('uxQuiz').classList.remove('show');
+    var r=$('uxQzReturn');r.textContent=Q.done?'← 返回完整檢討':'← 返回第 '+(Q.i+1)+' 題';r.style.display='block';
+    setTimeout(function(){try{openDetail(id);}catch(x){resumeQuiz();}},60);
+  }
+  function resumeQuiz(){if(!Q)return;$('uxQzReturn').style.display='none';try{if(typeof showList==='function')showList();}catch(x){}
+    document.body.classList.add('ux-quiz-open');$('uxQuiz').classList.add('show');show(Q.pausePart||(Q.done?'uxQzResult':'uxQzPlay'));window.scrollTo(0,0);}
+  $('uxQzReturn').addEventListener('click',resumeQuiz);
   function next(){
     clearTimeout(advTimer);
     if(!Q || !Q.answered) return;
@@ -9535,11 +9577,12 @@ window.UX = window.UX || {};
     if(Q.wrong.length){
       card.classList.remove('ux-hide');
       wl.innerHTML=Q.wrong.map(function(id){ var e=UX.entryById(id); if(!e) return ''; return '<li><span class="w">'+esc(e.word)+'<small>'+esc(meanText(e))+'</small></span><button type="button" data-id="'+esc(id)+'">解說</button></li>'; }).join('');
-      qsa('button', wl).forEach(function(b){ b.addEventListener('click', function(){ var id=b.getAttribute('data-id'); close(); setTimeout(function(){ try{ openDetail(id); }catch(x){} },60); }); });
+      qsa('button', wl).forEach(function(b){ b.addEventListener('click', function(){ openQuizDetail(b.getAttribute('data-id'),'uxQzResult'); }); });
     }else{ card.classList.add('ux-hide'); }
+    renderReview(false);
     $('uxQzRetryWrong').classList.toggle('ux-hide', !Q.wrong.length);
-    $('uxQzAi').classList.toggle('ux-hide', !quizAiKey());
-    $('uxQzAi').disabled=false; $('uxQzAi').textContent='請 AI 分析本次測驗';
+    $('uxQzAi').classList.remove('ux-hide');
+    $('uxQzAi').disabled=false; $('uxQzAi').textContent=quizAiKey()?'請 AI 分析本次測驗':'請 AI 分析（先設定 Gemini Key）';
     $('uxQzAiCard').classList.add('ux-hide'); $('uxQzAiOut').textContent='';
     if(pct===100 && answered>=5){ UX.confetti(); haptic([30,60,30]); }
     var rec={d:UX.dayStr(UX.today()), m:Q.mode, n:answered, c:Q.ok, s:secs, g:Q.graded, w:Q.wrong.slice(0,50), b:UX.bookId()};
@@ -9547,6 +9590,17 @@ window.UX = window.UX || {};
     try{ updateStats(); }catch(x){}
     window.scrollTo(0,0);
   }
+  function renderReview(onlyWrong){
+    var list=(Q&&Q.history||[]).filter(function(r){return !onlyWrong||!r.correct;});
+    $('uxQzReviewCount').textContent='共 '+(Q&&Q.history?Q.history.length:0)+' 題';
+    $('uxQzReview').innerHTML=list.map(function(r){return '<div style="border:1px solid #e3ddd5;border-left:4px solid '+(r.correct?'#3a9d5d':'#d64b4b')+';border-radius:9px;padding:9px;margin:8px 0"><b>第 '+r.n+' 題　'+esc(r.word)+'　'+(r.correct?'✓':'✗')+'</b><div>你的答案：'+esc(r.user||'（未作答）')+'</div><div>正確答案：'+esc(r.answer)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><button type="button" class="ux-btn qrd" data-id="'+esc(r.id)+'">查看解說</button><button type="button" class="ux-btn qrtry" data-id="'+esc(r.id)+'">重做此題</button><button type="button" class="ux-btn qweak" data-id="'+esc(r.id)+'">加入弱點</button></div></div>';}).join('')||'<div>沒有符合的題目。</div>';
+    qsa('.qrd',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){openQuizDetail(b.getAttribute('data-id'),'uxQzResult');});});
+    qsa('.qrtry',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id'),m=Q.mode;preset={ids:[id],label:'重做此題'};sel.mode=m;sel.n=0;start();});});
+    qsa('.qweak',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id');statusMap[id]='review';try{saveStatus();updateStats();}catch(x){}b.textContent='已加入弱點';b.disabled=true;UX.toast('已加入弱點清單');});});
+  }
+  $('uxQzReviewAll').addEventListener('click',function(){renderReview(false);});
+  $('uxQzReviewWrong').addEventListener('click',function(){renderReview(true);});
+
   function quizAiKey(){try{return localStorage.getItem('kinGeminiKey')||'';}catch(e){return '';}}
   function quizModeName(m){return {en2zh:'英翻中',zh2en:'中翻英',listen:'聽力辨識',spell:'拼字聽寫',cloze:'例句填空'}[m]||m;}
   function quizAiPrompt(){
@@ -9572,6 +9626,8 @@ window.UX = window.UX || {};
   $('uxQzAi').addEventListener('click',runQuizAi);
 
   function fmt(s){ return s>=60 ? (Math.floor(s/60)+' 分 '+(s%60)+' 秒') : (s+' 秒'); }
+  $('uxOpenAiCoach').addEventListener('click',function(){close();setTimeout(function(){if(typeof rdOpen==='function')rdOpen();},80);});
+  $('uxOpenBank').addEventListener('click',function(){close();setTimeout(function(){if(typeof rdOpen==='function')rdOpen();setTimeout(function(){if(typeof rdImportBank==='function')rdImportBank();},120);},80);});
   $('uxQzCheck').addEventListener('click', check);
   $('uxQzHint').addEventListener('click', hint);
   $('uxQzGiveUp').addEventListener('click', giveUp);
