@@ -10576,22 +10576,27 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 
 <script>
-/* TPX1000 2026-09-12 hotfix: dynamic categories and per-book/user filter state */
+/* TPX1000 2026-09-12 hotfix v2: dynamic multi-select categories per book/user */
 (function(){
   'use strict';
   function uid(){ return (window.KIN_USER && window.KIN_USER.id && window.KIN_USER.id()) || 'paul'; }
   function bid(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
   function levelKey(){ return 'kinLevels:' + uid() + ':' + bid(); }
+  function data(){ try{ return Array.isArray(DATA) ? DATA : []; }catch(e){ return []; } }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
   function categories(){
     var map=new Map();
-    (window.DATA||[]).forEach(function(e){
+    data().forEach(function(e){
       var key=String(e.section || e.level || 'OTHER');
       var label=String(e.section_label || e.level_label || key);
       if(!map.has(key)) map.set(key,{key:key,label:label,count:0});
       map.get(key).count++;
     });
     return Array.from(map.values());
+  }
+  function getLevels(){ try{return Array.isArray(currentLevels)?currentLevels:['all'];}catch(e){return ['all'];} }
+  function setLevels(v){
+    try{ currentLevels=v; currentLevel=(v.length===1?v[0]:'all'); }catch(e){}
   }
   function loadLevels(){
     var v=null;
@@ -10600,35 +10605,47 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!Array.isArray(v)||!v.length) v=['all'];
     v=v.filter(function(x){return x==='all'||valid.has(String(x));});
     if(!v.length) v=['all'];
-    window.currentLevels=v;
-    window.currentLevel=v.length===1?v[0]:'all';
+    setLevels(v);
   }
-  function saveLevels(){ try{ localStorage.setItem(levelKey(),JSON.stringify(window.currentLevels||['all'])); }catch(e){} }
+  function saveLevels(){ try{localStorage.setItem(levelKey(),JSON.stringify(getLevels()));}catch(e){} }
+  function makeRow(key,label,count){
+    var row=document.createElement('label'); row.className='opt';
+    row.innerHTML='<div><div>'+esc(label)+'</div><div class="sub">'+count+'</div></div><input type="checkbox" name="fl" value="'+esc(key)+'">';
+    return row;
+  }
   function rebuild(){
     var modal=document.getElementById('filterModal'); if(!modal)return;
-    var h=modal.querySelector('h2');
-    Array.from(modal.querySelectorAll('label.opt')).forEach(function(x){x.remove();});
-    var all=document.createElement('label'); all.className='opt';
-    all.innerHTML='<div><div>全部</div><div class="sub" id="fAll">'+(window.DATA||[]).length+'</div></div><input type="checkbox" name="fl" value="all">';
-    modal.querySelector('.modal').insertBefore(all,h.nextSibling);
-    categories().forEach(function(c){
-      var row=document.createElement('label'); row.className='opt';
-      row.innerHTML='<div><div>'+esc(c.label)+'</div><div class="sub">'+c.count+'</div></div><input type="checkbox" name="fl" value="'+esc(c.key)+'">';
-      modal.querySelector('.modal').insertBefore(row,modal.querySelector('.modal').lastElementChild);
-    });
-    modal.querySelectorAll('input[name="fl"]').forEach(function(cb){
-      cb.checked=(window.currentLevels||['all']).indexOf(cb.value)>=0;
-      cb.onchange=function(){ if(typeof window.setLevel==='function')window.setLevel(cb.value); saveLevels(); };
+    var panel=modal.querySelector('.modal'), title=panel&&panel.querySelector('h2'); if(!panel||!title)return;
+    Array.from(panel.querySelectorAll('label.opt')).forEach(function(x){x.remove();});
+    var done=panel.querySelector('button');
+    var rows=[{key:'all',label:'全部',count:data().length}].concat(categories());
+    rows.forEach(function(c){
+      var row=makeRow(c.key,c.label,c.count);
+      panel.insertBefore(row,done||null);
+      var cb=row.querySelector('input');
+      cb.checked=getLevels().indexOf(c.key)>=0;
+      cb.addEventListener('change',function(){
+        if(typeof setLevel==='function') setLevel(c.key);
+        saveLevels();
+        rebuild();
+      });
     });
   }
-  function apply(){ loadLevels(); rebuild(); try{ if(typeof syncLevelUI==='function')syncLevelUI(); }catch(e){} try{ if(typeof updateStats==='function')updateStats(); }catch(e){} }
+  function refresh(){
+    loadLevels(); rebuild();
+    try{syncLevelUI();}catch(e){}
+    try{currentList=filtered();renderList();updateStats();}catch(e){}
+  }
   var oldOpen=window.openFilter;
-  window.openFilter=function(){ rebuild(); if(oldOpen)return oldOpen.apply(this,arguments); };
-  var oldSet=window.setLevel;
-  window.setLevel=function(lv){ var r=oldSet?oldSet.apply(this,arguments):undefined; saveLevels(); rebuild(); return r; };
+  window.openFilter=function(){ rebuild(); return oldOpen&&oldOpen.apply(this,arguments); };
+  var oldClose=window.closeFilter;
+  window.closeFilter=function(){ saveLevels(); return oldClose&&oldClose.apply(this,arguments); };
   var last='';
-  setInterval(function(){ var now=bid()+'|'+uid(); if(now!==last){last=now;setTimeout(apply,0);} },250);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
+  setInterval(function(){
+    var now=bid()+'|'+uid()+'|'+data().length;
+    if(now!==last){last=now;setTimeout(refresh,30);}
+  },250);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);else setTimeout(refresh,0);
 })();
 </script>
 
