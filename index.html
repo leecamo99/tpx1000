@@ -1125,7 +1125,7 @@ body.theme-dark .ap-note{color:#6a6661}
         <option value="COL">Column 1–4</option>
       </select>
     </div>
-    <button type="button" id="rdEntry" onclick="rdOpen()"><span class="ic"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 5.5h6a2.5 2.5 0 0 1 2.5 2.5v11a2 2 0 0 0-2-2H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M20 5.5h-6A2.5 2.5 0 0 0 11.5 8v11a2 2 0 0 1 2-2H20z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="t"><b>AI 教練</b><s id="rdEntrySub">用收藏的單字生成短文與測驗</s></span><span class="ch">›</span></button>
+    <button type="button" id="rdEntry" onclick="rdOpen()"><span class="ic"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 5.5h6a2.5 2.5 0 0 1 2.5 2.5v11a2 2 0 0 0-2-2H4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M20 5.5h-6A2.5 2.5 0 0 0 11.5 8v11a2 2 0 0 1 2-2H20z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span><span class="t"><b>AI 教練</b><s id="rdEntrySub">生成閱讀、聽力與 TOEIC 模擬題</s></span><span class="ch">›</span></button>
     <div id="itemList"></div>
   </div>
 </div>
@@ -1290,7 +1290,10 @@ function updateStats(){
   if(pn) pn.textContent = pct;
   var rt = document.getElementById('ringTitle');
   if(rt){
-    rt.textContent = levelLabel() + '　' + ok + ' / ' + list.length;
+    var lab = {all:'全部範圍','600':'600分級','730':'730分級','860':'860分級','990':'990分級',
+      S1:'Supplement 1',S2:'Supplement 2',S3:'Supplement 3',S4:'Supplement 4',
+      S5:'Supplement 5',S6:'Supplement 6',S7:'Supplement 7',COL:'Column 1–4'};
+    rt.textContent = (lab[currentLevel]||currentLevel) + '　' + ok + ' / ' + list.length;
   }
   // modal counts
   const count = lv => DATA.filter(e=>lv==='all'||e.level===lv).length;
@@ -1632,63 +1635,15 @@ function showList(){
   setTimeout(locate,500);
 }
 
-/* ===== 動態分類選單：依目前書籍 DATA 即時重建 ===== */
-var KIN_RANGE_META={all:{value:'all',label:'全部',count:0},_order:[]};
-function kinRangeKey(e){ return String((e && (e.level || e.section)) || 'OTHER'); }
-function kinRangeLabel(e,key){
-  var x=String((e && (e.level_label || e.section_label)) || key || '其他').replace(/\s+/g,' ').trim();
-  return x || key || '其他';
-}
-function kinRangeEsc(x){
-  return String(x==null?'':x).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});
-}
-function kinBuildRangeMeta(){
-  var m={all:{value:'all',label:'全部',count:DATA.length},_order:[]};
-  DATA.forEach(function(e){
-    var k=kinRangeKey(e);
-    if(!m[k]){ m[k]={value:k,label:kinRangeLabel(e,k),count:0}; m._order.push(k); }
-    m[k].count++;
-  });
-  KIN_RANGE_META=m;
-  return m;
-}
-function rebuildRangeMenus(resetSelection){
-  var m=kinBuildRangeMeta(), valid={all:1};
-  m._order.forEach(function(k){valid[k]=1;});
-  if(resetSelection || !currentLevels || !currentLevels.length || currentLevels.some(function(k){return !valid[k];})){
-    currentLevels=['all']; currentLevel='all';
-  }
-  var modal=document.querySelector('#filterModal .modal');
-  if(modal){
-    Array.prototype.forEach.call(modal.querySelectorAll('label.opt'),function(x){x.remove();});
-    [m.all].concat(m._order.map(function(k){return m[k];})).forEach(function(r){
-      if(r.value!=='all' && r.count<=0) return;
-      var lab=document.createElement('label'); lab.className='opt';
-      lab.innerHTML='<div><div>'+kinRangeEsc(r.label)+'</div><div class="sub">'+r.count+' 字</div></div>'+
-        '<input type="checkbox" name="fl" value="'+kinRangeEsc(r.value)+'">';
-      var cb=lab.querySelector('input'); cb.checked=currentLevels.indexOf(r.value)>=0;
-      cb.addEventListener('change',function(){setLevel(r.value);});
-      modal.appendChild(lab);
-    });
-  }
-  ['levelSelect','levelSelect2'].forEach(function(id){
-    var el=document.getElementById(id); if(!el) return;
-    var chosen=currentLevels.indexOf('all')>=0?'all':currentLevels[0];
-    el.innerHTML='<option value="all">全部（'+m.all.count+'）</option>'+m._order.map(function(k){
-      var r=m[k]; return '<option value="'+kinRangeEsc(k)+'">'+kinRangeEsc(r.label)+'（'+r.count+'）</option>';
-    }).join('');
-    el.value=valid[chosen]?chosen:'all';
-  });
-  try{syncLevelUI();}catch(e){}
-}
 function filtered(){
   var levels=(currentLevels&&currentLevels.length)?currentLevels:['all'];
   if(levels.indexOf('all')>=0) return DATA.slice();
-  return DATA.filter(function(e){return levels.indexOf(kinRangeKey(e))>=0;});
+  return DATA.filter(function(e){return levels.indexOf(e.level)>=0;});
 }
 function levelLabel(){
-  if(!currentLevels || currentLevels.indexOf('all')>=0) return '全部範圍';
-  return currentLevels.map(function(x){var r=KIN_RANGE_META[x]; return r?r.label:x;}).join('＋');
+  var lab={all:'全部範圍','600':'600分級','730':'730分級','860':'860分級','990':'990分級',S1:'Supplement 1',S2:'Supplement 2',S3:'Supplement 3',S4:'Supplement 4',S5:'Supplement 5',S6:'Supplement 6',S7:'Supplement 7',COL:'Column 1–4'};
+  if(currentLevels.indexOf('all')>=0) return lab.all;
+  return currentLevels.map(function(x){return lab[x]||x;}).join('＋');
 }
 function syncLevelUI(){
   document.querySelectorAll('input[name="fl"]').forEach(function(r){r.checked=currentLevels.indexOf(r.value)>=0;});
@@ -1747,8 +1702,6 @@ function setLevel(lv){
 }
 
 function openFilter(){
-  // 收藏可在頁面開啟期間增減，打開前再重算分類與數量。
-  rebuildRangeMenus(false);
   var modal = document.getElementById('filterModal');
   if(modal) modal.classList.add('open');
   document.querySelectorAll('input[name="fl"]').forEach(function(r){
@@ -6662,7 +6615,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 <div id="screen-read">
   <div class="topbar">
     <button class="back" onclick="rdClose()" aria-label="返回"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M15 4.5 8 12l7 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <h1 id="rdTitle">AI 教練</h1>
+    <h1 id="rdTitle">AI TOEIC 實戰教練</h1>
   </div>
   <div class="rd-body" id="rdBody"></div>
 </div>
@@ -6747,6 +6700,22 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       b.classList.toggle('on', +b.getAttribute('data-n') === n);
     });
   };
+
+  window.rdImportBank=function(){var f=document.getElementById('rdBankFile');if(f)f.click();};
+  function normalizeBank(o){
+    if(!o||typeof o!=='object')throw new Error('JSON 根節點必須是物件');
+    var qs=o.questions||o.items;if(!Array.isArray(qs)||!qs.length)throw new Error('缺少 questions/items 題目陣列');
+    var items=qs.map(function(q,i){
+      var op=q.options||q.choices,ans=q.answer;
+      if(!Array.isArray(op)||op.length<2)throw new Error('第 '+(i+1)+' 題缺少 options');
+      if(typeof ans==='string'){var p=op.indexOf(ans);ans=p>=0?p:parseInt(ans,10);}
+      ans=parseInt(ans,10);if(!(ans>=0&&ans<op.length))throw new Error('第 '+(i+1)+' 題 answer 無效');
+      return {q:String(q.q||q.question||''),options:op.map(String),answer:ans,zh:String(q.zh||q.translation||''),tip:String(q.tip||q.explain||q.explanation||'')};
+    });
+    return {id:'I-'+Date.now().toString(36),kind:'quiz',title:String(o.title||'匯入題庫'),scene:String(o.source||o.scene||'JSON 題庫'),items:items,used:Array.isArray(o.used)?o.used:[],article:String(o.article||o.passage||''),at:new Date().toISOString(),imported:true};
+  }
+  window.rdReadBank=function(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var it=normalizeBank(JSON.parse(r.result));var a=load();a.unshift(it);save(a);msg('已匯入 '+it.items.length+' 題');openId=it.id;view='quiz';render();window.scrollTo(0,0);}catch(e){msg('匯入失敗：'+e.message,true);}inp.value='';};r.readAsText(f);};
+  window.KIN_BANK_SCHEMA={title:'題庫名稱',source:'來源',article:'選填文章',questions:[{q:'題目',options:['A','B','C','D'],answer:0,zh:'選填翻譯',explain:'解析'}]};
 
   window.rdGenPassage = function(){
     if(busy) return;
@@ -7368,10 +7337,11 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       }).join('');
       body.innerHTML =
         '<div class="rd-gen">' +
-        '<h3>用收藏的單字練習</h3>' +
+        '<h3>V4.0 AI TOEIC 實戰教練</h3><div class="rd-note">可生成閱讀短文、以 TTS 朗讀成聽力情境，或建立 TOEIC 模擬題。</div>' +
         '<div class="rd-pick">' + opts + '</div>' +
-        '<button type="button" class="go" onclick="rdGenPassage()">生成 TOEIC 短文</button>' +
-        '<button type="button" class="go alt" onclick="rdGenQuiz()">出一份單字測驗</button>' +
+        '<button type="button" class="go" onclick="rdGenPassage()">生成閱讀／聽力情境</button>' +
+        '<button type="button" class="go alt" onclick="rdGenQuiz()">生成 TOEIC 模擬測驗</button>' +
+        '<button type="button" class="go alt" onclick="rdImportBank()">匯入 JSON 題庫</button><input id="rdBankFile" type="file" accept=".json,application/json" style="display:none" onchange="rdReadBank(this)">' +
         '<div class="rd-msg" id="rdMsg"></div>' +
         '<div class="rd-note">目前收藏 ' + n + ' 個單字。系統會優先挑還沒複習過、或曾經答錯的字。短文裡的英文一樣可以點，發音或再加入閃卡。</div>' +
         '</div>' +
@@ -7849,14 +7819,16 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
     // 音檔路徑與紀錄鍵，全部隨書切換
     AUDIO_BASE = meta.audioBase || 'audio/kin1000/CLIPS/';
+    if(meta.virtual){
+      currentLevels=['all']; currentLevel='all';
+      try{ syncLevelUI(); }catch(e){}
+    }
     // 紀錄鍵同時帶書籍與使用者，兩人各自獨立。
     var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
     STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
     SRS_KEY    = 'book:' + meta.id + ':' + uid + ':srs';
     var switched = !prev || prev.id !== meta.id;
     window.CURRENT_BOOK = meta;
-    // 換書時清除上一本文字的分類殘留；同一本收藏重載時只更新數量。
-    rebuildRangeMenus(switched);
     // 建立這本書的標題字索引，供捕獲時跨書比對。
     if(!meta.virtual && typeof window.__kinIndexBook === 'function'){
       try{ window.__kinIndexBook(meta.id, meta.title, DATA); }catch(e){}
@@ -8231,6 +8203,7 @@ body.theme-dark .ux-btn.dark{background:#e8e6e3;color:#111;border-color:#e8e6e3}
 .ux-spell-row button{flex:1;height:38px;border-radius:10px;border:1px solid #ddd;background:#fff;color:#555;font-size:12px;font-weight:700;touch-action:manipulation}
 .ux-diff{font-family:Consolas,monospace;font-size:18px;letter-spacing:.06em;margin-top:8px;word-break:break-all}
 .ux-diff .g{color:#1f7a38}.ux-diff .r{color:#b03030;text-decoration:underline}.ux-diff .m{color:#b03030;background:#fdf0f0;border-radius:3px}
+.ux-sound{margin-top:9px;padding:8px 10px;border-radius:9px;background:#fff7e8;color:#955f10;font-size:13px;line-height:1.5}.ux-sound b{color:#734700}.ux-sound span{display:block;font-size:11px;color:#a47a3c;margin-top:2px}body.theme-dark .ux-sound{background:#332817;color:#e8b96e}body.theme-dark .ux-sound b{color:#ffd18b}
 @keyframes uxShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 .ux-res{text-align:center;padding:20px 10px 10px}
 .ux-res .big{font-size:54px;font-weight:800;color:var(--ux-o);line-height:1}
@@ -8391,6 +8364,11 @@ body.theme-dark .ux-set .st{color:#a8a49f}
 
     <!-- 設定 -->
     <div id="uxQzSetup">
+      <div class="ux-card" id="uxV4Panel" style="border:1px solid #c45c1a;background:rgba(196,92,26,.08)">
+        <h3>V3.1–V4.0 功能中心</h3>
+        <div class="ux-note-sm" style="margin-bottom:10px">測驗支援解說後返回、完整檢討、AI 錯題分析；AI 實戰教練可生成閱讀、聽力情境與模擬題。</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="ux-btn pri" id="uxOpenAiCoach">AI 實戰教練</button><button type="button" class="ux-btn" id="uxOpenBank">匯入 JSON 題庫</button></div>
+      </div>
       <div class="ux-card">
         <h3>題型</h3>
         <div class="ux-opts" id="uxQzMode">
@@ -8460,12 +8438,23 @@ body.theme-dark .ux-set .st{color:#a8a49f}
         <h3>答錯的字</h3>
         <ul class="ux-wrong" id="uxQzWrong" style="list-style:none;margin:0;padding:0"></ul>
       </div>
+      <div class="ux-card" id="uxQzReviewCard">
+        <h3>完整檢討 <small id="uxQzReviewCount"></small></h3>
+        <div style="display:flex;gap:8px;margin-bottom:10px"><button type="button" class="ux-btn" id="uxQzReviewAll">全部</button><button type="button" class="ux-btn" id="uxQzReviewWrong">只看答錯</button></div>
+        <div id="uxQzReview"></div>
+      </div>
+      <div class="ux-card ux-hide" id="uxQzAiCard">
+        <h3>AI 錯題教練</h3>
+        <div id="uxQzAiOut" style="font-size:13px;line-height:1.75;white-space:pre-wrap"></div>
+      </div>
+      <button type="button" class="ux-btn pri" id="uxQzAi">請 AI 分析本次測驗</button>
       <button type="button" class="ux-btn pri" id="uxQzRetryWrong">再測答錯的字</button>
       <button type="button" class="ux-btn" id="uxQzAgain">再測一次（同設定）</button>
       <button type="button" class="ux-btn" id="uxQzBack">回到設定</button>
     </div>
   </div>
 </div>
+<button type="button" id="uxQzReturn" style="display:none;position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:12050;min-height:48px;border:0;border-radius:14px;background:#c45c1a;color:#fff;font-weight:700">← 返回測驗</button>
 
 <div id="uxSum" role="dialog" aria-label="本次學習結算">
   <div class="hd"><h3>本次學習結算</h3><button type="button" class="ux-x" id="uxSumX" aria-label="關閉">×</button></div>
@@ -9286,39 +9275,54 @@ window.UX = window.UX || {};
     return {pre:sent.slice(0,best.i), ans:best.t, post:sent.slice(best.i+best.t.length), accept:heads.concat([best.t])};
   }
 
-  function distractors(e, mode, k){
-    var same=DATA.filter(function(x){ return x.level===e.level && x.id!==e.id; });
-    var all=DATA.filter(function(x){ return x.id!==e.id; });
-    var out=[], used={}; used[mode==='zh2en'?normAns(e.word):meanText(e)]=1;
-    function take(src, needPos){
-      var c=shuffle(src.slice());
-      for(var i=0;i<c.length && out.length<k;i++){
-        var x=c[i];
-        if(needPos && x.pos!==e.pos) continue;
-        var key = (mode==='zh2en') ? normAns(x.word) : meanText(x);
-        if(!key || used[key]) continue;
-        used[key]=1; out.push(x);
-      }
-    }
-    if(e.pos) take(same, true);
-    take(same, false); take(all, false);
-    return out.slice(0,k);
+  /* ---------- v3.2 智慧干擾項／弱點加權 ---------- */
+  function zhParts(e){return String(meanText(e)||'').replace(/[（(][^）)]*[）)]/g,'').split(/[、，；;／\/。\s]+/).map(function(x){return x.trim();}).filter(function(x){return x.length>=2;});}
+  function chars(s){var m={},a=String(s||'').replace(/[\s，。、；;／\/（）()]/g,'').split('');a.forEach(function(c){m[c]=1;});return m;}
+  function overlap(a,b){var A=chars(a),B=chars(b),hit=0,total=0,k;for(k in A){total++;if(B[k])hit++;}for(k in B)if(!A[k])total++;return total?hit/total:0;}
+  function editSim(a,b){a=normAns(a);b=normAns(b);if(!a||!b)return 0;var d=[],i,j;for(i=0;i<=a.length;i++)d[i]=[i];for(j=1;j<=b.length;j++)d[0][j]=j;for(i=1;i<=a.length;i++)for(j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return 1-d[a.length][b.length]/Math.max(a.length,b.length);}
+  function meaningIsChinese(e){var t=String(meanText(e)||'');return /[\u3400-\u9fff]/.test(t)&&!/^[A-Za-z0-9\s'’\-.,/()]+$/.test(t);}
+  function distractScore(e,x,mode){
+    var sc=0;if(x.level===e.level)sc+=28;if(e.pos&&x.pos===e.pos)sc+=32;if(e.section&&x.section===e.section)sc+=10;
+    if(mode==='zh2en'){sc+=editSim(e.word,x.word)*28;sc+=overlap(meanText(e),meanText(x))*18;}
+    else{sc+=overlap(meanText(e),meanText(x))*45;var ep=zhParts(e),xp=zhParts(x);if(ep.some(function(a){return xp.some(function(b){return a===b||a.indexOf(b)>=0||b.indexOf(a)>=0;});}))sc+=35;}
+    sc+=Math.random()*8;return sc;
   }
-  function buildQuestions(pool, mode, n){
-    var list=shuffle(pool.slice());
-    if(mode==='cloze') list=list.filter(function(e){ return !!clozeInfo(e); });
-    if(mode==='spell'||mode==='zh2en'||mode==='listen') list=list.filter(function(e){ return headVariants(e).length && /[A-Za-z]/.test(e.word); });
-    if(n>0) list=list.slice(0,n); else list=list.slice(0,200);
-    return list.map(function(e){
-      var q={e:e, mode:mode};
-      if(mode==='en2zh'||mode==='listen'||mode==='zh2en'){
-        var ds=distractors(e, mode, 3);
-        q.opts=shuffle([e].concat(ds));
-      }
-      if(mode==='cloze') q.cz=clozeInfo(e);
-      return q;
-    });
+  function distractors(e,mode,k){
+    var answerKey=mode==='zh2en'?normAns(e.word):meanText(e),used={};used[answerKey]=1;
+    var c=DATA.filter(function(x){if(x.id===e.id)return false;var key=mode==='zh2en'?normAns(x.word):meanText(x);if(!key||used[key])return false;if(mode==='listen'&&!meaningIsChinese(x))return false;return true;}).map(function(x){return {e:x,s:distractScore(e,x,mode)};});
+    c.sort(function(a,b){return b.s-a.s;});var out=[];for(var i=0;i<c.length&&out.length<k;i++){var x=c[i].e,key=mode==='zh2en'?normAns(x.word):meanText(x);if(used[key])continue;used[key]=1;out.push(x);}return out;
   }
+  function weightedQuestions(pool){
+    var K=window.KIN_STRENGTH,SN=window.KIN_SENSE,weak={};if(SN)try{SN.weakList().forEach(function(r){weak[r.e.id]=1;});}catch(x){}
+    return pool.map(function(e){var w=1;if(statusOf(e.id)==='review')w+=3;if(weak[e.id])w+=4;if(K)try{var lv=K.level(e.id);if(lv<=2)w+=3;if(K.isRelapse(e.id))w+=3;}catch(x){}return {e:e,key:Math.pow(Math.random(),1/w)};}).sort(function(a,b){return b.key-a.key;}).map(function(r){return r.e;});
+  }
+  function buildQuestions(pool,mode,n){
+    var list=weightedQuestions(pool.slice());
+    if(mode==='cloze')list=list.filter(function(e){return !!clozeInfo(e);});
+    if(mode==='spell'||mode==='zh2en'||mode==='listen')list=list.filter(function(e){return headVariants(e).length&&/[A-Za-z]/.test(e.word);});
+    if(mode==='listen')list=list.filter(meaningIsChinese);
+    if(n>0)list=list.slice(0,n);else list=list.slice(0,200);
+    return list.map(function(e){var q={e:e,mode:mode};if(mode==='en2zh'||mode==='listen'||mode==='zh2en'){q.opts=shuffle([e].concat(distractors(e,mode,3)));}if(mode==='cloze')q.cz=clozeInfo(e);return q;});
+  }
+
+  /* ---------- v3.2 拼字近音提示 ---------- */
+  var CONFUSABLE={
+    affect:['effect'],effect:['affect'],accept:['except'],except:['accept'],adapt:['adopt'],adopt:['adapt'],
+    advice:['advise'],advise:['advice'],assure:['ensure','insure'],ensure:['assure','insure'],insure:['ensure','assure'],
+    complement:['compliment'],compliment:['complement'],principal:['principle'],principle:['principal'],
+    personnel:['personal'],personal:['personnel'],stationary:['stationery'],stationery:['stationary'],
+    confirm:['conform'],conform:['confirm'],proceed:['precede'],precede:['proceed'],later:['latter'],latter:['later']
+  };
+  function soundKey(w){return normAns(w).replace(/^(kn|wr)/,'').replace(/^ph/,'f').replace(/tion$/,'shun').replace(/sion$/,'shun').replace(/[aeiouy]+/g,'a').replace(/(.)\1+/g,'$1');}
+  function soundAlikes(q){
+    var ans=normAns(answerOf(q)),seen={},out=[];
+    function add(w){w=String(w||'');var n=normAns(w);if(!n||n===ans||seen[n])return;seen[n]=1;out.push(w);}
+    (CONFUSABLE[ans]||[]).forEach(add);
+    var target=soundKey(ans);
+    DATA.map(function(e){return e.word;}).filter(function(w){return soundKey(w)===target||editSim(w,ans)>=0.68;}).sort(function(a,b){return editSim(b,ans)-editSim(a,ans);}).slice(0,5).forEach(add);
+    return out.slice(0,3);
+  }
+  function soundHintHtml(q){var a=soundAlikes(q);return a.length?'<div class="ux-sound"><b>近音辨識：</b>'+a.map(esc).join('／')+'<span>都不是答案，請再聽一次分辨。</span></div>':'';}
 
   /* ---------- 學習紀錄回寫 ---------- */
   function applyResult(e, correct){
@@ -9391,7 +9395,7 @@ window.UX = window.UX || {};
   function start(){
     var pool=poolFor(sel.src), qs=buildQuestions(pool, sel.mode, sel.n);
     if(!qs.length){ toast('沒有可出題的單字'); return; }
-    Q={mode:sel.mode, src:sel.src, qs:qs, i:0, ok:0, ng:0, wrong:[], hinted:0, start:Date.now(), done:false, graded:0, answered:false};
+    Q={mode:sel.mode, src:sel.src, qs:qs, i:0, ok:0, ng:0, wrong:[], history:[], hinted:0, start:Date.now(), done:false, graded:0, answered:false, pausePart:''};
     show('uxQzPlay');
     var names={en2zh:'英 → 中',zh2en:'中 → 英',listen:'聽力 → 中',spell:'拼字聽寫',cloze:'例句填空'};
     $('uxQzTitle').textContent=names[Q.mode]||'測驗';
@@ -9462,6 +9466,7 @@ window.UX = window.UX || {};
   function choose(i){
     if(Q.answered) return;
     var q=Q.qs[Q.i], x=q.opts[i], correct=(x.id===q.e.id);
+    q.userAnswer=q.mode==='zh2en'?String(x.word||''):meanText(x);
     Q.answered=true;
     qsa('#uxQzChoices button').forEach(function(b,j){
       b.disabled=true;
@@ -9473,6 +9478,7 @@ window.UX = window.UX || {};
   function check(){
     if(Q.answered) return;
     var q=Q.qs[Q.i], inp=$('uxQzIn'), v=inp.value;
+    q.userAnswer=String(v||'').trim();
     if(!normAns(v)){ inp.classList.remove('ng'); void inp.offsetWidth; inp.classList.add('ng'); return; }
     Q.attempts++;
     if(accepts(q, v)){
@@ -9483,7 +9489,7 @@ window.UX = window.UX || {};
     }else{
       inp.classList.remove('ng'); void inp.offsetWidth; inp.classList.add('ng');
       var fb=$('uxQzFb'); fb.className='ux-fb show';
-      fb.innerHTML='<div class="t ng">再試一次</div><div class="ux-diff">'+diffHtml(v, answerOf(q))+'</div><div class="exz">紅色是打錯的位置。可按「提示一個字母」或「看答案」。</div>';
+      fb.innerHTML='<div class="t ng">再試一次</div><div class="ux-diff">'+diffHtml(v, answerOf(q))+'</div>'+((q.mode==='spell')?soundHintHtml(q):'')+'<div class="exz">紅色是打錯的位置。可按「提示一個字母」或「看答案」。</div>';
       haptic([15,40,15]);
       if(Q.attempts>=3){ giveUp(); }
     }
@@ -9510,12 +9516,15 @@ window.UX = window.UX || {};
   function giveUp(){
     if(Q.answered) return;
     Q.answered=true;
+    Q.qs[Q.i].userAnswer=Q.qs[Q.i].userAnswer||'（看答案）';
     var inp=$('uxQzIn'); inp.disabled=true; inp.className='ng'; inp.value=answerOf(Q.qs[Q.i]);
     settle(false, '（顯示答案）');
   }
   function settle(correct, extra){
     var q=Q.qs[Q.i], e=q.e;
     if(correct) Q.ok++; else { Q.ng++; Q.wrong.push(e.id); }
+    var ca=q.mode==='zh2en'?String(e.word||''):((q.mode==='spell'||q.mode==='cloze')?answerOf(q):meanText(e));
+    Q.history.push({n:Q.i+1,id:e.id,word:e.word||'',correct:!!correct,user:String(q.userAnswer||''),answer:String(ca||''),mean:meanText(e)});
     if(applyResult(e, correct)) Q.graded++;
     haptic(correct?8:[20,40,20]);
     if(q.mode==='listen'){ var w=$('uxQzListenW'); if(w) w.textContent=e.word; }
@@ -9528,13 +9537,22 @@ window.UX = window.UX || {};
       (note?'<div class="nt">◎ '+esc(note)+'</div>':'')+
       '<div class="row"><button type="button" id="uxQzSpk2">🔊 發音</button><button type="button" id="uxQzDetail">解說</button><button type="button" class="pri" id="uxQzNext">'+(Q.i+1>=Q.qs.length?'看結果':'下一題 →')+'</button></div>';
     $('uxQzSpk2').addEventListener('click', function(){ speak(e); });
-    $('uxQzDetail').addEventListener('click', function(){ var id=e.id; finish(true); close(); setTimeout(function(){ try{ openDetail(id); }catch(x){} },60); });
+    $('uxQzDetail').addEventListener('click', function(){ openQuizDetail(e.id,'uxQzPlay'); });
     $('uxQzNext').addEventListener('click', next);
     if(q.mode==='spell'||q.mode==='cloze') $('uxQzReplay').classList.remove('ux-hide');
     if(correct && !extra){ advTimer=setTimeout(next, q.mode==='listen'?1500:1200); }
     else if(!correct && (q.mode==='spell'||q.mode==='cloze')) setTimeout(function(){ try{ speak(e); }catch(x){} }, 250);
     paintMeta();
   }
+  function openQuizDetail(id,part){
+    clearTimeout(advTimer);if(!Q)return;Q.pausePart=part||'uxQzPlay';
+    document.body.classList.remove('ux-quiz-open');$('uxQuiz').classList.remove('show');
+    var r=$('uxQzReturn');r.textContent=Q.done?'← 返回完整檢討':'← 返回第 '+(Q.i+1)+' 題';r.style.display='block';
+    setTimeout(function(){try{openDetail(id);}catch(x){resumeQuiz();}},60);
+  }
+  function resumeQuiz(){if(!Q)return;$('uxQzReturn').style.display='none';try{if(typeof showList==='function')showList();}catch(x){}
+    document.body.classList.add('ux-quiz-open');$('uxQuiz').classList.add('show');show(Q.pausePart||(Q.done?'uxQzResult':'uxQzPlay'));window.scrollTo(0,0);}
+  $('uxQzReturn').addEventListener('click',resumeQuiz);
   function next(){
     clearTimeout(advTimer);
     if(!Q || !Q.answered) return;
@@ -9559,16 +9577,57 @@ window.UX = window.UX || {};
     if(Q.wrong.length){
       card.classList.remove('ux-hide');
       wl.innerHTML=Q.wrong.map(function(id){ var e=UX.entryById(id); if(!e) return ''; return '<li><span class="w">'+esc(e.word)+'<small>'+esc(meanText(e))+'</small></span><button type="button" data-id="'+esc(id)+'">解說</button></li>'; }).join('');
-      qsa('button', wl).forEach(function(b){ b.addEventListener('click', function(){ var id=b.getAttribute('data-id'); close(); setTimeout(function(){ try{ openDetail(id); }catch(x){} },60); }); });
+      qsa('button', wl).forEach(function(b){ b.addEventListener('click', function(){ openQuizDetail(b.getAttribute('data-id'),'uxQzResult'); }); });
     }else{ card.classList.add('ux-hide'); }
+    renderReview(false);
     $('uxQzRetryWrong').classList.toggle('ux-hide', !Q.wrong.length);
+    $('uxQzAi').classList.remove('ux-hide');
+    $('uxQzAi').disabled=false; $('uxQzAi').textContent=quizAiKey()?'請 AI 分析本次測驗':'請 AI 分析（先設定 Gemini Key）';
+    $('uxQzAiCard').classList.add('ux-hide'); $('uxQzAiOut').textContent='';
     if(pct===100 && answered>=5){ UX.confetti(); haptic([30,60,30]); }
     var rec={d:UX.dayStr(UX.today()), m:Q.mode, n:answered, c:Q.ok, s:secs, g:Q.graded, w:Q.wrong.slice(0,50), b:UX.bookId()};
     if(UX.logQuiz) UX.logQuiz(rec);
     try{ updateStats(); }catch(x){}
     window.scrollTo(0,0);
   }
+  function renderReview(onlyWrong){
+    var list=(Q&&Q.history||[]).filter(function(r){return !onlyWrong||!r.correct;});
+    $('uxQzReviewCount').textContent='共 '+(Q&&Q.history?Q.history.length:0)+' 題';
+    $('uxQzReview').innerHTML=list.map(function(r){return '<div style="border:1px solid #e3ddd5;border-left:4px solid '+(r.correct?'#3a9d5d':'#d64b4b')+';border-radius:9px;padding:9px;margin:8px 0"><b>第 '+r.n+' 題　'+esc(r.word)+'　'+(r.correct?'✓':'✗')+'</b><div>你的答案：'+esc(r.user||'（未作答）')+'</div><div>正確答案：'+esc(r.answer)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><button type="button" class="ux-btn qrd" data-id="'+esc(r.id)+'">查看解說</button><button type="button" class="ux-btn qrtry" data-id="'+esc(r.id)+'">重做此題</button><button type="button" class="ux-btn qweak" data-id="'+esc(r.id)+'">加入弱點</button></div></div>';}).join('')||'<div>沒有符合的題目。</div>';
+    qsa('.qrd',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){openQuizDetail(b.getAttribute('data-id'),'uxQzResult');});});
+    qsa('.qrtry',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id'),m=Q.mode;preset={ids:[id],label:'重做此題'};sel.mode=m;sel.n=0;start();});});
+    qsa('.qweak',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id');statusMap[id]='review';try{saveStatus();updateStats();}catch(x){}b.textContent='已加入弱點';b.disabled=true;UX.toast('已加入弱點清單');});});
+  }
+  $('uxQzReviewAll').addEventListener('click',function(){renderReview(false);});
+  $('uxQzReviewWrong').addEventListener('click',function(){renderReview(true);});
+
+  function quizAiKey(){try{return localStorage.getItem('kinGeminiKey')||'';}catch(e){return '';}}
+  function quizModeName(m){return {en2zh:'英翻中',zh2en:'中翻英',listen:'聽力辨識',spell:'拼字聽寫',cloze:'例句填空'}[m]||m;}
+  function quizAiPrompt(){
+    var answered=Q?Q.ok+Q.ng:0, wrong=(Q&&Q.wrong||[]).map(function(id){
+      var e=UX.entryById(id);return e?{word:e.word,meaning:meanText(e),pos:e.pos||'',level:e.level||''}:null;
+    }).filter(Boolean);
+    return '你是繁體中文 TOEIC 個人教練。分析這次測驗，不要責備學習者。\\n'+
+      '題型：'+quizModeName(Q.mode)+'\\n總題數：'+answered+'\\n答對：'+Q.ok+'\\n答錯：'+Q.ng+'\\n提示題數：'+Q.hinted+'\\n錯題：'+JSON.stringify(wrong)+'\\n\\n'+
+      '請用繁體中文回覆，格式固定為：\\n【本次診斷】2到3句\\n【主要弱點】最多3點\\n【優先複習】列出最多8個字，每字加一句區辨提示\\n【下一輪建議】給出題型與題數。不要輸出 Markdown 表格。';
+  }
+  function runQuizAi(){
+    if(!Q||!Q.done)return;
+    var key=quizAiKey(),btn=$('uxQzAi'),card=$('uxQzAiCard'),out=$('uxQzAiOut');
+    if(!key){UX.toast('請先到使用者專區設定 Gemini API Key');return;}
+    btn.disabled=true;btn.textContent='AI 分析中…';card.classList.remove('ux-hide');out.textContent='正在整理錯題與學習建議…';
+    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(key),{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:quizAiPrompt()}]}],generationConfig:{temperature:0.35}})
+    }).then(function(r){return r.ok?r.json():r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t.slice(0,100));});})
+      .then(function(j){var c=j&&j.candidates&&j.candidates[0],txt=c&&c.content&&c.content.parts&&c.content.parts[0]&&c.content.parts[0].text;if(!txt)throw new Error('Gemini 未回傳內容');out.textContent=txt.trim();
+        try{var k='kinQuizAi:' + ((window.KIN_USER&&KIN_USER.id())||'paul');var a=JSON.parse(localStorage.getItem(k)||'[]');a.push({at:new Date().toISOString(),book:UX.bookId(),mode:Q.mode,ok:Q.ok,ng:Q.ng,wrong:Q.wrong.slice(),text:txt.trim()});localStorage.setItem(k,JSON.stringify(a.slice(-50)));}catch(x){}
+      }).catch(function(e){out.textContent='分析失敗：'+e.message;}).then(function(){btn.disabled=false;btn.textContent='重新分析本次測驗';});
+  }
+  $('uxQzAi').addEventListener('click',runQuizAi);
+
   function fmt(s){ return s>=60 ? (Math.floor(s/60)+' 分 '+(s%60)+' 秒') : (s+' 秒'); }
+  $('uxOpenAiCoach').addEventListener('click',function(){close();setTimeout(function(){if(typeof rdOpen==='function')rdOpen();},80);});
+  $('uxOpenBank').addEventListener('click',function(){close();setTimeout(function(){if(typeof rdOpen==='function')rdOpen();setTimeout(function(){if(typeof rdImportBank==='function')rdImportBank();},120);},80);});
   $('uxQzCheck').addEventListener('click', check);
   $('uxQzHint').addEventListener('click', hint);
   $('uxQzGiveUp').addEventListener('click', giveUp);
@@ -9595,7 +9654,7 @@ window.UX = window.UX || {};
     if(k==='/'||k==='p'||k==='P'){ ev.preventDefault(); ev.stopImmediatePropagation(); speak(Q.qs[Q.i].e); return; }
   }, true);
 
-  UX._tq={clozeInfo:clozeInfo, normAns:normAns, distractors:distractors, buildQuestions:buildQuestions, poolFor:poolFor, diffHtml:diffHtml, headVariants:headVariants};
+  UX._tq={clozeInfo:clozeInfo,normAns:normAns,distractors:distractors,distractScore:distractScore,meaningIsChinese:meaningIsChinese,weightedQuestions:weightedQuestions,soundAlikes:soundAlikes,soundKey:soundKey,buildQuestions:buildQuestions,poolFor:poolFor,diffHtml:diffHtml,headVariants:headVariants};
   // 儀表板加入測驗入口
   (function(){
     var due=document.querySelector('#srsScreen .srs-due'); if(!due || $('uxSrsQuizBtn')) return;
@@ -10344,5 +10403,42 @@ window.KIN_SENSE = (function(){
 })();
 
 </script>
+
+<style id="kinStatusFilterStyle">
+#kinStatusFilter{display:flex;gap:8px;width:100%;box-sizing:border-box;padding:8px 12px 10px;overflow-x:auto;overflow-y:hidden;background:var(--bg,#fff);border-bottom:1px solid rgba(128,128,128,.18);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#kinStatusFilter::-webkit-scrollbar{display:none}.kin-status-chip{flex:0 0 auto;min-height:36px;padding:0 12px;border:1.5px solid #d0d0d2;border-radius:999px;background:#fff;color:#666;font:inherit;font-size:12px;font-weight:750;white-space:nowrap;touch-action:manipulation}.kin-status-chip:active{transform:scale(.96)}.kin-status-chip .n{margin-left:4px;opacity:.72;font-variant-numeric:tabular-nums}
+.kin-status-chip.on[data-s="all"]{background:#e86f00;border-color:#e86f00;color:#fff}.kin-status-chip.on[data-s="active"]{background:#fff2e8;border-color:#ed741d;color:#c85b08}.kin-status-chip.on[data-s="new"]{background:#ececef;border-color:#888;color:#333}.kin-status-chip.on[data-s="review"]{background:#fff0f1;border-color:#e44e57;color:#d13e47}.kin-status-chip.on[data-s="ok"]{background:#edfff3;border-color:#36ae65;color:#248d4e}
+body.theme-dark #kinStatusFilter{background:#0d0d0e;border-bottom-color:#29292c}body.theme-dark .kin-status-chip{background:#1b1b1d;border-color:#444449;color:#aaa}body.theme-dark .kin-status-chip.on[data-s="all"]{background:#de670f;border-color:#ff8128;color:#fff}body.theme-dark .kin-status-chip.on[data-s="active"]{background:#321e10;border-color:#ff8128;color:#ff9b54}body.theme-dark .kin-status-chip.on[data-s="new"]{background:#303033;border-color:#8b8b90;color:#eee}body.theme-dark .kin-status-chip.on[data-s="review"]{background:#351719;border-color:#ed515a;color:#ff737b}body.theme-dark .kin-status-chip.on[data-s="ok"]{background:#102d1c;border-color:#38ba6d;color:#58d486}
+.kin-status-empty{margin:28px 16px;padding:24px 16px;border:1px solid rgba(128,128,128,.24);border-radius:14px;text-align:center;color:#888}.kin-status-empty b{display:block;margin-bottom:8px;font-size:16px}.kin-status-empty button{margin-top:14px;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:#e86f00;color:#fff;font:inherit;font-weight:700}
+</style>
+<script>
+(function(){
+'use strict';if(window.KIN_STATUS_FILTER)return;
+var ALL='all',ACTIVE='active',NEW='new',REVIEW='review',OK='ok',value=ALL,lastBook='',painting=false;
+var oldFiltered=window.filtered,oldRender=window.renderList;
+function uid(){try{return window.KIN_USER&&KIN_USER.id?KIN_USER.id():'paul';}catch(e){return 'paul';}}
+function book(){return window.CURRENT_BOOK&&CURRENT_BOOK.id?String(CURRENT_BOOK.id):'kin1000';}
+function key(){return 'kinStatusFilter:'+book()+':'+uid();}
+function load(){try{value=localStorage.getItem(key())||ALL;}catch(e){value=ALL;}if([ALL,ACTIVE,NEW,REVIEW,OK].indexOf(value)<0)value=ALL;}
+function save(){try{localStorage.setItem(key(),value);}catch(e){}}
+function st(e){return String(statusMap&&statusMap[e.id]||'');}
+function match(e){var x=st(e);if(value===ACTIVE)return x===''||x===REVIEW;if(value===NEW)return x==='';if(value===REVIEW)return x===REVIEW;if(value===OK)return x===OK;return true;}
+window.filtered=function(){var a=oldFiltered.apply(this,arguments)||[];return value===ALL?a:a.filter(match);};
+function categoryBase(){var lv=(currentLevels&&currentLevels.length)?currentLevels:['all'];if(lv.indexOf('all')>=0)return DATA.slice();return DATA.filter(function(e){return lv.indexOf(e.level)>=0;});}
+function counts(){var c={all:0,active:0,new:0,review:0,ok:0};categoryBase().forEach(function(e){c.all++;var x=st(e);if(x===OK)c.ok++;else if(x===REVIEW){c.review++;c.active++;}else{c.new++;c.active++;}});return c;}
+function chip(s,label,n){return '<button type="button" class="kin-status-chip '+(value===s?'on':'')+'" data-s="'+s+'">'+label+'<span class="n">'+n+'</span></button>';}
+function ensure(){var b=document.getElementById('kinStatusFilter');if(b)return b;var bar=document.getElementById('uxBar');if(!bar)return null;b=document.createElement('div');b.id='kinStatusFilter';b.setAttribute('aria-label','學習狀態過濾');bar.insertAdjacentElement('afterend',b);b.addEventListener('click',function(ev){var x=ev.target.closest('.kin-status-chip');if(x)set(x.getAttribute('data-s'));});return b;}
+function paint(){if(painting)return;painting=true;try{if(book()!==lastBook){lastBook=book();load();}var b=ensure();if(!b)return;var c=counts();b.innerHTML=chip(ALL,'全部',c.all)+chip(ACTIVE,'未讀＋複習',c.active)+chip(NEW,'未學習',c.new)+chip(REVIEW,'要複習',c.review)+chip(OK,'已習得',c.ok);}finally{painting=false;}}
+function empty(){var box=document.getElementById('itemList');if(!box||value===ALL||window.filtered().length)return;var lab={active:'未讀＋複習',new:'未學習',review:'要複習',ok:'已習得'};box.innerHTML='<div class="kin-status-empty"><b>「'+lab[value]+'」目前沒有單字</b><div>可以切換其他狀態，或顯示全部。</div><button type="button" id="kinStatusAll">顯示全部</button></div>';var x=document.getElementById('kinStatusAll');if(x)x.onclick=function(){set(ALL);};}
+function redraw(){try{currentList=window.filtered();oldRender.call(window);}catch(e){console.warn('status filter',e);}paint();empty();var q=document.getElementById('uxSearchIn');if(q)q.dispatchEvent(new Event('input',{bubbles:true}));}
+function set(v){if([ALL,ACTIVE,NEW,REVIEW,OK].indexOf(v)<0)v=ALL;value=v;save();redraw();}
+window.renderList=function(){var r=oldRender.apply(this,arguments);setTimeout(function(){paint();empty();},0);return r;};
+window.KIN_STATUS_FILTER={get:function(){return value;},set:set,reset:function(){set(ALL);},counts:counts,refresh:redraw};
+function quick(id,v){var e=document.getElementById(id);if(!e)return;e.style.cursor='pointer';e.setAttribute('role','button');e.addEventListener('click',function(){try{setListMode('browse');}catch(x){}setTimeout(function(){set(v);},80);});}
+function boot(){load();paint();quick('statNew',NEW);quick('statRev',REVIEW);quick('statOk',OK);[100,350,800,1500].forEach(function(t){setTimeout(paint,t);});var title=document.getElementById('bookTitle');if(title&&window.MutationObserver)new MutationObserver(function(){lastBook='';setTimeout(function(){paint();redraw();},80);}).observe(title,{childList:true,subtree:true,characterData:true});document.addEventListener('click',function(ev){if(ev.target.closest('#itemList .mark,#itemList [onclick*="cycleStatus"]'))setTimeout(function(){paint();if(value!==ALL)redraw();},90);},true);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+
 </body>
 </html>
