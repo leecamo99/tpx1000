@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-12",
-  "note": "V4.1.4：決定式單一路由，切換前強制關閉所有中央表面，雙 requestAnimationFrame 後才顯示新表面。",
+  "note": "V4.1.5 低風險修復：移除高頻重繪與全頁 MutationObserver，左欄改用已確認的真實入口。",
   "versions": [
     {
       "id": "v3.0",
@@ -369,40 +369,40 @@
       ]
     },
     {
-      "id": "v4.1.4-deterministic-router",
-      "title": "三欄決定式路由",
+      "id": "v4.1.5-low-risk-repair",
+      "title": "Safari 崩潰與左欄穿幫修復",
       "date": "2026-09-12",
-      "desc": "修復第二、第三次點擊左欄後多個中央畫面同時存在的穿幫。",
+      "desc": "保留原始 V4.1 結構，不搬 DOM、不監控 body class、不高頻重繪。",
       "items": [
         {
-          "id": "414-1",
+          "id": "415-1",
           "s": "done",
-          "t": "單一中央表面",
-          "d": "每次切換前關閉文章、測驗、設定與遮罩"
+          "t": "移除 750ms 側欄重繪",
+          "d": "避免持續重建 DOM"
         },
         {
-          "id": "414-2",
+          "id": "415-2",
           "s": "done",
-          "t": "序號取消舊導航",
-          "d": "快速連點時只有最後一次路由生效"
+          "t": "移除全頁 Emoji MutationObserver",
+          "d": "避免大型頁面持續掃描"
         },
         {
-          "id": "414-3",
+          "id": "415-3",
           "s": "done",
-          "t": "切換遮蔽幀",
-          "d": "雙 requestAnimationFrame 後才解除中央遮蔽"
+          "t": "左欄使用真實功能入口",
+          "d": "rdOpen、UX.openQuiz、deckOpen、srsOpen、usOpen"
         },
         {
-          "id": "414-4",
+          "id": "415-4",
           "s": "done",
-          "t": "狀態自動校正",
-          "d": "MutationObserver 依真實 body/class 維持唯一覆層"
+          "t": "同步關閉舊中央表面",
+          "d": "切換前明確執行 rdClose、UX.closeQuiz、usClose"
         },
         {
-          "id": "414-5",
+          "id": "415-5",
           "s": "done",
-          "t": "左欄作用中同步",
-          "d": "依成功開啟的真實模式更新選取狀態"
+          "t": "iPhone 原生單欄",
+          "d": "1023px以下隱藏三欄"
         }
       ]
     }

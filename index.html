@@ -11635,81 +11635,85 @@ function left(c){var q=stat(),e=cur(),html=nav(c);if(c==='article'){html+='<div 
 function right(c){var q=stat(),e=cur(),h='<div class="ix-section">';if(c==='article'||c==='word'||c==='flash'){h+='<h3>目前單字</h3><div class="ix-card"><h4>'+(e?esc(e.word):'尚未選取')+'</h4><p>'+(e?esc(e.ja||e.mean||''):'點選中央內容中的單字')+'</p></div><button class="ix-action" onclick="IX.speak()">發音</button><button class="ix-action" onclick="IX.mark(\'ok\')">標記為習得</button><button class="ix-action" onclick="IX.mark(\'review\')">加入複習</button><button class="ix-action primary" onclick="IX.mnemo()">開啟 AI 記憶輔助</button>'}else if(c==='exam'){h+='<h3>答題分析</h3><div class="ix-card"><h4>作答前</h4><p>右側不顯示答案。作答後將顯示詞義解析、錯誤原因與 AI 分析。</p></div><div class="ix-card"><div class="ix-row"><span>習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div>'}else if(c==='coach'){h+='<h3>AI 學習助手</h3><div class="ix-card"><h4>目前焦點</h4><p>'+(e?esc(e.word):'尚未選取單字')+'</p></div><button class="ix-action primary" onclick="IX.openCoach()">開始 AI 練習</button><button class="ix-action" onclick="IX.mnemo()">記憶輔助</button><button class="ix-action" onclick="IX.note()">新增筆記</button>'}else if(c==='weak'){h+='<h3>複習建議</h3><div class="ix-card"><div class="ix-num ix-orange">'+q.review+'</div><p>目前標記為要複習的單字</p></div><button class="ix-action primary" onclick="IX.review()">立即開始複習</button><button class="ix-action" onclick="IX.startQuiz()">建立弱點測驗</button>'}else if(c==='daily'||c==='history'){h+='<h3>紀錄摘要</h3><div class="ix-card"><div class="ix-row"><span>總單字</span><b>'+q.all+'</b></div><div class="ix-row"><span>已習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div><button class="ix-action" onclick="IX.openSettings()">調整今日目標</button>'}else{h+='<h3>快速開始</h3><button class="ix-action primary" onclick="IX.continueStudy()">繼續學習</button><button class="ix-action" onclick="IX.review()">今日複習</button><button class="ix-action" onclick="IX.startQuiz()">測驗</button><button class="ix-action" onclick="IX.openCoach()">AI 教練</button><div class="ix-card"><h4>弱點摘要</h4>'+words('review',5).map(function(x){return'<div class="ix-row"><span>'+esc(x.word)+'</span><span>要複習</span></div>'}).join('')+'</div>'}return h+'</div>'}
 function paint(){var c=context();if(c===last)return;last=c;document.body.classList.toggle('ix-enabled',innerWidth>=1024);$('ixPageTitle').textContent=LABEL[c]||'學習工作台';$('ixContextLabel').textContent=LABEL[c]||c;$('ixLeftBody').innerHTML=left(c);$('ixRightTitle').textContent=(c==='article'?'文章工具':c==='word'?'單字工具':c==='exam'?'測驗工具':c==='flash'?'閃卡工具':c==='coach'?'AI 學習助手':c==='weak'?'弱點建議':c==='daily'||c==='history'?'紀錄摘要':'學習工具');$('ixRightBody').innerHTML=right(c)}
 function replaceEmoji(root){var walker=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT),n,rx=/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;while(n=walker.nextNode()){if(rx.test(n.nodeValue))n.nodeValue=n.nodeValue.replace(rx,'').replace(/\s{2,}/g,' ')}}
-window.IX={go:function(c){manual=c;if(c==='home'){manual='';try{showList()}catch(e){}}else if(c==='article'){try{readOpen()}catch(e){manual=''} }else if(c==='word'){manual='';try{showList()}catch(e){}}else if(c==='exam')this.startQuiz();else if(c==='flash'){try{deckOpen()}catch(e){}}else if(c==='coach')this.openCoach();else if(c==='weak'){manual='weak'}else if(c==='daily'){manual='daily'}else if(c==='history'){manual='history'}paint()},word:function(id){manual='';try{openDetail(id)}catch(e){}},continueStudy:function(){var e=cur();if(e)this.word(e.id);else this.go('word')},review:function(){try{srsOpen()}catch(e){}},startQuiz:function(){manual='';try{uxQuizOpen()}catch(e){try{qzOpen()}catch(x){}}},openCoach:function(){manual='';try{uxCoachOpen()}catch(e){try{coachOpen()}catch(x){}}},openSettings:function(){manual='';try{usOpen()}catch(e){}},backSource:function(){try{kinReturnToCaptureSource()}catch(e){}},speak:function(){try{speakWord()}catch(e){try{nwOpen(cur().word)}catch(x){}}},mark:function(v){try{setStatus(v)}catch(e){}},mnemo:function(){try{window.__kinOpenMnemo()}catch(e){}},note:function(){try{window.__kinOpenNote()}catch(e){}}};
-function init(){document.body.classList.toggle('ix-enabled',innerWidth>=1024);replaceEmoji(document.body);paint();setInterval(function(){last='';paint()},750);new MutationObserver(function(m){m.forEach(function(x){x.addedNodes.forEach(function(n){if(n.nodeType===1)replaceEmoji(n)})})}).observe(document.body,{childList:true,subtree:true})}
+function ixCloseAll(){
+  try{ if(typeof window.rdClose==='function') window.rdClose(); }catch(e){}
+  try{ if(window.UX && typeof window.UX.closeQuiz==='function') window.UX.closeQuiz(); }catch(e){}
+  try{ if(typeof window.usClose==='function') window.usClose(); }catch(e){}
+  try{ var pm=document.getElementById('pinMask'); if(pm) pm.classList.remove('show'); }catch(e){}
+  document.body.classList.remove('ix-route-overlay','ix-route-article','ix-route-exam','ix-route-settings');
+}
+function ixRoute(c){
+  ixCloseAll();
+  manual=''; last='';
+  if(c==='home'||c==='word'){
+    try{ if(typeof window.showList==='function') window.showList(); }catch(e){}
+  }else if(c==='article'||c==='coach'||c==='bank'){
+    try{ if(typeof window.rdOpen==='function') window.rdOpen(); }catch(e){}
+    document.body.classList.add('ix-route-overlay','ix-route-article');
+  }else if(c==='exam'){
+    try{ if(window.UX&&typeof window.UX.openQuiz==='function') window.UX.openQuiz(); }catch(e){}
+    document.body.classList.add('ix-route-overlay','ix-route-exam');
+  }else if(c==='flash'){
+    try{ if(typeof window.deckOpen==='function') window.deckOpen(); }catch(e){}
+  }else if(c==='weak'){
+    try{ if(typeof window.srsOpen==='function') window.srsOpen(); }catch(e){}
+  }else if(c==='daily'||c==='history'||c==='settings'){
+    try{ if(typeof window.usOpen==='function') window.usOpen(); }catch(e){}
+    document.body.classList.add('ix-route-overlay','ix-route-settings');
+  }
+  paint();
+}
+window.IX={
+  go:ixRoute,
+  word:function(id){ixCloseAll();try{if(typeof window.openDetail==='function')window.openDetail(id)}catch(e){}},
+  continueStudy:function(){var e=cur();if(e)this.word(e.id);else ixRoute('word')},
+  review:function(){ixRoute('weak')},
+  startQuiz:function(){ixRoute('exam')},
+  openCoach:function(){ixRoute('article')},
+  openSettings:function(){ixRoute('settings')},
+  backSource:function(){try{if(typeof window.kinReturnToCaptureSource==='function')window.kinReturnToCaptureSource()}catch(e){}},
+  speak:function(){try{if(typeof window.nwOpen==='function'&&cur())window.nwOpen(cur().word)}catch(e){}},
+  mark:function(v){try{if(typeof window.markStatus==='function')window.markStatus(v)}catch(e){}},
+  mnemo:function(){try{if(typeof window.__kinOpenMnemo==='function')window.__kinOpenMnemo()}catch(e){}},
+  note:function(){try{if(typeof window.__kinOpenNote==='function')window.__kinOpenNote()}catch(e){}}
+};
+function ixWrapClose(name){
+  var fn=window[name]; if(typeof fn!=='function'||fn.__ixWrapped)return;
+  var wrap=function(){var r=fn.apply(this,arguments);document.body.classList.remove('ix-route-overlay','ix-route-article','ix-route-exam','ix-route-settings');last='';paint();return r};
+  wrap.__ixWrapped=true; window[name]=wrap;
+}
+function init(){
+  document.body.classList.toggle('ix-enabled',innerWidth>=1024);
+  paint();
+  ixWrapClose('rdClose'); ixWrapClose('usClose');
+  if(window.UX&&typeof window.UX.closeQuiz==='function'){
+    var q=window.UX.closeQuiz;
+    window.UX.closeQuiz=function(){var r=q.apply(this,arguments);document.body.classList.remove('ix-route-overlay','ix-route-exam');last='';paint();return r};
+  }
+  window.addEventListener('resize',function(){document.body.classList.toggle('ix-enabled',innerWidth>=1024)},{passive:true});
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
 
 
-<style id="ix414RouterStyle">
-:root{--ix414-app:480px;--ix414-left:190px;--ix414-right:230px;--ix414-gap:12px;--ix414-bg:#080808;--ix414-line:#2c2c2e;--ix414-text:#f5f5f5;--ix414-orange:#ff7a1a}
-@media (max-width:1023px){
- body{padding-left:0!important;padding-right:0!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important}
- #ixLeft,#ixRight,#ixTop,#ixRightToggle{display:none!important}
- #screen-read,#uxQuiz,#usPanel,.ux-screen,#usMask,#pinMask{left:0!important;right:0!important;width:100%!important;max-width:none!important;transform:none!important}
- .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:480px!important;transform:translateX(-50%)!important}
-}
+<style id="ix415RepairStyle">
 @media (min-width:1024px){
- html,body{background:var(--ix414-bg)!important;overscroll-behavior:none!important}
- body.ix-enabled{width:var(--ix414-app)!important;min-width:var(--ix414-app)!important;max-width:var(--ix414-app)!important;margin-left:auto!important;margin-right:auto!important;padding:0!important;box-sizing:border-box!important}
- #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;transform:none!important;background:#0d0d0d!important;z-index:11800!important;box-sizing:border-box!important}
- #ixLeft{left:calc(50% - 240px - var(--ix414-gap) - var(--ix414-left))!important;width:var(--ix414-left)!important;border-right:1px solid var(--ix414-line)!important}
- #ixRight{right:calc(50% - 240px - var(--ix414-gap) - var(--ix414-right))!important;width:var(--ix414-right)!important;border-left:1px solid var(--ix414-line)!important}
- #ixTop{display:flex!important;position:sticky!important;top:0!important;width:100%!important;height:50px!important;min-height:50px!important;z-index:900!important;background:#0b0b0b!important;border-bottom:1px solid var(--ix414-line)!important;box-sizing:border-box!important}
- #ixRightToggle{display:none!important}
- #ixLeft a,#ixLeft button,#ixRight a,#ixRight button,#ixLeft .ix-item,#ixRight .ix-item,#ixLeft .ix-action,#ixRight .ix-action{color:var(--ix414-text)!important;text-decoration:none!important}
- #ixLeft .ix-item.active,#ixRight .ix-item.active,#ixLeft .ix-action.primary,#ixRight .ix-action.primary{color:var(--ix414-text)!important;border-color:var(--ix414-orange)!important;background:#211107!important}
- #screen-books,#screen-list,#screen-detail{width:100%!important;min-width:0!important;max-width:var(--ix414-app)!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}
- #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ix414-app)!important;max-width:var(--ix414-app)!important;min-width:0!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#080808!important;overflow-x:hidden!important}
- #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ix414-app)!important;transform:translateX(-50%)!important;background:rgba(0,0,0,.96)!important}
- .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ix414-app)!important;transform:translateX(-50%)!important;box-sizing:border-box!important}
- body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:fixed!important;transform:none!important;width:var(--ix414-right)!important;right:calc(50% - 240px - var(--ix414-gap) - var(--ix414-right))!important;box-shadow:none!important}
- body.ix414-exclusive #screen-books,body.ix414-exclusive #screen-list,body.ix414-exclusive #screen-detail{visibility:hidden!important;pointer-events:none!important}
- body.ix414-exclusive .player-bar,body.ix414-exclusive .bottom-nav{visibility:hidden!important;pointer-events:none!important}
- body.ix414-route-article #screen-read,body.ix414-route-exam #uxQuiz,body.ix414-route-settings #usPanel{visibility:visible!important;opacity:1!important;pointer-events:auto!important;background:#080808!important}
- body.ix414-switching #screen-books,body.ix414-switching #screen-list,body.ix414-switching #screen-detail,body.ix414-switching #screen-read,body.ix414-switching #uxQuiz,body.ix414-switching #usPanel{visibility:hidden!important;pointer-events:none!important}
- body.ix-enabled .card,body.ix-enabled .ux-card,body.ix-enabled .coach-card,body.ix-enabled .rd-card,body.ix-enabled .list-item,body.ix-enabled button,body.ix-enabled input,body.ix-enabled select,body.ix-enabled textarea{writing-mode:horizontal-tb!important;word-break:normal!important;overflow-wrap:break-word!important;box-sizing:border-box!important}
+ body.ix-route-overlay #screen-books,
+ body.ix-route-overlay #screen-list,
+ body.ix-route-overlay #screen-detail,
+ body.ix-route-overlay .player-bar,
+ body.ix-route-overlay .bottom-nav{visibility:hidden!important;pointer-events:none!important}
+ body.ix-route-article #screen-read,
+ body.ix-route-exam #uxQuiz,
+ body.ix-route-settings #usPanel{visibility:visible!important;opacity:1!important;pointer-events:auto!important;background:#080808!important}
+ #ixLeft a,#ixLeft button,#ixRight a,#ixRight button{color:#f5f5f5!important;text-decoration:none!important}
+ #ixLeft .active,#ixRight .active,#ixLeft .primary,#ixRight .primary{color:#f5f5f5!important;border-color:#ff7a1a!important;background:#211107!important}
 }
-@media (min-width:1280px){:root{--ix414-left:210px;--ix414-right:255px;--ix414-gap:16px}}
-@media (min-width:1500px){:root{--ix414-left:230px;--ix414-right:280px;--ix414-gap:20px}}
+@media (max-width:1023px){
+ #ixLeft,#ixRight,#ixTop,#ixRightToggle{display:none!important}
+ body{padding-left:0!important;padding-right:0!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important}
+}
 </style>
-<script>
-(function(){
-'use strict';
-var seq=0,current='home',routeClasses=['ix414-exclusive','ix414-route-article','ix414-route-exam','ix414-route-settings','ix414-switching'];
-function ipad(){return innerWidth>=1024}
-function clearRouteClasses(){routeClasses.forEach(function(c){document.body.classList.remove(c)})}
-function syncDevice(){document.body.classList.toggle('ix-enabled',ipad());document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open');if(!ipad())clearRouteClasses()}
-function hardClose(){
- try{if(typeof window.rdClose==='function')window.rdClose()}catch(e){}
- try{if(window.UX&&typeof window.UX.closeQuiz==='function')window.UX.closeQuiz()}catch(e){}
- try{if(typeof window.usClose==='function')window.usClose()}catch(e){}
- try{var p=document.getElementById('pinMask');if(p)p.classList.remove('show')}catch(e){}
- document.body.classList.remove('rd-open','ux-quiz-open');
- ['screen-read','uxQuiz','usPanel','usMask','pinMask'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('show','active')});
-}
-function setExclusive(route){clearRouteClasses();if(route==='article'){document.body.classList.add('ix414-exclusive','ix414-route-article')}else if(route==='exam'){document.body.classList.add('ix414-exclusive','ix414-route-exam')}else if(route==='settings'){document.body.classList.add('ix414-exclusive','ix414-route-settings')}}
-function markActive(route){var mode=route==='article'?'article':route==='exam'?'exam':route==='flash'?'flash':route==='word'?'word':route==='weak'?'weak':route==='settings'?'settings':'home';document.querySelectorAll('#ixLeft .ix-item').forEach(function(b){var s=String(b.getAttribute('onclick')||'');b.classList.toggle('active',s.indexOf("'"+mode+"'")>=0)})}
-function afterPaint(route,token){requestAnimationFrame(function(){requestAnimationFrame(function(){if(token!==seq)return;document.body.classList.remove('ix414-switching');setExclusive(route);markActive(route)})})}
-function openRoute(route){
- var token=++seq;current=route;clearRouteClasses();if(ipad())document.body.classList.add('ix414-switching');hardClose();
- setTimeout(function(){if(token!==seq)return;
-  if(route==='home'||route==='word'){if(typeof window.showList==='function')window.showList()}
-  else if(route==='flash'){if(typeof window.deckOpen==='function')window.deckOpen()}
-  else if(route==='weak'){if(typeof window.srsOpen==='function')window.srsOpen()}
-  else if(route==='article'||route==='coach'||route==='bank'){if(typeof window.rdOpen==='function')window.rdOpen();route='article'}
-  else if(route==='exam'){if(window.UX&&typeof window.UX.openQuiz==='function')window.UX.openQuiz()}
-  else if(route==='settings'||route==='daily'||route==='history'){if(typeof window.usOpen==='function')window.usOpen();route='settings'}
-  afterPaint(route,token);
- },40)
-}
-function reconcile(){if(!ipad())return;var article=document.body.classList.contains('rd-open')&&document.getElementById('screen-read')&&document.getElementById('screen-read').classList.contains('show');var exam=document.body.classList.contains('ux-quiz-open')&&document.getElementById('uxQuiz')&&document.getElementById('uxQuiz').classList.contains('show');var settings=document.getElementById('usPanel')&&document.getElementById('usPanel').classList.contains('show');if(article)setExclusive('article');else if(exam)setExclusive('exam');else if(settings)setExclusive('settings');else if(!document.body.classList.contains('ix414-switching'))clearRouteClasses()}
-function wire(){if(!window.IX)return;window.IX.go=openRoute;window.IX.startQuiz=function(){openRoute('exam')};window.IX.openCoach=function(){openRoute('article')};window.IX.review=function(){openRoute('weak')};window.IX.openSettings=function(){openRoute('settings')}}
-function init(){syncDevice();wire();new MutationObserver(reconcile).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','style']});window.addEventListener('resize',syncDevice,{passive:true});window.addEventListener('orientationchange',function(){setTimeout(syncDevice,250)},{passive:true});reconcile()}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
-</script>
-
 </body>
 </html>
