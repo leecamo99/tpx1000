@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-12",
-  "note": "V3.6 Cloudflare frontend：助記圖片改由安全的 Cloudflare Worker URL 產生。",
+  "note": "完整刪除使用者資料；新增閃卡立即開啟並可返回來源。",
   "versions": [
     {
       "id": "v3.0",
@@ -307,6 +307,32 @@
           "s": "done",
           "t": "429 中文錯誤與文字助記保留",
           "d": ""
+        }
+      ]
+    },
+    {
+      "id": "hotfix-delete-capture-return",
+      "title": "完整刪除與閃卡捕獲流程",
+      "date": "2026-09-12",
+      "desc": "刪除所有學習資料；新增閃卡立即開啟並返回來源。",
+      "items": [
+        {
+          "id": "wipe-all",
+          "s": "done",
+          "t": "完整刪除使用者資料",
+          "d": "今日目標、學習時間、歷程、收藏、筆記、測驗、AI 助記與圖片"
+        },
+        {
+          "id": "capture-edit",
+          "s": "done",
+          "t": "新增閃卡立即開啟詳情",
+          "d": "可立刻 Gemini 補充或管理"
+        },
+        {
+          "id": "capture-return",
+          "s": "done",
+          "t": "返回原本閱讀位置",
+          "d": "保存來源書籍、單字與範圍"
         }
       ]
     }
