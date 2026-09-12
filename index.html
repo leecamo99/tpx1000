@@ -11764,9 +11764,86 @@ function render(mode){var q=stat(),hs=history(),body=document.getElementById('ix
 function row(x){var word=x.key.indexOf('/')>=0?x.key.split('/').pop():x.key;return'<div class="ix416-row"><span>'+esc(word)+'</span><small>看過 '+x.views+'　習得 '+x.ok+'　複習 '+x.review+(x.wrong?'　答錯 '+x.wrong:'')+'</small></div>'}
 window.IX416={open:function(mode){if(innerWidth<1024)return;closeOthers();render(mode);document.body.classList.add('ix416-record-open');document.getElementById('ix416Records').classList.add('show')},close:function(){document.getElementById('ix416Records').classList.remove('show');document.body.classList.remove('ix416-record-open')}};
 function setMode(mode){try{if(typeof setListMode==='function')setListMode(mode)}catch(e){}try{if(typeof showList==='function')showList()}catch(e){}}
-function wire(){if(!window.IX)return;var old=window.IX.go;window.IX.go=function(c){if(c==='home'){IX416.close();setMode('study');return}if(c==='word'){IX416.close();setMode('browse');return}if(c==='daily'){IX416.open('daily');return}if(c==='history'){IX416.open('history');return}return old.call(window.IX,c)}}
+function wire(){if(!window.IX)return;var old=window.IX.go;window.IX.go=function(c){if(c==='daily'){IX416.open('daily');return}if(c==='history'){IX416.open('history');return}IX416.close();if(c==='home'){setMode('study');return}if(c==='word'){setMode('browse');return}return old.call(window.IX,c)}}
 function init(){wire()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+
+<style id="ix417FinalAuthority">
+@media (min-width:1024px){
+  /* Override the original shell's 236px/286px body padding. */
+  body.ix-enabled{
+    width:480px!important;
+    min-width:480px!important;
+    max-width:480px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    padding-left:0!important;
+    padding-right:0!important;
+    box-sizing:border-box!important;
+  }
+  #screen-books,#screen-list,#screen-detail,#paneStudy,#paneBrowse{
+    width:100%!important;
+    min-width:0!important;
+    max-width:480px!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    box-sizing:border-box!important;
+  }
+  .ring-wrap,.list-stats,.list-actions,.section-pick{
+    width:100%!important;
+    min-width:0!important;
+    max-width:480px!important;
+    box-sizing:border-box!important;
+  }
+  /* Record page is the sole central surface while open. */
+  body.ix416-record-open #screen-books,
+  body.ix416-record-open #screen-list,
+  body.ix416-record-open #screen-detail,
+  body.ix416-record-open #screen-read,
+  body.ix416-record-open #uxQuiz,
+  body.ix416-record-open #usPanel,
+  body.ix416-record-open #usMask,
+  body.ix416-record-open .player-bar,
+  body.ix416-record-open .bottom-nav{
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+  #ix416Records.show{
+    visibility:visible!important;
+    pointer-events:auto!important;
+    opacity:1!important;
+    background:#080808!important;
+  }
+}
+@media (max-width:1023px){
+  body{
+    width:auto!important;
+    min-width:0!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  #ix416Records{display:none!important}
+}
+</style>
+<script>
+(function(){
+'use strict';
+/* Last-resort transition guard: record surface can never coexist with another left-menu destination. */
+function closeRecordBeforeExternalAction(event){
+  var records=document.getElementById('ix416Records');
+  if(!records||!records.classList.contains('show'))return;
+  var button=event.target&&event.target.closest?event.target.closest('#ixLeft button'):null;
+  if(!button)return;
+  var action=String(button.getAttribute('onclick')||'');
+  if(action.indexOf("'daily'")>=0||action.indexOf("'history'")>=0)return;
+  if(window.IX416&&typeof window.IX416.close==='function')window.IX416.close();
+}
+document.addEventListener('click',closeRecordBeforeExternalAction,true);
 })();
 </script>
 
