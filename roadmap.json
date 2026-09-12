@@ -1,6 +1,6 @@
 {
-  "updated": "2026-09-11",
-  "note": "V3.1 至 V4.x 已接上可見 UI 入口與完整互動流程。",
+  "updated": "2026-09-12",
+  "note": "V4.1.1 穩定三欄：保留原 DOM，不搬移頁面，只限制左右欄及中央固定面板邊界。",
   "versions": [
     {
       "id": "v3.0",
@@ -269,6 +269,140 @@
           "s": "todo",
           "t": "showList() 延遲 locate() 會在 500ms 內清掉 _kinPlayingId",
           "d": "快速返回一覽時播放高亮可能消失"
+        }
+      ]
+    },
+    {
+      "id": "v3.6-cloudflare-frontend",
+      "title": "Cloudflare Workers AI 圖片前端",
+      "date": "2026-09-12",
+      "desc": "前端只保存公開 Worker URL；Cloudflare Token 必須留在 Worker Secret。",
+      "items": [
+        {
+          "id": "cf-front-1",
+          "s": "done",
+          "t": "Worker URL 設定與啟用開關",
+          "d": ""
+        },
+        {
+          "id": "cf-front-2",
+          "s": "done",
+          "t": "/health 連線測試",
+          "d": ""
+        },
+        {
+          "id": "cf-front-3",
+          "s": "done",
+          "t": "/image 圖片生成",
+          "d": "支援 image binary、base64 JSON、URL JSON"
+        },
+        {
+          "id": "cf-front-4",
+          "s": "done",
+          "t": "96×96 WebP 壓縮與既有快取",
+          "d": ""
+        },
+        {
+          "id": "cf-front-5",
+          "s": "done",
+          "t": "429 中文錯誤與文字助記保留",
+          "d": ""
+        }
+      ]
+    },
+    {
+      "id": "hotfix-delete-capture-return",
+      "title": "完整刪除與閃卡捕獲流程",
+      "date": "2026-09-12",
+      "desc": "刪除所有學習資料；新增閃卡立即開啟並返回來源。",
+      "items": [
+        {
+          "id": "wipe-all",
+          "s": "done",
+          "t": "完整刪除使用者資料",
+          "d": "今日目標、學習時間、歷程、收藏、筆記、測驗、AI 助記與圖片"
+        },
+        {
+          "id": "capture-edit",
+          "s": "done",
+          "t": "新增閃卡立即開啟詳情",
+          "d": "可立刻 Gemini 補充或管理"
+        },
+        {
+          "id": "capture-return",
+          "s": "done",
+          "t": "返回原本閱讀位置",
+          "d": "保存來源書籍、單字與範圍"
+        }
+      ]
+    },
+    {
+      "id": "v5-ipad-context-shell",
+      "title": "iPad 全站情境工作台",
+      "date": "2026-09-12",
+      "desc": "功能頁不再疊在首頁；左右欄依文章、單字、測驗、閃卡、AI、弱點與紀錄模式更新。",
+      "items": [
+        {
+          "id": "ix-1",
+          "s": "done",
+          "t": "全站 iPad 三欄 Shell",
+          "d": "中央維持舒適內容寬度"
+        },
+        {
+          "id": "ix-2",
+          "s": "done",
+          "t": "情境式左右側欄",
+          "d": "文章、單字、測驗、閃卡、AI 教練、弱點、每日與歷程"
+        },
+        {
+          "id": "ix-3",
+          "s": "done",
+          "t": "視覺統一",
+          "d": "零 Emoji、零藍色操作文字、零漸層、白灰橘配色"
+        },
+        {
+          "id": "ix-4",
+          "s": "done",
+          "t": "手機版回退",
+          "d": "小於 768px 維持原操作流程"
+        }
+      ]
+    },
+    {
+      "id": "v4.1.1-stable-three-pane",
+      "title": "穩定三欄基線",
+      "date": "2026-09-12",
+      "desc": "取消 DOM 搬移與重複 Shell，先穩定首頁、單字一覽、單字詳情及真實功能連結。",
+      "items": [
+        {
+          "id": "411-1",
+          "s": "done",
+          "t": "保留原站 DOM",
+          "d": "避免 fixed、sticky、offsetParent 與事件回溯"
+        },
+        {
+          "id": "411-2",
+          "s": "done",
+          "t": "左右欄固定獨立滾動",
+          "d": "不搬移中央內容"
+        },
+        {
+          "id": "411-3",
+          "s": "done",
+          "t": "中央面板邊界限制",
+          "d": "設定、測驗、文章、播放器限制在左右欄之間"
+        },
+        {
+          "id": "411-4",
+          "s": "done",
+          "t": "真實功能路由",
+          "d": "showList、UX.openQuiz、deckOpen、rdOpen、srsOpen、usOpen"
+        },
+        {
+          "id": "411-5",
+          "s": "done",
+          "t": "桌機與手機橫向",
+          "d": "1024px以上或橫向700px以上啟用"
         }
       ]
     }

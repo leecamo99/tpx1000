@@ -4168,6 +4168,21 @@ body.theme-dark .rm-msg{color:#8a8680}
         <button type="button" class="pri" onclick="gmSave()">儲存並測試 Gemini</button>
         <button type="button" class="warn" onclick="gmClearKey()">清除 Gemini 金鑰</button>
       </div>
+      <button type="button" id="kkmEntry" class="kkm-entry"
+        onclick="if(window.KIN_KEYS_UI)KIN_KEYS_UI()">金鑰管理（可存多支，自動輪替）</button>
+      <div id="kkmMini" class="kkm-mini"></div>
+      <div class="cfai-set">
+        <label class="tts-lb">Cloudflare Workers AI 圖片 Worker URL</label>
+        <input id="cfAiUrl" type="url" placeholder="https://your-worker.workers.dev" autocomplete="off" spellcheck="false">
+        <label class="cfai-toggle"><span>使用 Cloudflare Workers AI 生成助記圖片</span><input id="cfAiOn" type="checkbox"></label>
+        <div class="tts-btns" style="margin-bottom:5px">
+          <button type="button" class="pri" onclick="cfAiSave()">儲存並測試 Worker</button>
+          <button type="button" onclick="cfAiTest()">測試連線</button>
+          <button type="button" class="warn" onclick="cfAiClear()">清除</button>
+        </div>
+        <div class="cfai-stat" id="cfAiStat"></div>
+        <div class="tip">前端只保存 Worker 公開網址，不保存 Cloudflare Account ID 或 API Token。圖片 Token 必須放在 Worker Secret；圖片成功後仍會縮成 96×96 WebP。</div>
+      </div>
       <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，收藏沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
     </div>
 
@@ -5959,6 +5974,13 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var k = i ? i.value.trim() : '';
     if(!k){ ttsMsg('請先貼上 Gemini 金鑰。', 'err'); return; }
     try{ localStorage.setItem(GM_KEY, k); }catch(e){}
+    /* 同步進多金鑰清單，單支輸入也能被輪替引擎接手 */
+    try{
+      if(window.KIN_GM && KIN_GM.keys){
+        var ks = KIN_GM.keys();
+        if(ks.indexOf(k) < 0) KIN_GM.saveKeys([k].concat(ks));
+      }
+    }catch(e){}
     ttsMsg('Gemini 金鑰已儲存，測試中\u2026');
     fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -10844,8 +10866,8 @@ body.theme-dark .ux-mnemo .mn-row{color:#e8e6e3;border-top-color:#242426}
 body.theme-dark .ux-mnemo .mn-row b{color:#b9a8ff}
 body.theme-dark .ux-mnemo .mn-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
 .ux-mnemo .mn-img{margin:8px 0 2px}
-.ux-mnemo .mn-img img{width:96px;height:96px;border-radius:8px;object-fit:cover;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
-.ux-mnemo .mn-img.big img{width:200px;height:200px;cursor:zoom-out}
+.ux-mnemo .mn-img img{width:128px;height:128px;border-radius:10px;object-fit:cover;image-rendering:auto;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
+.ux-mnemo .mn-img.big img{width:256px;height:256px;cursor:zoom-out}
 body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 </style>
 
@@ -10853,8 +10875,8 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 /* TPX1000 V3.1 - AI 記憶輔助圖片（96x96 WebP 縮圖） */
 (function(){
   'use strict';
-  var THUMB = 96;
-  var QUALITY = 0.55;
+  var THUMB = 128;
+  var QUALITY = 1.0;
   var MODEL = 'gemini-2.5-flash-image';
 
   function gmKey(){ try{ return localStorage.getItem('kinGeminiKey') || ''; }catch(e){ return ''; } }
@@ -10878,23 +10900,39 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
     });
   }
 
+  function cfConfig(){
+    var url='', on=false;
+    try{ url=(localStorage.getItem('kinCfAiWorkerUrl')||'').trim().replace(/\/+$/,''); on=localStorage.getItem('kinCfAiEnabled')==='1'; }catch(e){}
+    return {url:url,on:on};
+  }
+  function blobToData(blob){
+    return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result);};r.onerror=function(){rej(new Error('圖片讀取失敗'));};r.readAsDataURL(blob);});
+  }
+  function cfImage(prompt){
+    var c=cfConfig();
+    if(!c.on) return Promise.reject(new Error('Cloudflare 圖片功能尚未啟用，請到使用者專區開啟'));
+    if(!c.url) return Promise.reject(new Error('尚未設定 Cloudflare Worker URL'));
+    var p=String(prompt||'').trim()+', clear educational illustration, recognizable objects, centered composition, clean solid background, strong outlines, no text, no letters, high contrast';
+    return fetch(c.url+'/image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,width:512,height:512,steps:4})})
+      .then(function(r){
+        if(!r.ok) return r.text().then(function(t){
+          var msg='Worker HTTP '+r.status;
+          try{var j=JSON.parse(t);msg=j.error||j.message||msg;}catch(e){if(t)msg+=' '+t.slice(0,100);}
+          if(r.status===429) msg='Cloudflare 今日免費圖片額度已達上限';
+          throw new Error(msg);
+        });
+        var ct=(r.headers.get('content-type')||'').toLowerCase();
+        if(ct.indexOf('image/')===0) return r.blob().then(blobToData);
+        return r.json().then(function(j){
+          if(j.image&&String(j.image).indexOf('data:')===0)return j.image;
+          if(j.base64)return 'data:'+(j.mimeType||'image/png')+';base64,'+j.base64;
+          if(j.url)return fetch(j.url).then(function(x){if(!x.ok)throw new Error('無法下載 Worker 圖片');return x.blob();}).then(blobToData);
+          throw new Error(j.error||'Worker 回應沒有圖片');
+        });
+      });
+  }
   function genImage(prompt){
-    var k = gmKey();
-    if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰'));
-    var p = String(prompt || '').trim()
-      + ', minimal flat icon, single subject, solid background, no text, no letters, high contrast';
-    var send = window.KIN_GM
-      ? KIN_GM.call({ contents: [{ parts: [{ text: p }] }] }, { models: [MODEL] })
-      : Promise.reject(new Error('傳輸層未載入，請重新整理頁面'));
-    return send
-    .then(function(j){
-      var parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
-      for(var i = 0; i < parts.length; i++){
-        var d = parts[i].inlineData || parts[i].inline_data;
-        if(d && d.data) return shrink('data:' + (d.mimeType || d.mime_type || 'image/png') + ';base64,' + d.data);
-      }
-      throw new Error('回應沒有圖片');
-    });
+    return cfImage(prompt).then(shrink);
   }
 
   window.KIN_MNEMO_IMG = { gen: genImage, shrink: shrink, THUMB: THUMB };
@@ -11119,5 +11157,552 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
   };
 })();
 </script>
+<script>
+/* ==========================================================================
+   TPX1000 V3.3  Gemini 多金鑰輪替
+   - 可輸入任意多支金鑰，一行一支
+   - 撞到 429 自動換下一支，全部用完才回報失敗
+   - 每支金鑰各自記錄冷卻時間，到點自動解除
+   - 相容 V3.2 的 KIN_GM 傳輸層；舊的 kinGeminiKey 會自動匯入
+   貼在 </body> 之前，且必須放在 V3.2 的 KIN_GM 那段 script「之後」
+   ========================================================================== */
+(function(){
+  'use strict';
+
+  var LS_KEYS = 'kinGeminiKeys';
+  var LS_OLD  = 'kinGeminiKey';
+  var LS_COOL = 'kinGeminiKeyCoolV2';
+  var LS_FORCE = 'kinGeminiLastForcedProbeV2';
+  var TIMEOUT = 45000;
+  var MAX_TRY = 3;
+  var TEXT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+
+  function now(){ return Date.now(); }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ---------------- 金鑰存取 ---------------- */
+  function loadKeys(){
+    var arr = [];
+    try{ arr = JSON.parse(localStorage.getItem(LS_KEYS) || '[]') || []; }catch(e){}
+    if(!Array.isArray(arr)) arr = [];
+    arr = arr.map(function(s){ return String(s || '').trim(); }).filter(Boolean);
+    /* 首次啟用時，把舊的單一金鑰搬進來 */
+    if(!arr.length){
+      var old = '';
+      try{ old = (localStorage.getItem(LS_OLD) || '').trim(); }catch(e){}
+      if(old){ arr = [old]; saveKeys(arr); }
+    }
+    return arr;
+  }
+  function saveKeys(arr){
+    arr = (arr || []).map(function(s){ return String(s || '').trim(); }).filter(Boolean);
+    /* 去重但保留順序 */
+    var seen = {}, out = [];
+    arr.forEach(function(k){ if(!seen[k]){ seen[k] = 1; out.push(k); } });
+    try{
+      localStorage.setItem(LS_KEYS, JSON.stringify(out));
+      /* 同步第一支到舊欄位，讓還沒改寫的舊程式也能運作 */
+      if(out.length) localStorage.setItem(LS_OLD, out[0]);
+      else localStorage.removeItem(LS_OLD);
+    }catch(e){}
+    return out;
+  }
+
+  /* ---------------- 冷卻表 ---------------- */
+  function coolAll(){
+    try{ return JSON.parse(localStorage.getItem(LS_COOL) || '{}') || {}; }catch(e){ return {}; }
+  }
+  function coolSave(m){ try{ localStorage.setItem(LS_COOL, JSON.stringify(m)); }catch(e){} }
+  function coolUntil(k){
+    var u = coolAll()[k] || 0;
+    return u > now() ? u : 0;
+  }
+  function setCool(k, ms){
+    var m = coolAll();
+    m[k] = now() + ms;
+    coolSave(m);
+  }
+  function clearCool(k){
+    var m = coolAll();
+    if(k) delete m[k]; else m = {};
+    coolSave(m);
+  }
+  function tail(k){ return k.length > 8 ? ('…' + k.slice(-6)) : k; }
+
+  /* 可用金鑰：未冷卻的排前面，全冷卻時回傳最快解除的那支 */
+  function available(){
+    var ks = loadKeys();
+    if(!ks.length) return [];
+    var free = ks.filter(function(k){ return !coolUntil(k); });
+    return free.length ? free : [];
+  }
+  function soonest(){
+    var ks = loadKeys(), best = 0;
+    ks.forEach(function(k){
+      var u = coolUntil(k);
+      if(u && (!best || u < best)) best = u;
+    });
+    return best;
+  }
+
+  /* ---------------- 錯誤訊息 ---------------- */
+  function humanize(status, body){
+    var retry = 0;
+    var m = /"retryDelay"\s*:\s*"(\d+)s"/.exec(body || '');
+    if(m) retry = parseInt(m[1], 10) * 1000;
+    var perDay = /PerDay|RequestsPerDay|_per_day/i.test(body || '');
+    if(status === 429){
+      return { msg: perDay ? '每日配額已用完' : '每分鐘限流', perDay: perDay, retry: retry };
+    }
+    if(status === 403) return { msg: '金鑰無效或未啟用 Generative Language API' };
+    if(status === 400) return { msg: '請求格式有誤，或這支金鑰不支援此模型' };
+    if(status === 404) return { msg: '找不到指定模型' };
+    if(status >= 500) return { msg: 'Google 伺服器暫時異常' };
+    return { msg: 'HTTP ' + status };
+  }
+  function isNetErr(e){
+    return /Load failed|Failed to fetch|NetworkError|網路|timeout|逾時|abort/i
+      .test(String((e && e.message) || e || ''));
+  }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function waitMsg(until){
+    var sec = Math.max(0, Math.ceil((until - now()) / 1000));
+    if(sec <= 0) return '現在可重新驗證';
+    if(sec < 90) return '約 ' + sec + ' 秒後可重新驗證';
+    return '約 ' + Math.ceil(sec / 60) + ' 分鐘後可重新驗證';
+  }
+  function forcedProbeAllowed(){
+    var last = 0;
+    try{ last = parseInt(localStorage.getItem(LS_FORCE) || '0', 10); }catch(e){}
+    if(now() - last < 90000) return false;
+    try{ localStorage.setItem(LS_FORCE, String(now())); }catch(e){}
+    return true;
+  }
+
+  /* ---------------- 單次請求 ---------------- */
+  function once(model, key, payload){
+    var ctl = null, timer = null, opt = {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    };
+    try{ ctl = new AbortController(); }catch(e){}
+    if(ctl){
+      opt.signal = ctl.signal;
+      timer = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, TIMEOUT);
+    }
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + model + ':generateContent?key=' + encodeURIComponent(key);
+    return fetch(url, opt).then(function(r){
+      if(timer) clearTimeout(timer);
+      if(r.ok){ clearCool(key); return r.json(); }
+      return r.text().then(function(b){
+        var h = humanize(r.status, b);
+        var err = new Error(h.msg);
+        err.status = r.status;
+        err.quota = (r.status === 429);
+        err.perDay = !!h.perDay;
+        err.retry = h.retry || 0;
+        err.badKey = (r.status === 403 || r.status === 400);
+        throw err;
+      });
+    }, function(e){
+      if(timer) clearTimeout(timer);
+      var err = new Error(isNetErr(e) ? '連線失敗' : ((e && e.message) || '連線失敗'));
+      err.net = true;
+      throw err;
+    });
+  }
+
+  /* ---------------- 多金鑰輪替主流程 ---------------- */
+  function call(payload, opts){
+    opts = opts || {};
+    var models = opts.models || TEXT_MODELS;
+    var allKeys = loadKeys();
+    var keys = available();
+
+    if(!allKeys.length){
+      return Promise.reject(new Error('尚未設定 Gemini 金鑰，請按「金鑰管理」新增'));
+    }
+    if(!keys.length){
+      /* 舊版會直接相信本機冷卻紀錄，造成配額重置後仍被鎖住。
+         現在手動操作時每 90 秒允許一支金鑰做真實驗證。 */
+      if(forcedProbeAllowed()) keys = [allKeys[0]];
+      else {
+        var u = soonest();
+        return Promise.reject(new Error(
+          '已設定的金鑰目前都在暫時冷卻。' +
+          (u ? waitMsg(u) : '請稍後再試') +
+          '；若多支金鑰屬於同一 Google Cloud Project，配額會共享。'
+        ));
+      }
+    }
+
+    var ki = 0, mi = 0, attempt = 0, notes = [];
+
+    function run(){
+      var key = keys[ki];
+      return once(models[mi], key, payload).catch(function(e){
+
+        /* 金鑰本身有問題或配額用盡：換下一支金鑰 */
+        if(e.quota || e.badKey){
+          if(e.quota){
+            /* 每日 quota 不再武斷鎖 6 小時。API 若附 retryDelay 就採用，
+               否則 5 分鐘後允許重驗；最多先冷卻 15 分鐘。 */
+            var coolMs = e.retry || (e.perDay ? 300000 : 60000);
+            setCool(key, Math.min(coolMs, 900000));
+          }
+          notes.push(tail(key) + ' ' + e.message);
+          if(ki < keys.length - 1){
+            ki++; mi = 0; attempt = 0;
+            return sleep(250).then(run);
+          }
+          /* 金鑰全試完，改用備援模型再跑一輪 */
+          if(mi < models.length - 1){
+            mi++; ki = 0; attempt = 0;
+            return sleep(300).then(run);
+          }
+          var u2 = soonest();
+          var err = new Error('已完成即時驗證，但目前沒有可用的 Gemini 路由。\n'
+            + notes.slice(0, 4).join('\n')
+            + '\n提醒：同一 Google Cloud Project 建立的多支 API Key 共享配額。'
+            + (u2 ? ('\n' + waitMsg(u2)) : ''));
+          throw err;
+        }
+
+        /* 網路或伺服器錯誤：同一支金鑰退避重試 */
+        if((e.net || (e.status && e.status >= 500)) && attempt < MAX_TRY - 1){
+          attempt++;
+          return sleep(700 * Math.pow(2, attempt - 1)).then(run);
+        }
+
+        /* 重試耗盡，還有其他金鑰就換 */
+        if(ki < keys.length - 1){
+          ki++; attempt = 0;
+          return sleep(250).then(run);
+        }
+        throw e;
+      });
+    }
+    return run();
+  }
+
+  function textOf(j){
+    var c0 = j && j.candidates && j.candidates[0];
+    var parts = (c0 && c0.content && c0.content.parts) || [];
+    for(var i = 0; i < parts.length; i++){ if(parts[i].text) return parts[i].text; }
+    return '';
+  }
+
+  /* 覆寫 V3.2 的傳輸層，其餘功能不必改動 */
+  window.KIN_GM = {
+    call: call,
+    text: textOf,
+    keys: loadKeys,
+    saveKeys: saveKeys,
+    clearCool: clearCool,
+    cooling: function(){ return available().length ? 0 : soonest(); },
+    models: TEXT_MODELS
+  };
+
+  /* ---------------- 金鑰管理介面 ---------------- */
+  function openMgr(){
+    var old = document.getElementById('kinKeyMgr');
+    if(old) old.parentNode.removeChild(old);
+
+    var box = document.createElement('div');
+    box.id = 'kinKeyMgr';
+    box.className = 'kkm-mask';
+    box.innerHTML =
+      '<div class="kkm-panel">'
+      + '<h2>Gemini 金鑰管理</h2>'
+      + '<p class="kkm-tip">一行一支金鑰。系統會由上往下輪流使用，'
+      + '某支撞到配額上限就自動換下一支。</p>'
+      + '<textarea id="kkmTa" rows="7" spellcheck="false" autocapitalize="off" '
+      + 'autocorrect="off" placeholder="AIzaSy...第一支&#10;AIzaSy...第二支&#10;AIzaSy...第三支"></textarea>'
+      + '<div id="kkmStat" class="kkm-stat"></div>'
+      + '<div class="kkm-act">'
+      + '<button type="button" class="kkm-b main" data-a="save">儲存</button>'
+      + '<button type="button" class="kkm-b" data-a="reset">解除冷卻</button>'
+      + '<button type="button" class="kkm-b" data-a="close">關閉</button>'
+      + '</div></div>';
+    document.body.appendChild(box);
+
+    var ta = box.querySelector('#kkmTa');
+    ta.value = loadKeys().join('\n');
+    paintStat();
+
+    function paintStat(){
+      var ks = loadKeys(), s = box.querySelector('#kkmStat');
+      if(!ks.length){ s.innerHTML = '<span class="warn">尚未設定任何金鑰</span>'; return; }
+      s.innerHTML = ks.map(function(k, i){
+        var u = coolUntil(k);
+        return '<div class="kkm-row"><b>' + (i + 1) + '</b><code>' + esc(tail(k)) + '</code>'
+          + (u ? '<span class="cool">冷卻中，' + esc(waitMsg(u)) + '</span>'
+               : '<span class="ok">可用</span>') + '</div>';
+      }).join('');
+    }
+
+    box.addEventListener('click', function(ev){
+      if(ev.target === box) box.parentNode.removeChild(box);
+      var b = ev.target.closest && ev.target.closest('.kkm-b');
+      if(!b) return;
+      var a = b.getAttribute('data-a');
+      if(a === 'close'){ box.parentNode.removeChild(box); return; }
+      if(a === 'reset'){ clearCool(); paintStat(); return; }
+      if(a === 'save'){
+        var out = saveKeys(ta.value.split(/[\r\n,;\s]+/));
+        ta.value = out.join('\n');
+        paintStat();
+        b.textContent = '已儲存 ' + out.length + ' 支';
+        setTimeout(function(){ b.textContent = '儲存'; }, 1800);
+      }
+    });
+  }
+  window.KIN_KEYS_UI = openMgr;
+
+  /* 使用者專區的即時狀態列 */
+  function paintMini(){
+    var el = document.getElementById('kkmMini');
+    if(!el) return;
+    var ks = loadKeys();
+    if(!ks.length){ el.innerHTML = ''; return; }
+    var free = ks.filter(function(k){ return !coolUntil(k); }).length;
+    el.innerHTML = '目前存有 <b>' + ks.length + '</b> 支金鑰，可用 <b>'
+      + free + '</b> 支' + (free < ks.length ? '，其餘配額冷卻中' : '');
+  }
+  setInterval(paintMini, 1500);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintMini);
+  else paintMini();
+})();
+</script>
+<style>
+.kkm-mask{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.kkm-panel{width:100%;max-width:460px;max-height:86vh;overflow-y:auto;background:#fff;border-radius:14px;padding:18px 16px}
+.kkm-panel h2{margin:0 0 8px;font-size:16px;color:#5b46a8}
+.kkm-tip{margin:0 0 10px;font-size:12px;line-height:1.7;color:#7a7671}
+#kkmTa{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.7 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.kkm-stat{margin:10px 0 2px}
+.kkm-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid #f0ece4;font-size:12px}
+.kkm-row b{flex:0 0 16px;color:#5b46a8}
+.kkm-row code{flex:1;font:12px ui-monospace,Menlo,Consolas,monospace;color:#555}
+.kkm-row .ok{color:#2e7d32}
+.kkm-row .cool{color:#c0392b}
+.kkm-stat .warn{font-size:12px;color:#c0392b}
+.kkm-act{display:flex;gap:8px;margin-top:14px}
+.kkm-b{flex:1;height:38px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:700;touch-action:manipulation}
+.kkm-b.main{background:#5b46a8;border-color:#5b46a8;color:#fff}
+.kkm-entry{display:block;width:100%;margin-bottom:9px;height:36px;border-radius:8px;border:1px solid #c9bdf0;background:#f4f0ff;color:#5b46a8;font-size:12.5px;font-weight:700;touch-action:manipulation}
+.kkm-mini{font-size:11.5px;line-height:1.7;color:#7a7671;margin-bottom:9px}
+.kkm-mini:empty{display:none}
+.kkm-mini b{color:#5b46a8}
+body.theme-dark .kkm-panel{background:#141416;color:#e8e6e3}
+body.theme-dark .kkm-panel h2{color:#b9a8ff}
+body.theme-dark #kkmTa{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .kkm-row{border-top-color:#242426}
+body.theme-dark .kkm-row code{color:#cfcac4}
+body.theme-dark .kkm-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .kkm-b.main{background:#5b46a8;border-color:#5b46a8;color:#fff}
+body.theme-dark .kkm-entry{background:#1d1a2b;border-color:#4a3f70;color:#b9a8ff}
+body.theme-dark .kkm-mini b{color:#b9a8ff}
+</style>
+
+<script>
+/* V3.6 Cloudflare Workers AI frontend settings */
+(function(){
+  'use strict';
+  function $(id){return document.getElementById(id);}
+  function cfg(){var u='';try{u=(localStorage.getItem('kinCfAiWorkerUrl')||'').trim().replace(/\/+$/,'');}catch(e){}return {url:u,on:localStorage.getItem('kinCfAiEnabled')==='1'};}
+  function stat(t,err){var e=$('cfAiStat');if(!e)return;e.textContent=t||'';e.className='cfai-stat'+(err?' err':' ok');}
+  function paint(){var c=cfg(),u=$('cfAiUrl'),o=$('cfAiOn');if(u)u.value=c.url;if(o)o.checked=c.on;stat(c.url?(c.on?'已啟用 Cloudflare 圖片 Worker':'已儲存，但圖片功能目前關閉'):'尚未設定 Worker URL',false);}
+  function test(){var c=cfg();if(!c.url){stat('請先輸入 Worker URL',true);return Promise.reject(new Error('尚未設定'));}stat('正在測試 Worker…',false);return fetch(c.url+'/health',{method:'GET',cache:'no-store'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text();}).then(function(){stat('Worker 連線成功',false);return true;}).catch(function(e){stat('Worker 測試失敗：'+e.message+'。請確認 /health、CORS 與網址。',true);throw e;});}
+  window.cfAiSave=function(){var u=($('cfAiUrl')||{}).value||'',on=!!(($('cfAiOn')||{}).checked);u=u.trim().replace(/\/+$/,'');try{localStorage.setItem('kinCfAiWorkerUrl',u);localStorage.setItem('kinCfAiEnabled',on?'1':'0');}catch(e){}paint();if(u)test().catch(function(){});};
+  window.cfAiTest=function(){test().catch(function(){});};
+  window.cfAiClear=function(){if(!confirm('確定清除 Cloudflare Worker URL 與圖片設定嗎？'))return;try{localStorage.removeItem('kinCfAiWorkerUrl');localStorage.removeItem('kinCfAiEnabled');}catch(e){}paint();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',paint);else setTimeout(paint,0);
+})();
+</script>
+<style>
+.cfai-set{margin:10px 0;padding:11px;border:1px solid #d9d0f2;border-radius:10px;background:#faf8ff}.cfai-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:12px;font-weight:700;color:#5b46a8}.cfai-toggle input{width:20px;height:20px;accent-color:#5b46a8}.cfai-stat{font-size:11.5px;line-height:1.6;min-height:18px}.cfai-stat.ok{color:#2e7d32}.cfai-stat.err{color:#c0392b}body.theme-dark .cfai-set{background:#171421;border-color:#413767}body.theme-dark .cfai-toggle{color:#b9a8ff}
+</style>
+
+
+<script>
+/* TPX1000 integrated fix: complete delete + capture-edit-return */
+(function(){
+'use strict';
+var RETURN_KEY='kinCaptureReturnV1';
+function uid(){try{if(window.KIN_USER&&typeof window.KIN_USER.id==='function'){var v=window.KIN_USER.id();if(v)return String(v);}}catch(e){}try{return String(localStorage.getItem('kinUser')||'paul');}catch(e2){return 'paul';}}
+function uname(){try{if(window.KIN_USER&&typeof window.KIN_USER.name==='function')return String(window.KIN_USER.name()||uid());}catch(e){}return uid();}
+function preserve(k){return /^(kinUser|kinTheme|kinUX|kinPlayMode|kinSpeed|kin_phrase_times|kinAutoSpeak|kinVoice|kinVoiceSrc|kinTtsKey|kinTransKey|kinGeminiKey|kinGeminiKeys|kinGeminiKeyCool|kinGeminiKeyCoolV2|kinGeminiModelCool|kinGeminiCaps|kinGeminiCapsV2|kinGeminiRouteStateV1|kinCfAiWorkerUrl|kinCfAiEnabled|kinLastBook|kinBook|kinBooks|kinDevice|deviceId)$/i.test(k)||/^(tts|translation|gemini|cloudflare|cfai|api)[.:_-]/i.test(k);}
+function scoped(k,u){var x=String(k).toLowerCase(),q=String(u).toLowerCase();return x.indexOf(':'+q+':')>=0||x.endsWith(':'+q)||x.indexOf('user:'+q)>=0||x.indexOf('/'+q+'/')>=0;}
+function learning(k){return /(status|srs|sense|progress|history|hist|study|session|today|daily|goal|streak|achiev|calendar|quiz|wrong|weak|collect|favorite|favourite|note|read|mnemo|memory|deck|elapsed|time|target|done|learn|review|strength)/i.test(k);}
+function removeKey(k,u){if(!k||preserve(k))return false;if(/^book:[^:]+:[^:]+:(status|srs)$/i.test(k))return scoped(k,u);if(/^(kinSense|kinCollect|kinNote|kinNotes|kinQuiz|kinQuizAi|kinRead|kinMnemo|kinStudy|kinStudyTime|kinStudyHistory|kinDailyGoal|kinGoal|kinGoalDays|kinAchievement|kinAchievements|kinCalendar|kinSession|kinSessions|kinWrong|kinWeak|kinDeck|kinWordHist|kinProgress|kinTarget|kinStrength)(:|$)/i.test(k))return scoped(k,u)||k.indexOf(':')<0;if(scoped(k,u)&&learning(k))return true;return /^(book:[^:]+:(status|srs)|kin(Status|Srs|Sense|Collect|Note|Notes|Quiz|QuizAi|Read|Mnemo|Study|StudyTime|History|DailyGoal|Goal|GoalDays|Achievement|Achievements|Calendar|Session|Sessions|Wrong|Weak|Deck|WordHist|Progress|Target|Strength)(:|$))/i.test(k);}
+function deletionKeys(u){var a=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(removeKey(k,u))a.push(k);}return a;}
+function clearSession(u){var n=0;try{for(var i=sessionStorage.length-1;i>=0;i--){var k=sessionStorage.key(i);if(k&&(scoped(k,u)||learning(k)||/^kin(Return|Jump|Quiz|Study|Capture)/i.test(k))){sessionStorage.removeItem(k);n++;}}}catch(e){}return n;}
+function repaint(){try{statusMap={};}catch(e){}try{srsMap={};}catch(e){}try{senseMap={};}catch(e){}['loadStatus','srsLoad','updateStats','renderList','refreshAllStatusUI','srsBadge','srsRender'].forEach(function(n){try{if(typeof window[n]==='function')window[n]();}catch(e){}});['__kinPaintStrength','__kinPaintDeck','__kinPaintReadEntry','__kinPaintNoteWords','__kinRenderDeckManager','__kinPaintRecordStat'].forEach(function(n){try{if(typeof window[n]==='function')window[n]();}catch(e){}});}
+window.rmWipeUser=function(){var u=uid(),name=uname();if(!confirm('完整刪除「'+name+'」的全部學習資料？\n\n將刪除：所有書籍標記、SRS、詞義熟悉度、今日目標、學習時間、歷程、收藏、筆記、測驗、AI 助記與圖片。\n\n將保留：API Key、Cloudflare Worker URL、主題、語速與裝置設定。\n\n此操作無法復原。'))return;if(prompt('請輸入 DELETE 確認：','')!=='DELETE'){alert('未輸入 DELETE，已取消。');return;}var ks=deletionKeys(u);ks.forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});var sn=clearSession(u);try{['kinSyncCursor:'+u,'kinSyncMeta:'+u,'gsMeta:'+u,'kinCloudSnapshot:'+u].forEach(function(k){localStorage.removeItem(k);});localStorage.setItem('kinUserReset:'+u,JSON.stringify({at:new Date().toISOString(),removed:ks.length}));}catch(e){}repaint();alert('完整刪除完成。\n\n已刪除 '+ks.length+' 筆學習資料及 '+sn+' 筆暫存。\n今日目標、學習時間、歷程、收藏、筆記與助記圖片均已清除。\n\n頁面將重新載入。');location.reload();};
+function context(){var e=null;try{e=currentList&&currentList[currentIdx];}catch(x){}return{book:(window.CURRENT_BOOK&&window.CURRENT_BOOK.id)||'kin1000',id:e&&e.id?String(e.id):'',word:e&&e.word||'',levels:(typeof currentLevels!=='undefined'&&currentLevels)?currentLevels.slice():['all'],scroll:window.scrollY||0,at:Date.now()};}
+function saveCtx(c){try{sessionStorage.setItem(RETURN_KEY,JSON.stringify(c));}catch(e){}}
+function getCtx(){try{return JSON.parse(sessionStorage.getItem(RETURN_KEY)||'null');}catch(e){return null;}}
+function clearCtx(){try{sessionStorage.removeItem(RETURN_KEY);}catch(e){}}
+function openCard(c){if(!c||!c.id)return;window.__kinPendingOpen=c.id;if(typeof window.loadBookById==='function')window.loadBookById('custom');else if(typeof window.__kinOpenCustom==='function')window.__kinOpenCustom();}
+if(typeof window.nwTap==='function'&&window.KIN_COLLECT){var originalTap=window.nwTap;window.nwTap=function(text,el){var before=window.KIN_COLLECT.find(text),ctx=context(),r=originalTap.apply(this,arguments),after=window.KIN_COLLECT.find(text);if(!before&&after){saveCtx(ctx);setTimeout(function(){openCard(after);},80);}return r;};}
+window.kinReturnToCaptureSource=function(){var c=getCtx();if(!c)return;clearCtx();try{currentLevels=(c.levels&&c.levels.length)?c.levels:['all'];currentLevel=currentLevels.indexOf('all')>=0?'all':currentLevels[0];}catch(e){}window.__kinPendingOpen=c.id||null;if(window.CURRENT_BOOK&&window.CURRENT_BOOK.id===c.book){if(c.id&&typeof window.openDetail==='function')window.openDetail(c.id);else if(typeof window.showList==='function')window.showList();}else if(typeof window.loadBookById==='function')window.loadBookById(c.book);setTimeout(function(){if(!c.id)window.scrollTo(0,c.scroll||0);},250);};
+function paintReturn(){var old=document.getElementById('kinCaptureReturnBtn'),c=getCtx(),custom=!!(window.CURRENT_BOOK&&window.CURRENT_BOOK.id==='custom'),detail=document.getElementById('screen-detail');if(!c||!custom||!detail||!detail.classList.contains('active')){if(old)old.remove();return;}if(old)return;var b=document.createElement('button');b.id='kinCaptureReturnBtn';b.type='button';b.textContent='← 回到原本閱讀位置'+(c.word?'：'+c.word:'');b.onclick=window.kinReturnToCaptureSource;b.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:12040;min-height:46px;border:0;border-radius:14px;background:#5b46a8;color:#fff;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.28)';document.body.appendChild(b);}
+setInterval(paintReturn,500);
+})();
+</script>
+
+
+<style id="kinIpadShellStyle">
+/* TPX1000 iPad Context Workspace. No emoji, no blue type, no gradients. */
+:root{--ix-bg:#080808;--ix-card:#141414;--ix-card2:#1c1c1e;--ix-line:#2c2c2e;--ix-text:#f5f5f5;--ix-muted:#a3a3a3;--ix-orange:#ff7a1a;--ix-green:#42b883;--ix-red:#e85a63}
+#ixLeft,#ixRight,#ixTop{display:none}
+@media (min-width:1024px){
+ html,body{background:var(--ix-bg)!important;color:var(--ix-text)!important}
+ body.ix-enabled{padding-left:236px!important;padding-right:286px!important;box-sizing:border-box!important}
+ body.ix-enabled *{background-image:none!important}
+ body.ix-enabled a,body.ix-enabled button{color:var(--ix-text)}
+ body.ix-enabled .blue,body.ix-enabled [style*="color:blue"],body.ix-enabled [style*="#06f"],body.ix-enabled [style*="#007aff"],body.ix-enabled [style*="#0a84ff"]{color:var(--ix-text)!important}
+ #ixLeft,#ixRight{display:flex;position:fixed;top:0;bottom:0;z-index:11800;background:#0d0d0d;border-color:var(--ix-line);flex-direction:column;color:var(--ix-text);overflow:auto;overscroll-behavior:contain}
+ #ixLeft{left:0;width:220px;border-right:1px solid var(--ix-line)}
+ #ixRight{right:0;width:270px;border-left:1px solid var(--ix-line)}
+ #ixTop{display:flex;position:fixed;left:220px;right:270px;top:0;height:54px;z-index:11790;background:#0b0b0b;border-bottom:1px solid var(--ix-line);align-items:center;padding:0 16px;gap:12px;color:var(--ix-text)}
+ body.ix-enabled #app,body.ix-enabled #root,body.ix-enabled main{max-width:900px!important;margin-left:auto!important;margin-right:auto!important}
+ body.ix-enabled .screen,body.ix-enabled #screen-read,body.ix-enabled .ux-screen{max-width:900px!important;margin-left:auto!important;margin-right:auto!important}
+ body.ix-enabled #screen-read{left:220px!important;right:270px!important;width:auto!important;max-width:none!important}
+ body.ix-enabled #uxQuiz{left:220px!important;right:270px!important;width:auto!important}
+ body.ix-enabled #usPanel{left:220px!important;right:270px!important;width:auto!important}
+ .ix-brand{padding:20px 16px 15px;border-bottom:1px solid var(--ix-line)}
+ .ix-brand b{font-size:19px;letter-spacing:.8px;color:var(--ix-text)}
+ .ix-brand small{display:block;margin-top:4px;color:var(--ix-muted);font-size:11px}
+ .ix-title{font-size:13px;font-weight:800;color:var(--ix-text);letter-spacing:.2px}
+ .ix-context{margin-left:auto;color:var(--ix-orange);font-size:12px;font-weight:800;border:1px solid #63330f;border-radius:999px;padding:6px 10px;background:#1a1009}
+ .ix-section{padding:14px 14px 4px}
+ .ix-section h3{font-size:11px;color:var(--ix-muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 9px}
+ .ix-item,.ix-action{width:100%;display:flex;align-items:center;gap:9px;min-height:42px;padding:9px 10px;margin:0 0 6px;border:1px solid transparent;border-radius:9px;background:transparent!important;color:var(--ix-text)!important;text-align:left;font-size:13px;box-sizing:border-box}
+ .ix-item.active,.ix-action.primary{border-color:#8d410d;background:#1c1008!important;color:var(--ix-text)!important}
+ .ix-item:hover,.ix-action:hover{border-color:var(--ix-line);background:var(--ix-card)!important}
+ .ix-mark{width:8px;height:8px;border:1px solid var(--ix-muted);border-radius:2px;flex:0 0 auto}
+ .ix-item.active .ix-mark{background:var(--ix-orange);border-color:var(--ix-orange)}
+ .ix-card{border:1px solid var(--ix-line);background:var(--ix-card)!important;border-radius:12px;padding:12px;margin-bottom:10px;color:var(--ix-text)}
+ .ix-card h4{font-size:13px;margin:0 0 8px;color:var(--ix-text)}
+ .ix-card p,.ix-card small{font-size:12px;line-height:1.6;color:var(--ix-muted);margin:0}
+ .ix-num{font-size:28px;font-weight:800;color:var(--ix-text)}
+ .ix-orange{color:var(--ix-orange)!important}
+ .ix-row{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #242424;font-size:12px;color:var(--ix-text)}
+ .ix-row:last-child{border-bottom:0}
+ .ix-progress{height:6px;background:#292929;border-radius:6px;overflow:hidden;margin-top:8px}
+ .ix-progress i{display:block;height:100%;background:var(--ix-orange)}
+ .ix-bottom{margin-top:auto;padding:12px 14px;border-top:1px solid var(--ix-line)}
+ .ix-empty{padding:14px;color:var(--ix-muted);font-size:12px;line-height:1.65}
+ .ix-tabs{display:flex;gap:6px;overflow:auto;padding-bottom:4px}
+ .ix-tabs button{white-space:nowrap;border:1px solid var(--ix-line);background:var(--ix-card)!important;border-radius:8px;padding:7px 9px;color:var(--ix-text)!important;font-size:11px}
+ .ix-tabs button.active{border-color:var(--ix-orange);color:var(--ix-text)!important}
+}
+@media (min-width:768px) and (max-width:1023px){
+ #ixLeft{display:none!important}
+ #ixRight{display:flex;position:fixed;right:0;top:0;bottom:0;width:300px;z-index:11800;background:#0d0d0d;border-left:1px solid var(--ix-line);transform:translateX(100%);transition:transform .2s;flex-direction:column;overflow:auto}
+ body.ix-drawer-open #ixRight{transform:translateX(0)}
+ #ixTop{display:flex;position:fixed;top:8px;right:8px;z-index:11810}
+}
+</style>
+<div id="ixTop"><div class="ix-title" id="ixPageTitle">學習首頁</div><div class="ix-tabs" id="ixModeTabs"></div><div class="ix-context" id="ixContextLabel">首頁</div></div>
+<aside id="ixLeft"><div class="ix-brand"><b>TPX1000</b><small>TOEIC Vocabulary System</small></div><div id="ixLeftBody"></div><div class="ix-bottom"><button class="ix-action" onclick="IX.openSettings()"><span class="ix-mark"></span>介面與設定</button></div></aside>
+<aside id="ixRight"><div class="ix-brand"><b id="ixRightTitle">學習工具</b><small id="ixRightSub">依目前工作內容更新</small></div><div id="ixRightBody"></div></aside>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var LABEL={home:'學習首頁',article:'文章模式',word:'刷單字模式',exam:'測驗模式',flash:'閃卡模式',bank:'題庫模式',coach:'AI 教練模式',weak:'弱點分析',daily:'每日紀錄',history:'學習歷程',settings:'設定'};
+var last='',manual='';
+function visible(id){var e=$(id);if(!e)return false;var s=getComputedStyle(e);return s.display!=='none'&&s.visibility!=='hidden'&&(e.classList.contains('active')||e.classList.contains('show')||!e.classList.contains('hide'));}
+function context(){if(manual)return manual;if(visible('uxQuiz'))return'exam';if(visible('screen-read'))return'article';if(visible('uxQBank')||visible('bankModal'))return'bank';if(visible('uxCoachRead')||visible('coachModal'))return'coach';if(visible('usPanel'))return'settings';if(visible('screen-detail')){try{if(window.CURRENT_BOOK&&CURRENT_BOOK.id==='custom')return'flash';}catch(e){}return'word';}if(visible('screen-list'))return'home';return'home';}
+function data(){var a=[];try{a=Array.isArray(DATA)?DATA:[]}catch(e){}return a}
+function st(){try{return typeof statusMap==='object'&&statusMap?statusMap:{}}catch(e){return{}}}
+function cur(){try{return currentList&&currentList[currentIdx]||null}catch(e){return null}}
+function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function stat(){var s=st(),a=data(),ok=0,rv=0;a.forEach(function(x){if(s[x.id]==='ok')ok++;else if(s[x.id]==='review')rv++});return{all:a.length,ok:ok,review:rv,newn:Math.max(0,a.length-ok-rv)}}
+function words(kind,n){var s=st(),a=data().filter(function(x){return kind==='all'||s[x.id]===kind});return a.slice(0,n||6)}
+function nav(active){var items=[['home','首頁'],['article','文章'],['word','單字'],['exam','測驗'],['flash','閃卡'],['bank','題庫'],['coach','AI 教練'],['weak','弱點分析'],['daily','每日紀錄'],['history','學習歷程']];return'<div class="ix-section"><h3>工作模式</h3>'+items.map(function(x){return'<button class="ix-item '+(active===x[0]?'active':'')+'" onclick="IX.go(\''+x[0]+'\')"><span class="ix-mark"></span>'+x[1]+'</button>'}).join('')+'</div>'}
+function rows(a){return a.map(function(x,i){return'<button class="ix-item" onclick="IX.word(\''+esc(x.id)+'\')"><span class="ix-mark"></span><span>'+(i+1)+'. '+esc(x.word)+'</span></button>'}).join('')||'<div class="ix-empty">目前沒有資料。</div>'}
+function left(c){var q=stat(),e=cur(),html=nav(c);if(c==='article'){html+='<div class="ix-section"><h3>文章導航</h3><div class="ix-card"><h4>目前文章</h4><p>'+(e?esc(e.word):'短文閱讀')+'</p><div class="ix-progress"><i style="width:65%"></i></div></div><h3>本篇重點單字</h3>'+rows(words('review',5))}else if(c==='word'){html+='<div class="ix-section"><h3>本輪進度</h3><div class="ix-card"><div class="ix-num">'+q.ok+' / '+q.all+'</div><div class="ix-progress"><i style="width:'+(q.all?Math.round(q.ok/q.all*100):0)+'%"></i></div></div><h3>需要複習</h3>'+rows(words('review',6))}else if(c==='exam'){html+='<div class="ix-section"><h3>測驗導航</h3><div class="ix-card"><h4>答題狀態</h4><div class="ix-row"><span>已習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div><button class="ix-action primary" onclick="IX.startQuiz()">開始或繼續測驗</button></div>'}else if(c==='flash'){html+='<div class="ix-section"><h3>閃卡清單</h3>'+rows(words('all',8))+'<button class="ix-action" onclick="IX.backSource()">返回原本閱讀位置</button></div>'}else if(c==='coach'){html+='<div class="ix-section"><h3>教練工作區</h3><button class="ix-action primary" onclick="IX.openCoach()">建立新練習</button><button class="ix-action" onclick="IX.go(\'weak\')">查看弱點建議</button></div>'}else if(c==='weak'){html+='<div class="ix-section"><h3>弱點分類</h3><button class="ix-item active"><span class="ix-mark"></span>要複習單字 '+q.review+'</button><button class="ix-item"><span class="ix-mark"></span>未學習單字 '+q.newn+'</button>'+rows(words('review',6))+'</div>'}else if(c==='daily'||c==='history'){html+='<div class="ix-section"><h3>紀錄導覽</h3><div class="ix-card"><div class="ix-row"><span>習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div><div class="ix-row"><span>未學習</span><b>'+q.newn+'</b></div></div></div>'}else{html+='<div class="ix-section"><h3>今日概況</h3><div class="ix-card"><div class="ix-num">'+q.ok+' / '+q.all+'</div><p>已完成的學習進度</p><div class="ix-progress"><i style="width:'+(q.all?Math.round(q.ok/q.all*100):0)+'%"></i></div></div><div class="ix-card"><h4>待處理</h4><div class="ix-row"><span>要複習</span><b class="ix-orange">'+q.review+'</b></div><div class="ix-row"><span>未學習</span><b>'+q.newn+'</b></div></div></div>'}return html}
+function right(c){var q=stat(),e=cur(),h='<div class="ix-section">';if(c==='article'||c==='word'||c==='flash'){h+='<h3>目前單字</h3><div class="ix-card"><h4>'+(e?esc(e.word):'尚未選取')+'</h4><p>'+(e?esc(e.ja||e.mean||''):'點選中央內容中的單字')+'</p></div><button class="ix-action" onclick="IX.speak()">發音</button><button class="ix-action" onclick="IX.mark(\'ok\')">標記為習得</button><button class="ix-action" onclick="IX.mark(\'review\')">加入複習</button><button class="ix-action primary" onclick="IX.mnemo()">開啟 AI 記憶輔助</button>'}else if(c==='exam'){h+='<h3>答題分析</h3><div class="ix-card"><h4>作答前</h4><p>右側不顯示答案。作答後將顯示詞義解析、錯誤原因與 AI 分析。</p></div><div class="ix-card"><div class="ix-row"><span>習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div>'}else if(c==='coach'){h+='<h3>AI 學習助手</h3><div class="ix-card"><h4>目前焦點</h4><p>'+(e?esc(e.word):'尚未選取單字')+'</p></div><button class="ix-action primary" onclick="IX.openCoach()">開始 AI 練習</button><button class="ix-action" onclick="IX.mnemo()">記憶輔助</button><button class="ix-action" onclick="IX.note()">新增筆記</button>'}else if(c==='weak'){h+='<h3>複習建議</h3><div class="ix-card"><div class="ix-num ix-orange">'+q.review+'</div><p>目前標記為要複習的單字</p></div><button class="ix-action primary" onclick="IX.review()">立即開始複習</button><button class="ix-action" onclick="IX.startQuiz()">建立弱點測驗</button>'}else if(c==='daily'||c==='history'){h+='<h3>紀錄摘要</h3><div class="ix-card"><div class="ix-row"><span>總單字</span><b>'+q.all+'</b></div><div class="ix-row"><span>已習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div><button class="ix-action" onclick="IX.openSettings()">調整今日目標</button>'}else{h+='<h3>快速開始</h3><button class="ix-action primary" onclick="IX.continueStudy()">繼續學習</button><button class="ix-action" onclick="IX.review()">今日複習</button><button class="ix-action" onclick="IX.startQuiz()">測驗</button><button class="ix-action" onclick="IX.openCoach()">AI 教練</button><div class="ix-card"><h4>弱點摘要</h4>'+words('review',5).map(function(x){return'<div class="ix-row"><span>'+esc(x.word)+'</span><span>要複習</span></div>'}).join('')+'</div>'}return h+'</div>'}
+function paint(){var c=context();if(c===last)return;last=c;document.body.classList.toggle('ix-enabled',innerWidth>=1024);$('ixPageTitle').textContent=LABEL[c]||'學習工作台';$('ixContextLabel').textContent=LABEL[c]||c;$('ixLeftBody').innerHTML=left(c);$('ixRightTitle').textContent=(c==='article'?'文章工具':c==='word'?'單字工具':c==='exam'?'測驗工具':c==='flash'?'閃卡工具':c==='coach'?'AI 學習助手':c==='weak'?'弱點建議':c==='daily'||c==='history'?'紀錄摘要':'學習工具');$('ixRightBody').innerHTML=right(c)}
+function replaceEmoji(root){var walker=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT),n,rx=/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;while(n=walker.nextNode()){if(rx.test(n.nodeValue))n.nodeValue=n.nodeValue.replace(rx,'').replace(/\s{2,}/g,' ')}}
+window.IX={go:function(c){manual=c;if(c==='home'){manual='';try{showList()}catch(e){}}else if(c==='article'){try{readOpen()}catch(e){manual=''} }else if(c==='word'){manual='';try{showList()}catch(e){}}else if(c==='exam')this.startQuiz();else if(c==='flash'){try{deckOpen()}catch(e){}}else if(c==='coach')this.openCoach();else if(c==='weak'){manual='weak'}else if(c==='daily'){manual='daily'}else if(c==='history'){manual='history'}paint()},word:function(id){manual='';try{openDetail(id)}catch(e){}},continueStudy:function(){var e=cur();if(e)this.word(e.id);else this.go('word')},review:function(){try{srsOpen()}catch(e){}},startQuiz:function(){manual='';try{uxQuizOpen()}catch(e){try{qzOpen()}catch(x){}}},openCoach:function(){manual='';try{uxCoachOpen()}catch(e){try{coachOpen()}catch(x){}}},openSettings:function(){manual='';try{usOpen()}catch(e){}},backSource:function(){try{kinReturnToCaptureSource()}catch(e){}},speak:function(){try{speakWord()}catch(e){try{nwOpen(cur().word)}catch(x){}}},mark:function(v){try{setStatus(v)}catch(e){}},mnemo:function(){try{window.__kinOpenMnemo()}catch(e){}},note:function(){try{window.__kinOpenNote()}catch(e){}}};
+function init(){document.body.classList.toggle('ix-enabled',innerWidth>=1024);replaceEmoji(document.body);paint();setInterval(function(){last='';paint()},750);new MutationObserver(function(m){m.forEach(function(x){x.addedNodes.forEach(function(n){if(n.nodeType===1)replaceEmoji(n)})})}).observe(document.body,{childList:true,subtree:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+
+<style id="ix411StableStyle">
+/* V4.1.1 stable three-pane layout. No DOM re-parenting. */
+:root{--ix411-left:206px;--ix411-right:258px;--ix411-line:#2c2c2e;--ix411-bg:#080808;--ix411-panel:#0d0d0d;--ix411-text:#f5f5f5;--ix411-orange:#ff7a1a}
+@media (min-width:1024px),(orientation:landscape) and (min-width:700px){
+ html,body{background:var(--ix411-bg)!important;overscroll-behavior:none!important}
+ body.ix-enabled{padding-left:var(--ix411-left)!important;padding-right:var(--ix411-right)!important;box-sizing:border-box!important;min-width:0!important}
+ #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;transform:none!important;background:var(--ix411-panel)!important;z-index:11800!important;box-sizing:border-box!important}
+ #ixLeft{left:0!important;width:var(--ix411-left)!important;border-right:1px solid var(--ix411-line)!important}
+ #ixRight{right:0!important;width:var(--ix411-right)!important;border-left:1px solid var(--ix411-line)!important}
+ #ixTop{display:flex!important;position:sticky!important;top:0!important;left:auto!important;right:auto!important;width:100%!important;height:52px!important;min-height:52px!important;z-index:900!important;background:#0b0b0b!important;border-bottom:1px solid var(--ix411-line)!important;box-sizing:border-box!important}
+ #ixRightToggle{display:none!important}
+ /* Center remains the original document flow, preserving all original events and offsets. */
+ body.ix-enabled>#screen-books,body.ix-enabled>#screen-list,body.ix-enabled>#screen-detail,body.ix-enabled>#screen-read{width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box!important}
+ body.ix-enabled #screen-list,body.ix-enabled #screen-detail{padding-left:14px!important;padding-right:14px!important}
+ /* Fixed feature panels are constrained to center only. */
+ body.ix-enabled #screen-read,body.ix-enabled #uxQuiz,body.ix-enabled #usPanel,body.ix-enabled .ux-screen{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important;background:#080808!important}
+ body.ix-enabled #usMask,body.ix-enabled #pinMask{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important;background:rgba(0,0,0,.82)!important}
+ body.ix-enabled #usPanel{transform:none!important;border-radius:0!important}
+ /* Center bars never cross into rails. */
+ body.ix-enabled .player-bar,body.ix-enabled .bottom-nav{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important;max-width:none!important;box-sizing:border-box!important}
+ /* Stop controls/cards from collapsing into vertical text. */
+ body.ix-enabled .card,body.ix-enabled .ux-card,body.ix-enabled .coach-card,body.ix-enabled .rd-card,body.ix-enabled .list-item,body.ix-enabled button,body.ix-enabled input,body.ix-enabled select,body.ix-enabled textarea{writing-mode:horizontal-tb!important;word-break:normal!important;overflow-wrap:break-word!important;min-width:0!important;box-sizing:border-box!important}
+ /* No compact/drawer behavior in stable mode. */
+ body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:fixed!important;transform:none!important;width:var(--ix411-right)!important;right:0!important;box-shadow:none!important}
+}
+@media (min-width:1440px){:root{--ix411-left:228px;--ix411-right:286px}}
+@media (orientation:landscape) and (min-width:700px) and (max-width:1023px){
+ :root{--ix411-left:122px;--ix411-right:148px}
+ body.ix-enabled{padding-left:var(--ix411-left)!important;padding-right:var(--ix411-right)!important}
+ #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-y:auto!important;transform:none!important;background:var(--ix411-panel)!important;z-index:11800!important}
+ #ixLeft{left:0!important;width:var(--ix411-left)!important}
+ #ixRight{right:0!important;width:var(--ix411-right)!important}
+ #ixLeft .ix-brand,#ixRight .ix-brand{padding:10px 7px!important}
+ #ixLeft .ix-brand small,#ixRight .ix-brand small{display:none!important}
+ #ixLeft .ix-section,#ixRight .ix-section{padding-left:6px!important;padding-right:6px!important}
+ #ixLeft .ix-item,#ixLeft .ix-action,#ixRight .ix-item,#ixRight .ix-action{padding:7px 5px!important;font-size:10.5px!important;gap:4px!important}
+ #ixRight .ix-card{padding:7px!important}
+ #ixTop{display:flex!important;position:sticky!important;top:0!important;height:42px!important;min-height:42px!important;z-index:900!important}
+ body.ix-enabled #screen-read,body.ix-enabled #uxQuiz,body.ix-enabled #usPanel,body.ix-enabled .ux-screen,body.ix-enabled #usMask,body.ix-enabled #pinMask{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important}
+ body.ix-enabled .player-bar,body.ix-enabled .bottom-nav{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important}
+}
+@media (orientation:portrait) and (max-width:1023px),(max-width:699px){body.ix-enabled{padding-left:0!important;padding-right:0!important}}
+</style>
+<script>
+(function(){
+'use strict';
+function useThreePane(){return innerWidth>=1024||(innerWidth>=700&&innerWidth>innerHeight)}
+function syncMode(){document.body.classList.toggle('ix-enabled',useThreePane());document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open')}
+function closeKnownPanels(){try{if(typeof window.usClose==='function')window.usClose()}catch(e){}try{if(window.UX&&typeof window.UX.closeQuiz==='function')window.UX.closeQuiz()}catch(e){}}
+function realQuiz(){if(window.UX&&typeof window.UX.openQuiz==='function')return window.UX.openQuiz();var b=document.getElementById('uxHomeQuiz');if(b)b.click()}
+function realCoach(){if(typeof window.rdOpen==='function')return window.rdOpen();var b=document.getElementById('rdEntry');if(b)b.click()}
+function realDeck(){if(typeof window.deckOpen==='function')return window.deckOpen();var b=document.getElementById('deckBtn');if(b)b.click()}
+function realReview(){if(typeof window.srsOpen==='function')return window.srsOpen()}
+function realSettings(){if(typeof window.usOpen==='function')return window.usOpen()}
+function realList(){if(typeof window.showList==='function')return window.showList()}
+function wire(){if(!window.IX)return;window.IX.go=function(c){closeKnownPanels();if(c==='home'||c==='word')return realList();if(c==='article'||c==='coach'||c==='bank')return realCoach();if(c==='exam')return realQuiz();if(c==='flash')return realDeck();if(c==='weak')return realReview();if(c==='daily'||c==='history'||c==='settings')return realSettings()};window.IX.startQuiz=realQuiz;window.IX.openCoach=realCoach;window.IX.review=realReview;window.IX.openSettings=realSettings}
+function preventOuterBounce(e){if(!useThreePane())return;var target=e.target&&e.target.closest?e.target.closest('#ixLeft,#ixRight,#screen-read,#uxQuiz,#usPanel,.ux-screen'):null;if(!target&&e.target===document.documentElement)e.preventDefault()}
+function init(){syncMode();wire();window.addEventListener('resize',syncMode,{passive:true});window.addEventListener('orientationchange',function(){setTimeout(syncMode,250)},{passive:true});document.addEventListener('touchmove',preventOuterBounce,{passive:false})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
 </body>
 </html>
