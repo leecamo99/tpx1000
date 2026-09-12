@@ -11642,64 +11642,54 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
-<style id="ix412NativeCenterStyle">
-/* V4.1.2: keep the original 480px app coordinate system intact. */
-:root{--ixc-app:480px;--ixc-left:180px;--ixc-right:220px;--ixc-gap:12px;--ixc-bg:#080808;--ixc-line:#2c2c2e}
-@media (min-width:900px){
- html,body{background:var(--ixc-bg)!important;overscroll-behavior:none!important}
- body.ix-enabled{width:var(--ixc-app)!important;min-width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;margin-left:auto!important;margin-right:auto!important;padding-left:0!important;padding-right:0!important;box-sizing:border-box!important}
+<style id="ix413SafeStyle">
+:root{--ix413-app:480px;--ix413-left:190px;--ix413-right:230px;--ix413-gap:12px;--ix413-bg:#080808;--ix413-line:#2c2c2e;--ix413-text:#f5f5f5;--ix413-orange:#ff7a1a}
+/* Phone and sub-1024 layouts are always the untouched native app. */
+@media (max-width:1023px){
+ body{padding-left:0!important;padding-right:0!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important}
+ #ixLeft,#ixRight,#ixTop,#ixRightToggle{display:none!important}
+ #screen-read,#uxQuiz,#usPanel,.ux-screen,#usMask,#pinMask{left:0!important;right:0!important;width:100%!important;max-width:none!important;transform:none!important}
+ .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:480px!important;transform:translateX(-50%)!important}
+}
+@media (min-width:1024px){
+ html,body{background:var(--ix413-bg)!important;overscroll-behavior:none!important}
+ body.ix-enabled{width:var(--ix413-app)!important;min-width:var(--ix413-app)!important;max-width:var(--ix413-app)!important;margin-left:auto!important;margin-right:auto!important;padding:0!important;box-sizing:border-box!important}
  #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;transform:none!important;background:#0d0d0d!important;z-index:11800!important;box-sizing:border-box!important}
- #ixLeft{left:calc(50% - (var(--ixc-app) / 2) - var(--ixc-gap) - var(--ixc-left))!important;width:var(--ixc-left)!important;border-right:1px solid var(--ixc-line)!important}
- #ixRight{right:calc(50% - (var(--ixc-app) / 2) - var(--ixc-gap) - var(--ixc-right))!important;width:var(--ixc-right)!important;border-left:1px solid var(--ixc-line)!important}
- #ixTop{display:flex!important;position:sticky!important;top:0!important;left:auto!important;right:auto!important;width:100%!important;height:50px!important;min-height:50px!important;z-index:900!important;box-sizing:border-box!important;background:#0b0b0b!important;border-bottom:1px solid var(--ixc-line)!important}
+ #ixLeft{left:calc(50% - 240px - var(--ix413-gap) - var(--ix413-left))!important;width:var(--ix413-left)!important;border-right:1px solid var(--ix413-line)!important}
+ #ixRight{right:calc(50% - 240px - var(--ix413-gap) - var(--ix413-right))!important;width:var(--ix413-right)!important;border-left:1px solid var(--ix413-line)!important}
+ #ixTop{display:flex!important;position:sticky!important;top:0!important;width:100%!important;height:50px!important;min-height:50px!important;z-index:900!important;background:#0b0b0b!important;border-bottom:1px solid var(--ix413-line)!important;box-sizing:border-box!important}
  #ixRightToggle{display:none!important}
- body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:fixed!important;transform:none!important;width:var(--ixc-right)!important;right:calc(50% - (var(--ixc-app) / 2) - var(--ixc-gap) - var(--ixc-right))!important;box-shadow:none!important}
- /* Original center screens stay at the app's native width. */
- #screen-books,#screen-list,#screen-detail{width:100%!important;min-width:0!important;max-width:var(--ixc-app)!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}
- /* Original fixed coordinate system remains centered on viewport. */
- #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;min-width:0!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#080808!important}
- #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ixc-app)!important;transform:translateX(-50%)!important}
- .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ixc-app)!important;transform:translateX(-50%)!important;box-sizing:border-box!important}
+ /* White text only, orange for selected/primary. No blue links. */
+ #ixLeft a,#ixLeft button,#ixRight a,#ixRight button,#ixLeft .ix-item,#ixRight .ix-item,#ixLeft .ix-action,#ixRight .ix-action{color:var(--ix413-text)!important;text-decoration:none!important}
+ #ixLeft .active,#ixRight .active,#ixLeft .primary,#ixRight .primary{color:var(--ix413-text)!important;border-color:var(--ix413-orange)!important;background:#211107!important}
+ /* Preserve the original center coordinate system. */
+ #screen-books,#screen-list,#screen-detail{width:100%!important;min-width:0!important;max-width:var(--ix413-app)!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}
+ /* Modal/feature screens are centered and opaque; never cover rails. */
+ #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ix413-app)!important;max-width:var(--ix413-app)!important;min-width:0!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#080808!important;overflow-x:hidden!important}
+ #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ix413-app)!important;transform:translateX(-50%)!important;background:rgba(0,0,0,.94)!important}
+ body.ix413-modal-open #screen-list,body.ix413-modal-open #screen-detail,body.ix413-modal-open #screen-books{visibility:hidden!important;pointer-events:none!important}
+ .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ix413-app)!important;transform:translateX(-50%)!important;box-sizing:border-box!important}
+ body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:fixed!important;transform:none!important;width:var(--ix413-right)!important;right:calc(50% - 240px - var(--ix413-gap) - var(--ix413-right))!important;box-shadow:none!important}
  body.ix-enabled .card,body.ix-enabled .ux-card,body.ix-enabled .coach-card,body.ix-enabled .rd-card,body.ix-enabled .list-item,body.ix-enabled button,body.ix-enabled input,body.ix-enabled select,body.ix-enabled textarea{writing-mode:horizontal-tb!important;word-break:normal!important;overflow-wrap:break-word!important;box-sizing:border-box!important}
 }
-@media (min-width:1200px){:root{--ixc-left:210px;--ixc-right:250px;--ixc-gap:16px}}
-@media (min-width:1500px){:root{--ixc-left:230px;--ixc-right:280px;--ixc-gap:20px}}
-/* Landscape phones/tablets: preserve 480px center and use compact rails. */
-@media (orientation:landscape) and (min-width:700px) and (max-width:899px){
- :root{--ixc-left:92px;--ixc-right:112px;--ixc-gap:4px}
- body.ix-enabled{width:var(--ixc-app)!important;min-width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;margin-left:auto!important;margin-right:auto!important;padding:0!important}
- #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-y:auto!important;transform:none!important;background:#0d0d0d!important;z-index:11800!important}
- #ixLeft{left:calc(50% - 240px - var(--ixc-gap) - var(--ixc-left))!important;width:var(--ixc-left)!important}
- #ixRight{right:calc(50% - 240px - var(--ixc-gap) - var(--ixc-right))!important;width:var(--ixc-right)!important}
- #ixLeft .ix-brand,#ixRight .ix-brand{padding:9px 5px!important}
- #ixLeft .ix-brand b,#ixRight .ix-brand b{font-size:13px!important}
- #ixLeft .ix-brand small,#ixRight .ix-brand small{display:none!important}
- #ixLeft .ix-section,#ixRight .ix-section{padding:7px 4px 2px!important}
- #ixLeft .ix-section h3,#ixRight .ix-section h3{font-size:8px!important;letter-spacing:.3px!important}
- #ixLeft .ix-item,#ixLeft .ix-action,#ixRight .ix-item,#ixRight .ix-action{padding:6px 3px!important;font-size:9px!important;gap:3px!important;min-height:34px!important}
- #ixRight .ix-card{padding:5px!important;font-size:9px!important}
- #ixRight .ix-card h4{font-size:10px!important}
- #ixRight .ix-card p,#ixRight .ix-row{font-size:9px!important}
- #ixTop{display:flex!important;position:sticky!important;top:0!important;width:100%!important;height:38px!important;min-height:38px!important;z-index:900!important}
- #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;transform:translateX(-50%)!important}
- #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ixc-app)!important;transform:translateX(-50%)!important}
- .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ixc-app)!important;transform:translateX(-50%)!important}
-}
-@media (orientation:portrait) and (max-width:899px),(max-width:699px){body.ix-enabled{width:auto!important;min-width:0!important;max-width:none!important;margin:0!important;padding:0!important}}
+@media (min-width:1280px){:root{--ix413-left:210px;--ix413-right:255px;--ix413-gap:16px}}
+@media (min-width:1500px){:root{--ix413-left:230px;--ix413-right:280px;--ix413-gap:20px}}
 </style>
 <script>
 (function(){
 'use strict';
-function three(){return innerWidth>=900||(innerWidth>=700&&innerWidth>innerHeight)}
-function sync(){document.body.classList.toggle('ix-enabled',three());document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open')}
+function ipad(){return innerWidth>=1024}
+function sync(){document.body.classList.toggle('ix-enabled',ipad());document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open');if(!ipad())document.body.classList.remove('ix413-modal-open')}
+function visible(id){var e=document.getElementById(id);if(!e)return false;var s=getComputedStyle(e);return s.display!=='none'&&s.visibility!=='hidden'&&(e.classList.contains('show')||e.classList.contains('active'))}
+function modalSync(){if(!ipad())return;document.body.classList.toggle('ix413-modal-open',visible('screen-read')||visible('uxQuiz')||visible('usPanel'))}
 function quiz(){if(window.UX&&typeof window.UX.openQuiz==='function')return window.UX.openQuiz();var b=document.getElementById('uxHomeQuiz');if(b)b.click()}
 function coach(){if(typeof window.rdOpen==='function')return window.rdOpen();var b=document.getElementById('rdEntry');if(b)b.click()}
 function deck(){if(typeof window.deckOpen==='function')return window.deckOpen()}
 function review(){if(typeof window.srsOpen==='function')return window.srsOpen()}
 function settings(){if(typeof window.usOpen==='function')return window.usOpen()}
-function list(){if(typeof window.showList==='function')return window.showList()}
+function list(){try{if(typeof window.usClose==='function')window.usClose()}catch(e){}if(typeof window.showList==='function')return window.showList()}
 function wire(){if(!window.IX)return;window.IX.go=function(c){if(c==='home'||c==='word')return list();if(c==='article'||c==='coach'||c==='bank')return coach();if(c==='exam')return quiz();if(c==='flash')return deck();if(c==='weak')return review();if(c==='daily'||c==='history'||c==='settings')return settings()};window.IX.startQuiz=quiz;window.IX.openCoach=coach;window.IX.review=review;window.IX.openSettings=settings}
-function init(){sync();wire();window.addEventListener('resize',sync,{passive:true});window.addEventListener('orientationchange',function(){setTimeout(sync,250)},{passive:true})}
+function init(){sync();wire();new MutationObserver(modalSync).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','style']});modalSync();window.addEventListener('resize',sync,{passive:true});window.addEventListener('orientationchange',function(){setTimeout(sync,250)},{passive:true})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
