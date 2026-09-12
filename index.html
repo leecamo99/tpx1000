@@ -10866,8 +10866,8 @@ body.theme-dark .ux-mnemo .mn-row{color:#e8e6e3;border-top-color:#242426}
 body.theme-dark .ux-mnemo .mn-row b{color:#b9a8ff}
 body.theme-dark .ux-mnemo .mn-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
 .ux-mnemo .mn-img{margin:8px 0 2px}
-.ux-mnemo .mn-img img{width:160px;height:160px;border-radius:10px;object-fit:cover;image-rendering:auto;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
-.ux-mnemo .mn-img.big img{width:320px;height:320px;cursor:zoom-out}
+.ux-mnemo .mn-img img{width:128px;height:128px;border-radius:10px;object-fit:cover;image-rendering:auto;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
+.ux-mnemo .mn-img.big img{width:256px;height:256px;cursor:zoom-out}
 body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 </style>
 
@@ -10875,8 +10875,8 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 /* TPX1000 V3.1 - AI 記憶輔助圖片（96x96 WebP 縮圖） */
 (function(){
   'use strict';
-  var THUMB = 192;
-  var QUALITY = 0.75;
+  var THUMB = 128;
+  var QUALITY = 1.0;
   var MODEL = 'gemini-2.5-flash-image';
 
   function gmKey(){ try{ return localStorage.getItem('kinGeminiKey') || ''; }catch(e){ return ''; } }
@@ -11171,7 +11171,8 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 
   var LS_KEYS = 'kinGeminiKeys';
   var LS_OLD  = 'kinGeminiKey';
-  var LS_COOL = 'kinGeminiKeyCool';
+  var LS_COOL = 'kinGeminiKeyCoolV2';
+  var LS_FORCE = 'kinGeminiLastForcedProbeV2';
   var TIMEOUT = 45000;
   var MAX_TRY = 3;
   var TEXT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
@@ -11269,10 +11270,17 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
   }
   function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   function waitMsg(until){
-    var s = Math.max(0, Math.round((until - now()) / 1000));
-    if(s < 90) return '請等 ' + s + ' 秒後再試';
-    if(s < 5400) return '請等 ' + Math.ceil(s / 60) + ' 分鐘後再試';
-    return '免費額度約於台灣時間下午四點重置';
+    var sec = Math.max(0, Math.ceil((until - now()) / 1000));
+    if(sec <= 0) return '現在可重新驗證';
+    if(sec < 90) return '約 ' + sec + ' 秒後可重新驗證';
+    return '約 ' + Math.ceil(sec / 60) + ' 分鐘後可重新驗證';
+  }
+  function forcedProbeAllowed(){
+    var last = 0;
+    try{ last = parseInt(localStorage.getItem(LS_FORCE) || '0', 10); }catch(e){}
+    if(now() - last < 90000) return false;
+    try{ localStorage.setItem(LS_FORCE, String(now())); }catch(e){}
+    return true;
   }
 
   /* ---------------- 單次請求 ---------------- */
@@ -11314,14 +11322,24 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
   function call(payload, opts){
     opts = opts || {};
     var models = opts.models || TEXT_MODELS;
+    var allKeys = loadKeys();
     var keys = available();
 
-    if(!loadKeys().length){
+    if(!allKeys.length){
       return Promise.reject(new Error('尚未設定 Gemini 金鑰，請按「金鑰管理」新增'));
     }
     if(!keys.length){
-      var u = soonest();
-      return Promise.reject(new Error('所有金鑰都已達配額上限。' + (u ? waitMsg(u) : '請稍後再試')));
+      /* 舊版會直接相信本機冷卻紀錄，造成配額重置後仍被鎖住。
+         現在手動操作時每 90 秒允許一支金鑰做真實驗證。 */
+      if(forcedProbeAllowed()) keys = [allKeys[0]];
+      else {
+        var u = soonest();
+        return Promise.reject(new Error(
+          '已設定的金鑰目前都在暫時冷卻。' +
+          (u ? waitMsg(u) : '請稍後再試') +
+          '；若多支金鑰屬於同一 Google Cloud Project，配額會共享。'
+        ));
+      }
     }
 
     var ki = 0, mi = 0, attempt = 0, notes = [];
@@ -11332,7 +11350,12 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 
         /* 金鑰本身有問題或配額用盡：換下一支金鑰 */
         if(e.quota || e.badKey){
-          if(e.quota) setCool(key, e.perDay ? (6 * 60 * 60 * 1000) : (e.retry || 60000));
+          if(e.quota){
+            /* 每日 quota 不再武斷鎖 6 小時。API 若附 retryDelay 就採用，
+               否則 5 分鐘後允許重驗；最多先冷卻 15 分鐘。 */
+            var coolMs = e.retry || (e.perDay ? 300000 : 60000);
+            setCool(key, Math.min(coolMs, 900000));
+          }
           notes.push(tail(key) + ' ' + e.message);
           if(ki < keys.length - 1){
             ki++; mi = 0; attempt = 0;
@@ -11344,8 +11367,10 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
             return sleep(300).then(run);
           }
           var u2 = soonest();
-          var err = new Error('已試過 ' + keys.length + ' 支金鑰，全部無法使用。\n'
-            + notes.slice(0, 4).join('\n') + (u2 ? ('\n' + waitMsg(u2)) : ''));
+          var err = new Error('已完成即時驗證，但目前沒有可用的 Gemini 路由。\n'
+            + notes.slice(0, 4).join('\n')
+            + '\n提醒：同一 Google Cloud Project 建立的多支 API Key 共享配額。'
+            + (u2 ? ('\n' + waitMsg(u2)) : ''));
           throw err;
         }
 
