@@ -11715,5 +11715,60 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  body{padding-left:0!important;padding-right:0!important;width:auto!important;min-width:0!important;max-width:none!important;margin:0!important}
 }
 </style>
+
+<style id="ix416Style">
+:root{--ix416-app:480px;--ix416-left:190px;--ix416-right:230px;--ix416-gap:12px;--ix416-bg:#080808;--ix416-panel:#0d0d0d;--ix416-line:#2c2c2e;--ix416-text:#f5f5f5;--ix416-muted:#a3a3a3;--ix416-orange:#ff7a1a}
+#ix416Records{display:none}
+@media (min-width:1024px){
+ html,body{background:var(--ix416-bg)!important}
+ body.ix-enabled{width:var(--ix416-app)!important;min-width:var(--ix416-app)!important;max-width:var(--ix416-app)!important;margin-left:auto!important;margin-right:auto!important;padding:0!important;box-sizing:border-box!important}
+ #ixLeft{left:calc(50% - 240px - var(--ix416-gap) - var(--ix416-left))!important;width:var(--ix416-left)!important}
+ #ixRight{right:calc(50% - 240px - var(--ix416-gap) - var(--ix416-right))!important;width:var(--ix416-right)!important}
+ #screen-books,#screen-list,#screen-detail{width:100%!important;min-width:0!important;max-width:var(--ix416-app)!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}
+ #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ix416-app)!important;max-width:var(--ix416-app)!important;min-width:0!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#080808!important}
+ #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ix416-app)!important;transform:translateX(-50%)!important}
+ .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ix416-app)!important;transform:translateX(-50%)!important}
+ #ix416Records{position:fixed;display:none;left:50%;top:0;bottom:0;width:var(--ix416-app);transform:translateX(-50%);z-index:12100;background:var(--ix416-bg);color:var(--ix416-text);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box}
+ #ix416Records.show{display:block}
+ body.ix416-record-open #screen-books,body.ix416-record-open #screen-list,body.ix416-record-open #screen-detail,body.ix416-record-open .player-bar,body.ix416-record-open .bottom-nav{visibility:hidden!important;pointer-events:none!important}
+ .ix416-hd{position:sticky;top:0;z-index:3;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#0b0b0b;border-bottom:1px solid var(--ix416-line)}
+ .ix416-hd h2{font-size:18px;margin:0;color:var(--ix416-text)}
+ .ix416-close{width:40px;height:40px;border:1px solid var(--ix416-line);border-radius:10px;background:#151515;color:var(--ix416-text);font-size:22px}
+ .ix416-bd{padding:16px}
+ .ix416-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px}
+ .ix416-card{background:#141414;border:1px solid var(--ix416-line);border-radius:12px;padding:14px;min-width:0}
+ .ix416-card b{font-size:26px;color:var(--ix416-text)}
+ .ix416-card span,.ix416-card p{display:block;margin-top:5px;color:var(--ix416-muted);font-size:12px;line-height:1.55}
+ .ix416-title{margin:18px 0 9px;font-size:13px;color:var(--ix416-text)}
+ .ix416-row{display:flex;align-items:center;gap:9px;padding:11px 0;border-bottom:1px solid #242424;color:var(--ix416-text);font-size:13px}
+ .ix416-row small{margin-left:auto;color:var(--ix416-muted)}
+ .ix416-empty{padding:20px 0;color:var(--ix416-muted);font-size:13px}
+}
+@media (min-width:1280px){:root{--ix416-left:210px;--ix416-right:255px;--ix416-gap:16px}}
+@media (max-width:1023px){#ix416Records{display:none!important}}
+</style>
+<div id="ix416Records" role="dialog" aria-label="學習紀錄"><div class="ix416-hd"><h2 id="ix416Title">每日紀錄</h2><button type="button" class="ix416-close" onclick="IX416.close()" aria-label="關閉">×</button></div><div class="ix416-bd" id="ix416Body"></div></div>
+<script>
+(function(){
+'use strict';
+function uid(){try{return window.KIN_USER&&KIN_USER.id?KIN_USER.id():'paul'}catch(e){return'paul'}}
+function read(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function stat(){var a=[];try{a=Array.isArray(DATA)?DATA:[]}catch(e){}var s={};try{s=statusMap||{}}catch(e){}var ok=0,rv=0;a.forEach(function(x){if(s[x.id]==='ok')ok++;else if(s[x.id]==='review')rv++});return{all:a.length,ok:ok,review:rv,newn:Math.max(0,a.length-ok-rv)}}
+function history(){var h=read('kinWordHist:'+uid(),{}),out=[];Object.keys(h||{}).forEach(function(k){var x=h[k]||{};out.push({key:k,views:+x.v||+x.views||0,ok:+x.ok||0,review:+x.r||+x.review||0,wrong:+x.w||+x.wrong||0,last:x.last||x.lastView||x.at||''})});out.sort(function(a,b){return String(b.last).localeCompare(String(a.last))});return out}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function closeOthers(){try{if(typeof rdClose==='function')rdClose()}catch(e){}try{if(window.UX&&typeof UX.closeQuiz==='function')UX.closeQuiz()}catch(e){}try{if(typeof usClose==='function')usClose()}catch(e){}}
+function render(mode){var q=stat(),hs=history(),body=document.getElementById('ix416Body');document.getElementById('ix416Title').textContent=mode==='history'?'學習歷程':'每日紀錄';var html='<div class="ix416-grid"><div class="ix416-card"><b>'+q.ok+'</b><span>已習得</span></div><div class="ix416-card"><b>'+q.review+'</b><span>要複習</span></div><div class="ix416-card"><b>'+q.newn+'</b><span>未學習</span></div><div class="ix416-card"><b>'+hs.length+'</b><span>有接觸歷程的單字</span></div></div>';
+ if(mode==='daily'){var today=new Date().toISOString().slice(0,10),todayRows=hs.filter(function(x){return String(x.last).slice(0,10)===today});html+='<div class="ix416-title">今日接觸紀錄</div>'+(todayRows.length?todayRows.slice(0,30).map(row).join(''):'<div class="ix416-empty">今天尚未產生可顯示的接觸紀錄。</div>')}
+ else{html+='<div class="ix416-title">最近學習歷程</div>'+(hs.length?hs.slice(0,80).map(row).join(''):'<div class="ix416-empty">目前沒有學習歷程。</div>')}
+ body.innerHTML=html}
+function row(x){var word=x.key.indexOf('/')>=0?x.key.split('/').pop():x.key;return'<div class="ix416-row"><span>'+esc(word)+'</span><small>看過 '+x.views+'　習得 '+x.ok+'　複習 '+x.review+(x.wrong?'　答錯 '+x.wrong:'')+'</small></div>'}
+window.IX416={open:function(mode){if(innerWidth<1024)return;closeOthers();render(mode);document.body.classList.add('ix416-record-open');document.getElementById('ix416Records').classList.add('show')},close:function(){document.getElementById('ix416Records').classList.remove('show');document.body.classList.remove('ix416-record-open')}};
+function setMode(mode){try{if(typeof setListMode==='function')setListMode(mode)}catch(e){}try{if(typeof showList==='function')showList()}catch(e){}}
+function wire(){if(!window.IX)return;var old=window.IX.go;window.IX.go=function(c){if(c==='home'){IX416.close();setMode('study');return}if(c==='word'){IX416.close();setMode('browse');return}if(c==='daily'){IX416.open('daily');return}if(c==='history'){IX416.open('history');return}return old.call(window.IX,c)}}
+function init(){wire()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
 </body>
 </html>
