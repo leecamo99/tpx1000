@@ -5917,7 +5917,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       + '\nant：反義字，英文，逗號分隔，最多 3 個'
       + '\ntip：一句使用提醒或易混淆說明，40 字內';
 
-    __kinAsk({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,responseMimeType:'application/json'}})
+    __kinAsk({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,responseMimeType:'application/json'}},{feature:'flashcard'})
     .then(function(j){
       var txt=__kinAskText(j);
       if(!txt) throw new Error('回應沒有內容');
@@ -5961,7 +5961,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       }
     }catch(e){}
     ttsMsg('Gemini 金鑰已儲存，測試中\u2026');
-    __kinAsk({contents:[{parts:[{text:'只回覆兩個字：測試成功'}]}]})
+    __kinAsk({contents:[{parts:[{text:'只回覆兩個字：測試成功'}]}]},{feature:'keytest'})
     .then(function(j){
       var txt=__kinAskText(j);
       ttsMsg(txt ? ('Gemini 連線成功：' + String(txt).trim().slice(0,20)) : '回應格式不正確', txt ? 'ok' : 'err');
@@ -6695,7 +6695,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   function callGemini(prompt){
     var k = gmKey();
     if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰，請到使用者專區填入'));
-    return __kinAsk({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.65,responseMimeType:'application/json'}})
+    return __kinAsk({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.65,responseMimeType:'application/json'}},{feature:'coach'})
     .then(function(j){
       var txt=__kinAskText(j);
       if(!txt) throw new Error('回應沒有內容');
@@ -9737,7 +9737,7 @@ window.UX = window.UX || {};
     var key=quizAiKey(),btn=$('uxQzAi'),card=$('uxQzAiCard'),out=$('uxQzAiOut');
     if(!key){UX.toast('請先到使用者專區設定 Gemini API Key');return;}
     btn.disabled=true;btn.textContent='AI 分析中…';card.classList.remove('ux-hide');out.textContent='正在整理錯題與學習建議…';
-    __kinAsk({contents:[{parts:[{text:quizAiPrompt()}]}],generationConfig:{temperature:0.35}})
+    __kinAsk({contents:[{parts:[{text:quizAiPrompt()}]}],generationConfig:{temperature:0.35}},{feature:'quiz'})
       .then(function(j){var txt=__kinAskText(j);if(!txt)throw new Error('Gemini 未回傳內容');out.textContent=txt.trim();
         try{var k='kinQuizAi:' + ((window.KIN_USER&&KIN_USER.id())||'paul');var a=JSON.parse(localStorage.getItem(k)||'[]');a.push({at:new Date().toISOString(),book:UX.bookId(),mode:Q.mode,ok:Q.ok,ng:Q.ng,wrong:Q.wrong.slice(),text:txt.trim()});localStorage.setItem(k,JSON.stringify(a.slice(-50)));}catch(x){}
       }).catch(function(e){out.textContent='分析失敗：'+e.message;}).then(function(){btn.disabled=false;btn.textContent='重新分析本次測驗';});
@@ -11485,5 +11485,51 @@ body.theme-dark .kkm-b.main{background:#5b46a8;border-color:#5b46a8;color:#fff}
 body.theme-dark .kkm-entry{background:#1d1a2b;border-color:#4a3f70;color:#b9a8ff}
 body.theme-dark .kkm-mini b{color:#b9a8ff}
 </style>
+
+<script>
+/* TPX1000 V3.6 Smart Model Router - MUST be the final AI module */
+(function(){
+'use strict';
+var KEY_LIST='kinGeminiKeys',OLD_KEY='kinGeminiKey',CAPS='kinGeminiCapsV2',STATE='kinGeminiRouteStateV1';
+var FEATURE={
+ flashcard:{kind:'text',label:'閃卡短句',patterns:[/^gemini-2\.5-flash$/,/^gemini-flash-latest$/,/flash-lite/i,/flash/i,/pro/i]},
+ mnemonic:{kind:'text',label:'AI 記憶輔助',patterns:[/^gemini-2\.5-flash$/,/^gemini-flash-latest$/,/flash-lite/i,/flash/i,/pro/i]},
+ coach:{kind:'text',label:'AI 教練',patterns:[/^gemini-2\.5-flash$/,/^gemini-2\.5-pro$/,/pro-latest/i,/flash/i,/pro/i]},
+ quiz:{kind:'text',label:'錯題分析',patterns:[/^gemini-2\.5-pro$/,/pro-latest/i,/pro/i,/^gemini-2\.5-flash$/,/flash/i]},
+ keytest:{kind:'text',label:'連線測試',patterns:[/^gemini-2\.5-flash-lite$/,/flash-lite/i,/^gemini-2\.5-flash$/,/flash/i]},
+ image:{kind:'image',label:'助記圖片',patterns:[/^gemini-2\.5-flash-image$/,/gemini-3\.1-flash-lite-image/i,/gemini-3\.1-flash-image/i,/gemini-3-pro-image/i,/image/i]}
+};
+function now(){return Date.now();}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c];});}
+function getObj(k){try{return JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(e){return {};}}
+function setObj(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function keys(){var a=[];try{a=JSON.parse(localStorage.getItem(KEY_LIST)||'[]')||[];}catch(e){}var old='';try{old=(localStorage.getItem(OLD_KEY)||'').trim();}catch(e){}if(old)a.unshift(old);var seen={};return a.map(String).map(function(x){return x.trim();}).filter(function(x){if(!x||seen[x])return false;seen[x]=1;return true;});}
+function saveKeys(a){var seen={},out=(a||[]).map(String).map(function(x){return x.trim();}).filter(function(x){if(!x||seen[x])return false;seen[x]=1;return true;});try{localStorage.setItem(KEY_LIST,JSON.stringify(out));if(out[0])localStorage.setItem(OLD_KEY,out[0]);}catch(e){}return out;}
+function caps(){return getObj(CAPS);}
+function state(){return getObj(STATE);}
+function stateId(k,m){return k+'::'+m;}
+function saveResult(k,m,feature,patch){var s=state(),id=stateId(k,m),x=s[id]||{keyTail:'…'+k.slice(-6),model:m,features:{}};x.features=x.features||{};var f=x.features[feature]||{};Object.keys(patch).forEach(function(n){f[n]=patch[n];});f.at=new Date().toISOString();x.features[feature]=f;s[id]=x;setObj(STATE,s);}
+function capModels(k,kind){var c=caps()[k];if(!c||c.err)return [];return (c[kind]||[]).slice();}
+function modelScore(m,profile){for(var i=0;i<profile.patterns.length;i++)if(profile.patterns[i].test(m))return i*100;return 9999;}
+function statusScore(k,m,feature){var x=state()[stateId(k,m)],f=x&&x.features&&x.features[feature];if(!f)return 20;if(f.ok)return -100;if(f.code===404||f.code===403)return 2000;if(f.coolUntil&&f.coolUntil>now())return 1500;return 100;}
+function routePlan(feature,explicit){var p=FEATURE[feature]||FEATURE.mnemonic,ks=keys(),out=[],c=caps();ks.forEach(function(k,ki){var models=capModels(k,p.kind);if(explicit&&explicit.length)models=models.filter(function(m){return explicit.indexOf(m)>=0;});if(!models.length&&(!c[k]||c[k].err))models=(explicit||[]).slice();models.forEach(function(m){out.push({key:k,model:m,score:modelScore(m,p)+statusScore(k,m,feature)+ki});});});out.sort(function(a,b){return a.score-b.score;});return out;}
+function parseErr(status,body){var daily=/PerDay|RequestsPerDay|_per_day/i.test(body||''),mm=/"retryDelay"\s*:\s*"(\d+)s"/.exec(body||'');return {code:status,daily:daily,retry:mm?+mm[1]*1000:0,message:status===429?(daily?'每日配額已用完':'每分鐘限流'):status===403?'此 Key 對模型沒有權限':status===404?'模型不存在或此 Key 不支援':'HTTP '+status};}
+function once(pair,payload,feature){var ctl=null,timer=null,opt={method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)};try{ctl=new AbortController();opt.signal=ctl.signal;timer=setTimeout(function(){ctl.abort();},45000);}catch(e){}var u='https://generativelanguage.googleapis.com/v1beta/models/'+pair.model+':generateContent?key='+encodeURIComponent(pair.key);return fetch(u,opt).then(function(r){if(timer)clearTimeout(timer);if(r.ok)return r.json().then(function(j){saveResult(pair.key,pair.model,feature,{ok:true,code:200,coolUntil:0,error:''});return j;});return r.text().then(function(b){var e=parseErr(r.status,b);var cool=0;if(r.status===429)cool=now()+(e.daily?21600000:(e.retry||60000));saveResult(pair.key,pair.model,feature,{ok:false,code:r.status,coolUntil:cool,error:e.message});var er=new Error(e.message);Object.assign(er,e);throw er;});},function(e){if(timer)clearTimeout(timer);saveResult(pair.key,pair.model,feature,{ok:false,code:0,error:'連線失敗'});var er=new Error('連線失敗');er.network=true;throw er;});}
+function call(payload,opt){opt=opt||{};var feature=opt.feature||((opt.models&&opt.models.some(function(x){return /image/i.test(x);}))?'image':'mnemonic'),plan=routePlan(feature,opt.models),i=0,retry=0,notes=[];if(!keys().length)return Promise.reject(new Error('尚未設定 Gemini 金鑰'));if(!plan.length)return Promise.reject(new Error('找不到支援「'+(FEATURE[feature]||FEATURE.mnemonic).label+'」的 Key × 模型組合，請先執行模型偵測。'));function run(){if(i>=plan.length)throw new Error('所有可用路由均失敗：\n'+notes.slice(0,5).join('\n'));var x=plan[i];return once(x,payload,feature).catch(function(e){if(e.network&&retry<2){retry++;return new Promise(function(r){setTimeout(r,700*Math.pow(2,retry-1));}).then(run);}notes.push('…'+x.key.slice(-6)+'／'+x.model+'：'+e.message);i++;retry=0;return run();});}return Promise.resolve().then(run);}
+function text(j){var c=j&&j.candidates&&j.candidates[0],p=(c&&c.content&&c.content.parts)||[];for(var i=0;i<p.length;i++)if(p[i].text)return p[i].text;return '';}
+function featureRoutes(k){var out={};Object.keys(FEATURE).forEach(function(f){if(f==='keytest')return;var p=routePlan(f).filter(function(x){return x.key===k;})[0];out[f]=p?p.model:'';});return out;}
+function probe(k){var ctl=null,timer=null,opt={};try{ctl=new AbortController();opt.signal=ctl.signal;timer=setTimeout(function(){ctl.abort();},20000);}catch(e){}return fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key='+encodeURIComponent(k),opt).then(function(r){if(timer)clearTimeout(timer);if(!r.ok)return r.text().then(function(b){throw new Error(r.status===403?'金鑰無效或未啟用 API':'HTTP '+r.status+' '+b.slice(0,60));});return r.json();}).then(function(j){var all=[];(j.models||[]).forEach(function(m){var a=m.supportedGenerationMethods||m.supportedActions||[];if(a.indexOf('generateContent')<0)return;var id=String(m.name||'').replace(/^models\//,'');if(id)all.push(id);});var c={at:new Date().toISOString().slice(0,16).replace('T',' '),all:all,text:all.filter(function(x){return !/image|embed|aqa|tts|audio|veo|imagen/i.test(x);}),image:all.filter(function(x){return /image/i.test(x)&&!/embed/i.test(x);})},o=caps();o[k]=c;setObj(CAPS,o);return c;});}
+window.KIN_GM={call:call,text:text,keys:keys,saveKeys:saveKeys,probe:probe,caps:caps,routes:featureRoutes,state:state,imageModels:function(){var seen={},a=[];keys().forEach(function(k){capModels(k,'image').forEach(function(m){if(!seen[m]){seen[m]=1;a.push(m);}});});return a;},models:function(){var seen={},a=[];keys().forEach(function(k){capModels(k,'text').forEach(function(m){if(!seen[m]){seen[m]=1;a.push(m);}});});return a;},clearCool:function(){setObj(STATE,{});}};
+window.__kinAsk=function(p,o){return call(p,o);};window.__kinAskText=text;
+
+/* Replace the key manager with function routes and actual-call status */
+window.KIN_KEYS_UI=function(){var old=document.getElementById('kinKeyMgr');if(old)old.remove();var box=document.createElement('div');box.id='kinKeyMgr';box.className='kkm-mask';box.innerHTML='<div class="kkm-panel"><h2>Gemini 智慧模型路由</h2><p class="kkm-tip">模型目錄相同並不代表實際能力相同。系統會依功能分配模型，並記錄每個 Key × 模型的成功、429、403、404。</p><textarea id="routeKeys" rows="6" spellcheck="false"></textarea><div id="routeStat" class="kkm-stat"></div><div class="kkm-act"><button class="kkm-b main" data-a="save">儲存</button><button class="kkm-b" data-a="probe">更新模型目錄</button><button class="kkm-b" data-a="clear">清除路由狀態</button><button class="kkm-b" data-a="close">關閉</button></div></div>';document.body.appendChild(box);var ta=box.querySelector('#routeKeys');ta.value=keys().join('\n');function paint(){var ks=keys(),c=caps(),st=state(),el=box.querySelector('#routeStat');el.innerHTML=ks.map(function(k,i){var cap=c[k],r=featureRoutes(k),rows='';Object.keys(r).forEach(function(f){var m=r[f],x=st[stateId(k,m)],z=x&&x.features&&x.features[f],tag=z?(z.ok?'✅':z.code===429?'⏳':z.code===403?'🔒':z.code===404?'❌':'⚠️'):'○';rows+='<div class="route-line"><b>'+tag+' '+esc(FEATURE[f].label)+'</b><span>'+esc(m||'沒有相容模型')+'</span></div>';});return '<div class="route-key"><h4>'+(i+1)+'　…'+esc(k.slice(-6))+'</h4><div class="route-cap">目錄：文字 '+(cap&&!cap.err?cap.text.length:0)+'｜圖片 '+(cap&&!cap.err?cap.image.length:0)+(cap&&cap.at?'｜'+esc(cap.at):'')+'</div>'+rows+'</div>';}).join('')||'尚未設定金鑰';}paint();box.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(e.target===box||b&&b.dataset.a==='close'){box.remove();return;}if(!b)return;if(b.dataset.a==='save'){saveKeys(ta.value.split(/[\s,;]+/));paint();}if(b.dataset.a==='clear'){setObj(STATE,{});paint();}if(b.dataset.a==='probe'){var a=keys(),n=0;b.disabled=true;function step(){if(n>=a.length){b.disabled=false;b.textContent='更新模型目錄';paint();return;}b.textContent='偵測 '+(n+1)+'/'+a.length;probe(a[n]).catch(function(){}).then(function(){n++;paint();setTimeout(step,120);});}step();}});};
+setTimeout(function(){var b=document.getElementById('kkmEntry');if(b)b.textContent='智慧模型路由與金鑰管理';},500);
+})();
+</script>
+<style>
+.route-key{padding:9px 0;border-top:1px solid #eee}.route-key h4{margin:0 0 4px;color:#6c52c7}.route-cap{font-size:11px;color:#888;margin-bottom:5px}.route-line{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;line-height:1.55;padding:2px 0}.route-line b{flex:0 0 92px}.route-line span{font-family:ui-monospace,Menlo,monospace;word-break:break-all;color:#666}body.theme-dark .route-key{border-color:#2a2a2c}body.theme-dark .route-line span{color:#aaa}
+</style>
+
 </body>
 </html>
