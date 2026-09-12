@@ -10866,8 +10866,8 @@ body.theme-dark .ux-mnemo .mn-row{color:#e8e6e3;border-top-color:#242426}
 body.theme-dark .ux-mnemo .mn-row b{color:#b9a8ff}
 body.theme-dark .ux-mnemo .mn-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
 .ux-mnemo .mn-img{margin:8px 0 2px}
-.ux-mnemo .mn-img img{width:96px;height:96px;border-radius:8px;object-fit:cover;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
-.ux-mnemo .mn-img.big img{width:200px;height:200px;cursor:zoom-out}
+.ux-mnemo .mn-img img{width:160px;height:160px;border-radius:10px;object-fit:cover;image-rendering:auto;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
+.ux-mnemo .mn-img.big img{width:320px;height:320px;cursor:zoom-out}
 body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 </style>
 
@@ -10875,8 +10875,8 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 /* TPX1000 V3.1 - AI 記憶輔助圖片（96x96 WebP 縮圖） */
 (function(){
   'use strict';
-  var THUMB = 96;
-  var QUALITY = 0.55;
+  var THUMB = 192;
+  var QUALITY = 0.75;
   var MODEL = 'gemini-2.5-flash-image';
 
   function gmKey(){ try{ return localStorage.getItem('kinGeminiKey') || ''; }catch(e){ return ''; } }
@@ -10912,7 +10912,7 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
     var c=cfConfig();
     if(!c.on) return Promise.reject(new Error('Cloudflare 圖片功能尚未啟用，請到使用者專區開啟'));
     if(!c.url) return Promise.reject(new Error('尚未設定 Cloudflare Worker URL'));
-    var p=String(prompt||'').trim()+', minimal flat icon, single subject, solid background, no text, no letters, high contrast';
+    var p=String(prompt||'').trim()+', clear educational illustration, recognizable objects, centered composition, clean solid background, strong outlines, no text, no letters, high contrast';
     return fetch(c.url+'/image',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,width:512,height:512,steps:4})})
       .then(function(r){
         if(!r.ok) return r.text().then(function(t){
