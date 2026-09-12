@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-12",
-  "note": "完整刪除使用者資料；新增閃卡立即開啟並可返回來源。",
+  "note": "新增五種可切換首頁風格、推薦排名與 iPad 首次導覽。",
   "versions": [
     {
       "id": "v3.0",
@@ -333,6 +333,50 @@
           "s": "done",
           "t": "返回原本閱讀位置",
           "d": "保存來源書籍、單字與範圍"
+        }
+      ]
+    },
+    {
+      "id": "v5-multi-home",
+      "title": "多風格 iPad 首頁",
+      "date": "2026-09-12",
+      "desc": "Dashboard、AI Copilot、Library、Notion、Classic 可隨時切換。",
+      "items": [
+        {
+          "id": "home-dashboard",
+          "s": "done",
+          "t": "Dashboard 首頁",
+          "d": "預設推薦"
+        },
+        {
+          "id": "home-copilot",
+          "s": "done",
+          "t": "AI Copilot 首頁",
+          "d": "右側 AI 助手"
+        },
+        {
+          "id": "home-library",
+          "s": "done",
+          "t": "Library 首頁",
+          "d": "閱讀與書櫃"
+        },
+        {
+          "id": "home-notion",
+          "s": "done",
+          "t": "Notion 首頁",
+          "d": "任務工作台"
+        },
+        {
+          "id": "home-classic",
+          "s": "done",
+          "t": "Classic 回退",
+          "d": "保留原介面"
+        },
+        {
+          "id": "home-ranking",
+          "s": "done",
+          "t": "推薦排名介面",
+          "d": "首次 iPad 導覽與分數"
         }
       ]
     }
