@@ -2,15 +2,17 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-12T08:45:03.144Z",
+  "updatedAt": "2026-09-12T08:51:02.005Z",
   "deviceId": "dev-so1dyi",
   "keys": {
-    "kinTime:user2": "{\"2026-09-12\":45}",
+    "kinQuizLog:user2": "[{\"d\":\"2026-09-12\",\"m\":\"listen\",\"diff\":\"easy\",\"n\":10,\"c\":10,\"s\":63,\"g\":0,\"w\":[],\"b\":\"kin1000\"}]",
+    "kinAch:user2": "{\"first\":\"2026-09-12\",\"q1\":\"2026-09-12\",\"perfect\":\"2026-09-12\"}",
+    "kinTime:user2": "{\"2026-09-12\":315}",
     "kinSense:user2": "{}",
     "kinLevels": "[\"600\"]",
     "kinPlayMode": "detail-next",
     "kinSpeed": "1.25",
     "kin_phrase_times": "2",
-    "kinReturnContext": "{\"id\":\"018\",\"levels\":[\"600\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789201468198}"
+    "kinReturnContext": "{\"id\":\"005\",\"levels\":[\"600\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789202912378}"
   }
 }
