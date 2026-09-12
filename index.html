@@ -5904,9 +5904,12 @@ body.theme-dark #nwBox .note{color:#6a6661}
       + '\nphon：音標，含方括號'
       + '\npos：詞性，用一個中文字，例如 動 名 形 副'
       + '\nmean：語意，以 TOEIC 商務語境優先，20 字內'
-      + '\nex：一句 TOEIC 風格的英文例句，必須自然用到「' + card.word + '」本身，'
+      + '\nex：一句簡短的 TOEIC 英文例句，必須自然用到「' + card.word + '」本身。'
+      + '長度嚴格限制 5 到 10 個英文單字，最多不得超過 12 個單字，'
+      + '只用一個主要子句，不要關係子句、分號、破折號、括號或多餘修飾，'
+      + '不要人名、公司名與日期，長度需與單字書的短例句相當，'
       + '場景限定辦公室、會議、出差、客服、採購、人事、財報等商務情境'
-      + '\nexZh：該例句的繁體中文翻譯'
+      + '\nexZh：該例句的繁體中文翻譯，同樣維持一句短句'
       + '\nsyn：同義字，英文，逗號分隔，最多 3 個'
       + '\nant：反義字，英文，逗號分隔，最多 3 個'
       + '\ntip：一句使用提醒或易混淆說明，40 字內';
@@ -5925,6 +5928,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
       if(!txt) throw new Error('回應沒有內容');
       var g = JSON.parse(txt);
+      if(window.__kinTrimEx) g = window.__kinTrimEx(g, card.word);
       var patch = { gm: {
         phon:g.phon||'', pos:g.pos||'', mean:g.mean||'',
         ex:g.ex||'', exZh:g.exZh||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
@@ -10576,78 +10580,276 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 
 <script>
-/* TPX1000 2026-09-12 hotfix v2: dynamic multi-select categories per book/user */
+/* ==========================================================================
+   TPX1000 V3
+   1) 閃卡例句長度守門：Gemini 回傳過長例句時自動縮短
+   2) 我的筆記 AI 記憶輔助：字根拆解、聯想、易混字、記憶圖像
+   ========================================================================== */
 (function(){
   'use strict';
-  function uid(){ return (window.KIN_USER && window.KIN_USER.id && window.KIN_USER.id()) || 'paul'; }
-  function bid(){ return (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'; }
-  function levelKey(){ return 'kinLevels:' + uid() + ':' + bid(); }
-  function data(){ try{ return Array.isArray(DATA) ? DATA : []; }catch(e){ return []; } }
-  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
-  function categories(){
-    var map=new Map();
-    data().forEach(function(e){
-      var key=String(e.section || e.level || 'OTHER');
-      var label=String(e.section_label || e.level_label || key);
-      if(!map.has(key)) map.set(key,{key:key,label:label,count:0});
-      map.get(key).count++;
+  var MAX_WORDS = 12;
+
+  function wordCount(s){
+    return String(s || '').trim().split(/\s+/).filter(Boolean).length;
+  }
+
+  /* ---------- 例句長度守門 ---------- */
+  window.__kinTrimEx = function(g, word){
+    if(!g || !g.ex) return g;
+    if(wordCount(g.ex) <= MAX_WORDS) return g;
+    // 以目標單字所在的子句為主，切掉附加子句後仍保持完整句子。
+    var parts = String(g.ex).split(/[,;:]|\s+(?:which|who|that|because|although|while|when|after|before)\s+/i);
+    var key = String(word || '').toLowerCase().slice(0, 4);
+    var best = null;
+    parts.forEach(function(p){
+      var t = p.trim();
+      if(!t) return;
+      if(key && t.toLowerCase().indexOf(key) < 0) return;
+      if(!best || wordCount(t) < wordCount(best)) best = t;
     });
-    return Array.from(map.values());
+    if(best && wordCount(best) >= 3){
+      best = best.replace(/^[^A-Za-z]+/, '').replace(/[\s.]+$/, '');
+      if(best){
+        g.ex = best.charAt(0).toUpperCase() + best.slice(1) + '.';
+        g.exShort = true;
+      }
+    }
+    return g;
+  };
+
+  /* ---------- 共用工具 ---------- */
+  function $(id){ return document.getElementById(id); }
+  function gmKey(){ try{ return localStorage.getItem('kinGeminiKey') || ''; }catch(e){ return ''; } }
+  function uid(){
+    try{ if(window.KIN_USER && KIN_USER.id) return KIN_USER.id(); }catch(e){}
+    try{ return localStorage.getItem('kinUser') || 'paul'; }catch(e){ return 'paul'; }
   }
-  function getLevels(){ try{return Array.isArray(currentLevels)?currentLevels:['all'];}catch(e){return ['all'];} }
-  function setLevels(v){
-    try{ currentLevels=v; currentLevel=(v.length===1?v[0]:'all'); }catch(e){}
+  function bookId(){
+    try{ if(window.CURRENT_BOOK && CURRENT_BOOK.id) return CURRENT_BOOK.id; }catch(e){}
+    return 'kin1000';
   }
-  function loadLevels(){
-    var v=null;
-    try{ v=JSON.parse(localStorage.getItem(levelKey())||'null'); }catch(e){}
-    var valid=new Set(categories().map(function(x){return x.key;}));
-    if(!Array.isArray(v)||!v.length) v=['all'];
-    v=v.filter(function(x){return x==='all'||valid.has(String(x));});
-    if(!v.length) v=['all'];
-    setLevels(v);
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
   }
-  function saveLevels(){ try{localStorage.setItem(levelKey(),JSON.stringify(getLevels()));}catch(e){} }
-  function makeRow(key,label,count){
-    var row=document.createElement('label'); row.className='opt';
-    row.innerHTML='<div><div>'+esc(label)+'</div><div class="sub">'+count+'</div></div><input type="checkbox" name="fl" value="'+esc(key)+'">';
-    return row;
+  function mnKey(){ return 'kinMnemo:' + uid(); }
+  function mnAll(){
+    try{ return JSON.parse(localStorage.getItem(mnKey()) || '{}') || {}; }catch(e){ return {}; }
   }
-  function rebuild(){
-    var modal=document.getElementById('filterModal'); if(!modal)return;
-    var panel=modal.querySelector('.modal'), title=panel&&panel.querySelector('h2'); if(!panel||!title)return;
-    Array.from(panel.querySelectorAll('label.opt')).forEach(function(x){x.remove();});
-    var done=panel.querySelector('button');
-    var rows=[{key:'all',label:'全部',count:data().length}].concat(categories());
-    rows.forEach(function(c){
-      var row=makeRow(c.key,c.label,c.count);
-      panel.insertBefore(row,done||null);
-      var cb=row.querySelector('input');
-      cb.checked=getLevels().indexOf(c.key)>=0;
-      cb.addEventListener('change',function(){
-        if(typeof setLevel==='function') setLevel(c.key);
-        saveLevels();
-        rebuild();
+  function mnGet(id){ return mnAll()[bookId() + '/' + id] || null; }
+  function mnSet(id, obj){
+    var all = mnAll(), k = bookId() + '/' + id;
+    if(obj) all[k] = obj; else delete all[k];
+    try{ localStorage.setItem(mnKey(), JSON.stringify(all)); }catch(e){}
+  }
+  window.KIN_MNEMO = { get: mnGet, set: mnSet, all: mnAll, key: mnKey };
+
+  /* ---------- Gemini 呼叫 ---------- */
+  function callGemini(prompt, temp){
+    var k = gmKey();
+    if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰，請到使用者專區填入'));
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: (temp == null ? 0.55 : temp), responseMimeType: 'application/json' }
+      })
+    })
+    .then(function(r){
+      return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP ' + r.status + '\u3000' + t.slice(0, 120)); });
+    })
+    .then(function(j){
+      var c0 = j && j.candidates && j.candidates[0];
+      var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
+      if(!txt) throw new Error('回應沒有內容');
+      return JSON.parse(txt);
+    });
+  }
+
+  function buildPrompt(e){
+    var mean = '';
+    try{ mean = (e.mean || e.zh || e.meaning || ''); }catch(x){}
+    return '你是 TOEIC 單字記憶教練。學習者反覆記不起來單字「' + e.word + '」'
+      + (e.pos ? ('（詞性：' + e.pos + '）') : '')
+      + (mean ? ('（中文意思：' + mean + '）') : '')
+      + '。請產生幫助長期記憶的助記資料。\n'
+      + '全部使用繁體中文，內容務必簡短，禁止長篇解釋。\n'
+      + '只回覆 JSON，不要加任何其他文字。欄位如下：\n'
+      + 'root：字根或構詞拆解，格式例如 pre-（前）+ dict（說）→ 預先說出；'
+      + '若非拉丁字源，改說明該字的來源或構詞，40 字內\n'
+      + 'association：一句聯想或諧音記憶，畫面要具體，25 字內\n'
+      + 'confusable：陣列，最多 2 筆，每筆包含 word（形近或義近的英文字）與 diff（一句話說明差異，20 字內）\n'
+      + 'image_prompt：一句英文圖像描述，單一畫面、構圖簡單、不含文字，便於一眼辨識';
+  }
+
+  /* ---------- 產生助記 ---------- */
+  function renderMnemo(id, data, box){
+    var wrap = box.querySelector('.mn-body');
+    if(!wrap) return;
+    if(!data){ wrap.innerHTML = ''; return; }
+    var h = '';
+    if(data.root) h += '<div class="mn-row"><b>字根</b><span>' + esc(data.root) + '</span></div>';
+    if(data.association) h += '<div class="mn-row"><b>聯想</b><span>' + esc(data.association) + '</span></div>';
+    if(data.confusable && data.confusable.length){
+      h += '<div class="mn-row"><b>易混</b><span>' + data.confusable.map(function(c){
+        return esc(c.word) + '：' + esc(c.diff);
+      }).join('<br>') + '</span></div>';
+    }
+    if(data.image_prompt) h += '<div class="mn-row"><b>圖像</b><span>' + esc(data.image_prompt) + '</span></div>';
+    if(data.at) h += '<div class="mn-at">產生於 ' + esc(data.at) + '</div>';
+    h += '<div class="mn-act">'
+      +  '<button type="button" class="mn-b" data-act="insert">加入筆記</button>'
+      +  '<button type="button" class="mn-b" data-act="regen">重新生成</button>'
+      +  '<button type="button" class="mn-b warn" data-act="del">刪除助記</button>'
+      +  '</div>';
+    wrap.innerHTML = h;
+    wrap.querySelectorAll('.mn-b').forEach(function(b){
+      b.addEventListener('click', function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        var act = b.getAttribute('data-act');
+        if(act === 'del'){
+          if(!confirm('確定刪除這個字的 AI 助記嗎？\n你自己寫的筆記不會被刪除。')) return;
+          mnSet(id, null); renderMnemo(id, null, box); setMsg(box, '已刪除助記');
+        }else if(act === 'regen'){
+          gen(id, box, true);
+        }else if(act === 'insert'){
+          insertToNote(data, box);
+        }
       });
     });
   }
-  function refresh(){
-    loadLevels(); rebuild();
-    try{syncLevelUI();}catch(e){}
-    try{currentList=filtered();renderList();updateStats();}catch(e){}
+
+  function insertToNote(data, box){
+    var ta = $('uxNoteTa');
+    if(!ta){ setMsg(box, '找不到筆記欄位', true); return; }
+    var lines = [];
+    if(data.root) lines.push('字根：' + data.root);
+    if(data.association) lines.push('聯想：' + data.association);
+    if(data.confusable && data.confusable.length){
+      lines.push('易混：' + data.confusable.map(function(c){ return c.word + '（' + c.diff + '）'; }).join('；'));
+    }
+    var add = lines.join('\n');
+    if(!add){ setMsg(box, '沒有可加入的內容', true); return; }
+    if(ta.value.indexOf(add) >= 0){ setMsg(box, '筆記裡已經有這段內容'); return; }
+    ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, '') + '\n\n' : '') + add;
+    var noteBox = $('uxNote');
+    if(noteBox) noteBox.classList.remove('closed');
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+    setMsg(box, '已加入我的筆記');
   }
-  var oldOpen=window.openFilter;
-  window.openFilter=function(){ rebuild(); return oldOpen&&oldOpen.apply(this,arguments); };
-  var oldClose=window.closeFilter;
-  window.closeFilter=function(){ saveLevels(); return oldClose&&oldClose.apply(this,arguments); };
-  var last='';
-  setInterval(function(){
-    var now=bid()+'|'+uid()+'|'+data().length;
-    if(now!==last){last=now;setTimeout(refresh,30);}
-  },250);
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',refresh);else setTimeout(refresh,0);
+
+  function setMsg(box, t, err){
+    var m = box.querySelector('.mn-msg');
+    if(!m) return;
+    m.textContent = t || '';
+    m.className = 'mn-msg' + (err ? ' err' : '');
+    if(t && !err) setTimeout(function(){ if(m.textContent === t) m.textContent = ''; }, 4000);
+  }
+
+  function gen(id, box, force){
+    var e = currentEntry();
+    if(!e || e.id !== id) return;
+    if(!gmKey()){ setMsg(box, '請先到使用者專區設定 Gemini 金鑰', true); return; }
+    var cached = mnGet(id);
+    if(cached && !force){ renderMnemo(id, cached, box); return; }
+    var btn = box.querySelector('.mn-go');
+    if(btn){ btn.disabled = true; btn.textContent = '產生中…'; }
+    setMsg(box, '');
+    callGemini(buildPrompt(e), 0.6).then(function(g){
+      var data = {
+        root: g.root || '',
+        association: g.association || '',
+        confusable: Array.isArray(g.confusable) ? g.confusable.slice(0, 2).map(function(c){
+          return { word: String(c.word || ''), diff: String(c.diff || '') };
+        }).filter(function(c){ return c.word; }) : [],
+        image_prompt: g.image_prompt || '',
+        at: new Date().toISOString().slice(0, 10)
+      };
+      mnSet(id, data);
+      renderMnemo(id, data, box);
+      setMsg(box, '助記已產生');
+    }).catch(function(err){
+      setMsg(box, '產生失敗：' + err.message, true);
+    }).then(function(){
+      if(btn){ btn.disabled = false; btn.textContent = mnGet(id) ? '重新生成助記' : 'AI 記憶輔助'; }
+    });
+  }
+
+  function currentEntry(){
+    try{
+      if(typeof currentList !== 'undefined' && currentList && currentList[currentIdx]) return currentList[currentIdx];
+    }catch(e){}
+    return null;
+  }
+
+  /* ---------- 掛到筆記區 ---------- */
+  function attach(){
+    var noteBox = $('uxNote');
+    if(!noteBox) return;
+    var e = currentEntry();
+    if(!e) return;
+    var old = $('uxMnemo');
+    if(old && old.getAttribute('data-id') === String(e.id)) return;
+    if(old) old.parentNode.removeChild(old);
+
+    var has = !!mnGet(e.id);
+    var box = document.createElement('div');
+    box.id = 'uxMnemo';
+    box.className = 'ux-mnemo';
+    box.setAttribute('data-id', String(e.id));
+    box.innerHTML =
+      '<div class="mn-hd">'
+      + '<span>✦ AI 記憶輔助</span>'
+      + '<button type="button" class="mn-go">' + (has ? '重新生成助記' : 'AI 記憶輔助') + '</button>'
+      + '</div>'
+      + '<div class="mn-msg"></div>'
+      + '<div class="mn-body"></div>';
+    noteBox.parentNode.insertBefore(box, noteBox.nextSibling);
+
+    box.querySelector('.mn-go').addEventListener('click', function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      gen(e.id, box, true);
+    });
+    if(has) renderMnemo(e.id, mnGet(e.id), box);
+  }
+
+  var _showDetail = window.showDetail;
+  if(typeof _showDetail === 'function'){
+    window.showDetail = function(){
+      var r = _showDetail.apply(this, arguments);
+      setTimeout(attach, 60);
+      setTimeout(attach, 220);
+      return r;
+    };
+  }
+  setInterval(function(){ if($('uxNote') && !$('uxMnemo')) attach(); }, 700);
 })();
 </script>
+<style>
+.ux-mnemo{max-width:640px;margin:8px auto 0;background:#fff;border:1px solid #e8e0d0;border-radius:10px;overflow:hidden}
+.ux-mnemo .mn-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:#f4f0ff;font-size:13px;font-weight:700;color:#5b46a8}
+.ux-mnemo .mn-go{height:28px;padding:0 11px;border-radius:7px;border:1px solid #c9bdf0;background:#fff;color:#5b46a8;font-size:12px;font-weight:700;touch-action:manipulation}
+.ux-mnemo .mn-go:disabled{opacity:.55}
+.ux-mnemo .mn-msg{font-size:11.5px;line-height:1.7;color:#7a7671;padding:0 12px}
+.ux-mnemo .mn-msg:empty{display:none}
+.ux-mnemo .mn-msg.err{color:#c0392b}
+.ux-mnemo .mn-body{padding:0 12px 10px}
+.ux-mnemo .mn-body:empty{display:none}
+.ux-mnemo .mn-row{display:flex;gap:9px;padding:7px 0;border-top:1px solid #f0ece4;font-size:13px;line-height:1.65;color:#333}
+.ux-mnemo .mn-row b{flex:0 0 34px;color:#5b46a8;font-size:12px}
+.ux-mnemo .mn-at{font-size:11px;color:#a09a94;margin-top:6px}
+.ux-mnemo .mn-act{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.ux-mnemo .mn-b{height:30px;padding:0 11px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#333;font-size:12px;font-weight:700;touch-action:manipulation}
+.ux-mnemo .mn-b.warn{color:#c0392b;border-color:#f0c0c0}
+body.theme-dark .ux-mnemo{background:#0e0e0e;border-color:#2a2a2c}
+body.theme-dark .ux-mnemo .mn-hd{background:#1d1a2b;color:#b9a8ff}
+body.theme-dark .ux-mnemo .mn-go{background:#1c1c1e;border-color:#4a3f70;color:#b9a8ff}
+body.theme-dark .ux-mnemo .mn-row{color:#e8e6e3;border-top-color:#242426}
+body.theme-dark .ux-mnemo .mn-row b{color:#b9a8ff}
+body.theme-dark .ux-mnemo .mn-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+</style>
 
 </body>
 </html>
