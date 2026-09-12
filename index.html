@@ -11641,354 +11641,73 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
-<<<<<<< HEAD
 
+<style id="ixTrueThreeColumnStyle">
+/* TPX1000 V4.2 - actual three independent columns */
+:root{--ix3-left:190px;--ix3-right:238px;--ix3-line:#2c2c2e;--ix3-bg:#080808;--ix3-panel:#0d0d0d;--ix3-text:#f5f5f5;--ix3-orange:#ff7a1a}
+#ix3Root{display:none}
+@media (min-width:1024px){
+ html.ix3-active,html.ix3-active body{width:100%;height:100dvh!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;overscroll-behavior:none!important;background:var(--ix3-bg)!important}
+ body.ix3-ready{padding:0!important;margin:0!important;width:100%!important;height:100dvh!important;overflow:hidden!important}
+ #ix3Root{position:fixed;inset:0;z-index:11750;display:grid!important;grid-template-columns:var(--ix3-left) minmax(0,1fr) var(--ix3-right);grid-template-rows:minmax(0,1fr);width:100vw;height:100dvh;overflow:hidden;background:var(--ix3-bg)}
+ #ix3Left,#ix3Center,#ix3Right{position:relative!important;inset:auto!important;width:auto!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:none!important;max-height:none!important;box-sizing:border-box!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;background:var(--ix3-panel)!important;transform:none!important}
+ #ix3Left{grid-column:1;border-right:1px solid var(--ix3-line)}
+ #ix3Center{grid-column:2;background:var(--ix3-bg)!important;isolation:isolate}
+ #ix3Right{grid-column:3;border-left:1px solid var(--ix3-line)}
+ #ix3Left>#ixLeft,#ix3Right>#ixRight{display:flex!important;position:relative!important;inset:auto!important;width:100%!important;height:auto!important;min-height:100%!important;max-width:none!important;overflow:visible!important;transform:none!important;border:0!important;box-shadow:none!important;z-index:auto!important;box-sizing:border-box!important;flex-direction:column!important;background:var(--ix3-panel)!important}
+ #ix3Center>#ixTop{display:flex!important;position:sticky!important;left:auto!important;right:auto!important;top:0!important;width:100%!important;height:54px!important;min-height:54px!important;box-sizing:border-box!important;z-index:500!important;background:#0b0b0b!important;border-bottom:1px solid var(--ix3-line)!important}
+ #ix3Canvas{position:relative;width:100%;min-width:0;min-height:calc(100% - 54px);box-sizing:border-box;background:var(--ix3-bg)}
+ #ix3Canvas>*{box-sizing:border-box}
+ /* Original main screens belong only to the center column. */
+ #ix3Canvas>#screen-books,#ix3Canvas>#screen-list,#ix3Canvas>#screen-detail,#ix3Canvas>#screen-read{width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box!important}
+ #ix3Canvas>#screen-list,#ix3Canvas>#screen-detail{padding-left:14px!important;padding-right:14px!important}
+ /* Former viewport-fixed panels are now center-column panels. */
+ #ix3Canvas>#screen-read,#ix3Canvas>#uxQuiz,#ix3Canvas>#usPanel,#ix3Canvas>.ux-screen{position:absolute!important;top:0!important;left:0!important;right:0!important;bottom:auto!important;width:100%!important;max-width:none!important;min-width:0!important;min-height:100%!important;height:auto!important;margin:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;box-sizing:border-box!important;z-index:700!important}
+ #ix3Canvas>#usPanel>*,#ix3Canvas>#screen-read>*,#ix3Canvas>#uxQuiz>*{max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+ /* Prevent center cards and controls from collapsing into single-character columns. */
+ #ix3Center .card,#ix3Center .ux-card,#ix3Center .coach-card,#ix3Center .rd-card,#ix3Center .list-item,#ix3Center button,#ix3Center input,#ix3Center select,#ix3Center textarea{writing-mode:horizontal-tb!important;word-break:normal!important;overflow-wrap:break-word!important;min-width:0!important}
+ #ix3Center .topbar,#ix3Center .player-bar,#ix3Center .bottom-nav{max-width:100%!important;left:auto!important;right:auto!important}
+ /* Fixed bars stay inside the center column instead of covering the rails. */
+ #ix3Center .player-bar,#ix3Center .bottom-nav{position:sticky!important;bottom:0!important;width:100%!important;margin-left:0!important;margin-right:0!important;z-index:650!important}
+ /* Disable every previous drawer/compact behavior. */
+ body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:relative!important;transform:none!important;width:100%!important;right:auto!important;box-shadow:none!important}
+ #ixRightToggle{display:none!important}
+ /* Three panes have fully separate scrollbars. */
+ #ix3Left::-webkit-scrollbar,#ix3Center::-webkit-scrollbar,#ix3Right::-webkit-scrollbar{width:7px}
+ #ix3Left::-webkit-scrollbar-thumb,#ix3Center::-webkit-scrollbar-thumb,#ix3Right::-webkit-scrollbar-thumb{background:#3a3a3c;border-radius:8px}
+}
+@media (min-width:1180px){:root{--ix3-left:210px;--ix3-right:260px}}
+@media (min-width:1440px){:root{--ix3-left:230px;--ix3-right:286px}}
+@media (max-width:1023px){#ix3Root{display:none!important}}
+</style>
 <script>
-/* TPX1000 iPad Context Workspace - layout and scroll fix v1.1
-   Load AFTER the existing iPad Context Shell module.
-   Goals:
-   1. Do not compress the original center interface.
-   2. Left, center, and right are independent scroll containers.
-   3. Prevent iPad Safari body overscroll / page detachment.
-   4. Automatically collapse the right rail when center width would be too narrow.
-*/
-(function () {
-  'use strict';
-
-  var STYLE_ID = 'ixScrollFixV11';
-  var MIN_CENTER = 760;
-  var LEFT_W = 220;
-  var RIGHT_W = 286;
-  var GAP = 0;
-
-  function installStyle() {
-    var old = document.getElementById(STYLE_ID);
-    if (old) old.remove();
-
-    var css = `
-      :root {
-        --ix-left-w: 220px;
-        --ix-right-w: 286px;
-        --ix-top-h: 54px;
-        --ix-viewport-h: 100dvh;
-      }
-
-      @supports not (height: 100dvh) {
-        :root { --ix-viewport-h: 100vh; }
-      }
-
-      @media (min-width: 1024px) {
-        html.ix-scroll-lock,
-        html.ix-scroll-lock body {
-          width: 100%;
-          height: var(--ix-viewport-h) !important;
-          min-height: 0 !important;
-          overflow: hidden !important;
-          overscroll-behavior: none !important;
-          touch-action: pan-x pan-y;
-          background: #080808 !important;
-        }
-
-        body.ix-enabled {
-          padding: 0 !important;
-          margin: 0 !important;
-          width: 100% !important;
-          height: var(--ix-viewport-h) !important;
-          min-width: 0 !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
-        }
-
-        #ixLeft,
-        #ixRight {
-          position: fixed !important;
-          top: 0 !important;
-          bottom: auto !important;
-          height: var(--ix-viewport-h) !important;
-          min-height: 0 !important;
-          overflow-x: hidden !important;
-          overflow-y: auto !important;
-          overscroll-behavior: contain !important;
-          -webkit-overflow-scrolling: touch !important;
-          contain: layout paint !important;
-        }
-
-        #ixLeft {
-          left: 0 !important;
-          width: var(--ix-left-w) !important;
-        }
-
-        #ixRight {
-          right: 0 !important;
-          width: var(--ix-right-w) !important;
-        }
-
-        #ixTop {
-          position: fixed !important;
-          top: 0 !important;
-          left: var(--ix-left-w) !important;
-          right: var(--ix-right-w) !important;
-          width: auto !important;
-          height: var(--ix-top-h) !important;
-          box-sizing: border-box !important;
-        }
-
-        /* The real center scroll viewport. The body never scrolls. */
-        #ixCenterViewport {
-          position: fixed !important;
-          top: var(--ix-top-h) !important;
-          left: var(--ix-left-w) !important;
-          right: var(--ix-right-w) !important;
-          bottom: 0 !important;
-          width: auto !important;
-          height: auto !important;
-          min-width: 0 !important;
-          overflow-x: auto !important;
-          overflow-y: auto !important;
-          overscroll-behavior: contain !important;
-          -webkit-overflow-scrolling: touch !important;
-          contain: layout paint !important;
-          background: #080808 !important;
-          box-sizing: border-box !important;
-        }
-
-        #ixCenterCanvas {
-          width: max-content !important;
-          min-width: 100% !important;
-          min-height: 100% !important;
-          box-sizing: border-box !important;
-        }
-
-        /* Keep the original mobile-oriented center at its native useful width. */
-        #ixCenterCanvas > #app,
-        #ixCenterCanvas > #root,
-        #ixCenterCanvas > main,
-        #ixCenterCanvas > .app,
-        #ixCenterCanvas > .wrap {
-          width: min(900px, 100%) !important;
-          min-width: 760px !important;
-          max-width: 900px !important;
-          margin-left: auto !important;
-          margin-right: auto !important;
-          box-sizing: border-box !important;
-        }
-
-        /* Old fixed screens must become absolute inside center viewport. */
-        body.ix-enabled #screen-read,
-        body.ix-enabled #uxQuiz,
-        body.ix-enabled #usPanel,
-        body.ix-enabled .ux-screen {
-          position: absolute !important;
-          inset: 0 !important;
-          width: 100% !important;
-          min-width: 760px !important;
-          max-width: none !important;
-          height: auto !important;
-          min-height: 100% !important;
-          margin: 0 !important;
-          box-sizing: border-box !important;
-          overflow-x: hidden !important;
-          overflow-y: auto !important;
-          overscroll-behavior: contain !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-
-        /* Do not let center cards collapse into vertical single-character text. */
-        body.ix-enabled #ixCenterViewport .card,
-        body.ix-enabled #ixCenterViewport .ux-card,
-        body.ix-enabled #ixCenterViewport .coach-card,
-        body.ix-enabled #ixCenterViewport button,
-        body.ix-enabled #ixCenterViewport .btn {
-          min-width: 0 !important;
-          writing-mode: horizontal-tb !important;
-          word-break: normal !important;
-          overflow-wrap: break-word !important;
-        }
-
-        /* Compact mode: preserve center width by converting right rail to overlay drawer. */
-        body.ix-center-compact {
-          --ix-right-w: 0px;
-        }
-
-        body.ix-center-compact #ixRight {
-          width: 300px !important;
-          right: 0 !important;
-          transform: translateX(100%) !important;
-          transition: transform .2s ease !important;
-          box-shadow: -16px 0 32px rgba(0,0,0,.42) !important;
-          z-index: 11950 !important;
-        }
-
-        body.ix-center-compact.ix-right-open #ixRight {
-          transform: translateX(0) !important;
-        }
-
-        #ixRightToggle {
-          display: none;
-          position: fixed;
-          right: 12px;
-          top: 68px;
-          z-index: 11960;
-          width: 42px;
-          height: 42px;
-          border: 1px solid #8d410d;
-          border-radius: 10px;
-          background: #17100b;
-          color: #f5f5f5;
-          font-size: 13px;
-          font-weight: 800;
-        }
-
-        body.ix-center-compact #ixRightToggle {
-          display: block;
-        }
-      }
-
-      @media (min-width: 768px) and (max-width: 1023px) {
-        html.ix-scroll-lock,
-        html.ix-scroll-lock body {
-          height: var(--ix-viewport-h) !important;
-          overflow: hidden !important;
-          overscroll-behavior: none !important;
-        }
-
-        #ixCenterViewport {
-          position: fixed !important;
-          inset: 0 !important;
-          overflow-y: auto !important;
-          overflow-x: hidden !important;
-          overscroll-behavior: contain !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-
-        #ixRight {
-          height: var(--ix-viewport-h) !important;
-          overflow-y: auto !important;
-          overscroll-behavior: contain !important;
-        }
-      }
-    `;
-
-    var style = document.createElement('style');
-    style.id = STYLE_ID;
-    style.textContent = css;
-    document.head.appendChild(style);
-  }
-
-  function isShellNode(node) {
-    return node && node.nodeType === 1 && (
-      node.id === 'ixLeft' ||
-      node.id === 'ixRight' ||
-      node.id === 'ixTop' ||
-      node.id === 'ixRightToggle' ||
-      node.id === 'ixCenterViewport'
-    );
-  }
-
-  function ensureCenterViewport() {
-    var viewport = document.getElementById('ixCenterViewport');
-    if (viewport) return viewport;
-
-    viewport = document.createElement('div');
-    viewport.id = 'ixCenterViewport';
-
-    var canvas = document.createElement('div');
-    canvas.id = 'ixCenterCanvas';
-    viewport.appendChild(canvas);
-
-    var firstShell = document.getElementById('ixTop');
-    if (firstShell && firstShell.parentNode === document.body) {
-      document.body.insertBefore(viewport, firstShell);
-    } else {
-      document.body.appendChild(viewport);
-    }
-
-    var movable = [];
-    Array.prototype.forEach.call(document.body.children, function (node) {
-      if (node === viewport || isShellNode(node) || node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
-      movable.push(node);
-    });
-
-    movable.forEach(function (node) {
-      canvas.appendChild(node);
-    });
-
-    return viewport;
-  }
-
-  function ensureRightToggle() {
-    var button = document.getElementById('ixRightToggle');
-    if (button) return button;
-
-    button = document.createElement('button');
-    button.id = 'ixRightToggle';
-    button.type = 'button';
-    button.textContent = '工具';
-    button.setAttribute('aria-label', '開啟或關閉右側工具欄');
-    button.addEventListener('click', function () {
-      document.body.classList.toggle('ix-right-open');
-    });
-    document.body.appendChild(button);
-    return button;
-  }
-
-  function updateLayout() {
-    var enabled = window.innerWidth >= 768 && document.getElementById('ixLeft');
-    document.documentElement.classList.toggle('ix-scroll-lock', Boolean(enabled));
-
-    if (!enabled) {
-      document.body.classList.remove('ix-center-compact', 'ix-right-open');
-      return;
-    }
-
-    ensureCenterViewport();
-    ensureRightToggle();
-
-    var available = window.innerWidth - LEFT_W - RIGHT_W - GAP;
-    var compact = window.innerWidth >= 1024 && available < MIN_CENTER;
-    document.body.classList.toggle('ix-center-compact', compact);
-
-    if (!compact) document.body.classList.remove('ix-right-open');
-  }
-
-  function preventBodyRubberBand() {
-    document.addEventListener('touchmove', function (event) {
-      if (!document.documentElement.classList.contains('ix-scroll-lock')) return;
-
-      var target = event.target;
-      var scroller = target && target.closest
-        ? target.closest('#ixLeft, #ixRight, #ixCenterViewport, #screen-read, #uxQuiz, #usPanel, .ux-screen')
-        : null;
-
-      if (!scroller) event.preventDefault();
-    }, { passive: false });
-  }
-
-  function init() {
-    installStyle();
-    updateLayout();
-    preventBodyRubberBand();
-
-    window.addEventListener('resize', updateLayout, { passive: true });
-    window.addEventListener('orientationchange', function () {
-      setTimeout(updateLayout, 250);
-    }, { passive: true });
-
-    var observer = new MutationObserver(function () {
-      if (!document.getElementById('ixCenterViewport')) updateLayout();
-    });
-    observer.observe(document.body, { childList: true });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+(function(){
+'use strict';
+var ROOT='ix3Root',LEFT='ix3Left',CENTER='ix3Center',RIGHT='ix3Right',CANVAS='ix3Canvas';
+function isCodeNode(n){return n&&n.nodeType===1&&(n.tagName==='SCRIPT'||n.tagName==='STYLE'||n.tagName==='LINK')}
+function isShell(n){return n&&n.nodeType===1&&(n.id==='ixLeft'||n.id==='ixRight'||n.id==='ixTop'||n.id===ROOT||n.id==='ixRightToggle')}
+function make(tag,id){var e=document.createElement(tag);e.id=id;return e}
+function setup(){
+ if(innerWidth<1024||document.getElementById(ROOT))return;
+ var oldLeft=document.getElementById('ixLeft'),oldRight=document.getElementById('ixRight'),oldTop=document.getElementById('ixTop');
+ if(!oldLeft||!oldRight||!oldTop)return;
+ var root=make('div',ROOT),left=make('section',LEFT),center=make('main',CENTER),right=make('section',RIGHT),canvas=make('div',CANVAS);
+ root.setAttribute('aria-label','iPad 三欄學習工作台');left.setAttribute('aria-label','左側導覽');center.setAttribute('aria-label','中央學習內容');right.setAttribute('aria-label','右側工具');
+ document.body.insertBefore(root,document.body.firstChild);root.appendChild(left);root.appendChild(center);root.appendChild(right);
+ left.appendChild(oldLeft);center.appendChild(oldTop);center.appendChild(canvas);right.appendChild(oldRight);
+ var movable=[];
+ Array.prototype.forEach.call(document.body.children,function(n){if(n===root||isCodeNode(n)||isShell(n))return;movable.push(n)});
+ movable.forEach(function(n){canvas.appendChild(n)});
+ document.documentElement.classList.add('ix3-active');document.body.classList.add('ix3-ready','ix-enabled');
+ document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open');
+ // Keep each pane at its own scroll position.
+ [left,center,right].forEach(function(p){p.addEventListener('touchmove',function(e){e.stopPropagation()},{passive:true})});
+}
+function blockOuterRubberBand(e){if(!document.documentElement.classList.contains('ix3-active'))return;var t=e.target&&e.target.closest?e.target.closest('#ix3Left,#ix3Center,#ix3Right'):null;if(!t)e.preventDefault()}
+function init(){setup();document.addEventListener('touchmove',blockOuterRubberBand,{passive:false});window.addEventListener('orientationchange',function(){setTimeout(function(){if(innerWidth>=1024)setup()},250)},{passive:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
-
 </script>
-=======
->>>>>>> a342742ba9ca97950404334e0fc526d7fee2fb5e
+
 </body>
 </html>

@@ -1,10 +1,6 @@
 {
   "updated": "2026-09-12",
-<<<<<<< HEAD
-  "note": "V4.1 iPad 滾動修復：左右與中央三區獨立滾動，中央防壓縮，窄寬度右欄改抽屜。",
-=======
-  "note": "V5 iPad Context Workspace：全站情境側欄、零 Emoji、純白文字、無漸層。",
->>>>>>> a342742ba9ca97950404334e0fc526d7fee2fb5e
+  "note": "V4.2：真正三欄 DOM Grid，左中右完全獨立滾動，取消右欄抽屜。",
   "versions": [
     {
       "id": "v3.0",
@@ -371,47 +367,44 @@
           "d": "小於 768px 維持原操作流程"
         }
       ]
-<<<<<<< HEAD
     },
     {
-      "id": "v4.1-ipad-scroll-fix",
-      "title": "iPad 三區獨立滾動修復",
+      "id": "v4.2-true-three-columns",
+      "title": "真正三欄獨立介面",
       "date": "2026-09-12",
-      "desc": "修正中央介面被側欄壓縮，以及 iPad Safari 滾動到底時整頁脫離。",
+      "desc": "左、中、右成為同一 Grid 下的三個兄弟容器，各自獨立滾動且不互相覆蓋。",
       "items": [
         {
-          "id": "scroll-1",
+          "id": "3col-1",
           "s": "done",
-          "t": "左側獨立滾動",
-          "d": "固定高度 100dvh，overscroll contain"
+          "t": "三個獨立 DOM 欄位",
+          "d": "ix3Left、ix3Center、ix3Right"
         },
         {
-          "id": "scroll-2",
+          "id": "3col-2",
           "s": "done",
-          "t": "中央獨立滾動",
-          "d": "body 鎖定，中央使用 ixCenterViewport"
+          "t": "三欄獨立滾動",
+          "d": "每欄自己的 overflow-y 與 overscroll contain"
         },
         {
-          "id": "scroll-3",
+          "id": "3col-3",
           "s": "done",
-          "t": "右側獨立滾動",
-          "d": "不再與中央或 body 共用滾輪"
+          "t": "右欄固定常駐",
+          "d": "取消抽屜與 compact 自動收合"
         },
         {
-          "id": "scroll-4",
+          "id": "3col-4",
           "s": "done",
-          "t": "中央防壓縮",
-          "d": "保留至少 760px；空間不足時右欄自動轉抽屜"
+          "t": "中央視窗隔離",
+          "d": "設定、文章、測驗只限制於中央欄"
         },
         {
-          "id": "scroll-5",
+          "id": "3col-5",
           "s": "done",
-          "t": "iPad Safari 防脫離",
-          "d": "關閉 body 橡皮筋滾動，僅允許三個滾動容器"
+          "t": "防止互相覆蓋",
+          "d": "舊 fixed 視窗改為中央 absolute 面板"
         }
       ]
-=======
->>>>>>> a342742ba9ca97950404334e0fc526d7fee2fb5e
     }
   ],
   "checklist": [
