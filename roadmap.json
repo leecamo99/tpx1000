@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-12",
-  "note": "V3.6 Smart Routing：將模型目錄轉為功能路由，並依 Key × 模型紀錄實際成功與錯誤狀態。",
+  "note": "V3.6 Cloudflare frontend：助記圖片改由安全的 Cloudflare Worker URL 產生。",
   "versions": [
     {
       "id": "v3.0",
@@ -273,78 +273,40 @@
       ]
     },
     {
-      "id": "v3.6-rebuilt",
-      "title": "V3.6 從 V3.3 重建",
+      "id": "v3.6-cloudflare-frontend",
+      "title": "Cloudflare Workers AI 圖片前端",
       "date": "2026-09-12",
-      "desc": "使用現存 V3.3 專案重新合併稽核修復與模型偵測。",
+      "desc": "前端只保存公開 Worker URL；Cloudflare Token 必須留在 Worker Secret。",
       "items": [
         {
-          "id": "v36r-1",
+          "id": "cf-front-1",
           "s": "done",
-          "t": "移除 test001 假書",
+          "t": "Worker URL 設定與啟用開關",
           "d": ""
         },
         {
-          "id": "v36r-2",
+          "id": "cf-front-2",
           "s": "done",
-          "t": "四處 Gemini 呼叫統一走多金鑰層",
+          "t": "/health 連線測試",
           "d": ""
         },
         {
-          "id": "v36r-3",
+          "id": "cf-front-3",
           "s": "done",
-          "t": "學習範圍依 DATA 動態建置且分書分人記憶",
+          "t": "/image 圖片生成",
+          "d": "支援 image binary、base64 JSON、URL JSON"
+        },
+        {
+          "id": "cf-front-4",
+          "s": "done",
+          "t": "96×96 WebP 壓縮與既有快取",
           "d": ""
         },
         {
-          "id": "v36r-4",
+          "id": "cf-front-5",
           "s": "done",
-          "t": "冷卻改為 API Key × 模型",
-          "d": "文字配額不再鎖住圖片模型"
-        },
-        {
-          "id": "v36r-5",
-          "s": "done",
-          "t": "ListModels 偵測每支金鑰支援模型",
-          "d": "模型清單會實際影響呼叫順序"
-        }
-      ]
-    },
-    {
-      "id": "v3.6-smart-routing",
-      "title": "智慧模型路由",
-      "date": "2026-09-12",
-      "desc": "每項功能選擇適合模型；模型目錄僅作候選，實際呼叫狀態持續學習。",
-      "items": [
-        {
-          "id": "route-1",
-          "s": "done",
-          "t": "功能分流",
-          "d": "閃卡、助記、AI 教練、錯題分析、圖片各有模型優先順序"
-        },
-        {
-          "id": "route-2",
-          "s": "done",
-          "t": "Key × 模型 × 功能狀態",
-          "d": "記錄成功、429、403、404、網路錯誤"
-        },
-        {
-          "id": "route-3",
-          "s": "done",
-          "t": "實際成功路由優先",
-          "d": "下次優先使用曾成功的組合"
-        },
-        {
-          "id": "route-4",
-          "s": "done",
-          "t": "模型目錄約束",
-          "d": "只使用該 Key 的 ListModels 目錄中存在的模型"
-        },
-        {
-          "id": "route-5",
-          "s": "done",
-          "t": "路由 UI",
-          "d": "每支 Key 顯示各功能分配模型與實際狀態"
+          "t": "429 中文錯誤與文字助記保留",
+          "d": ""
         }
       ]
     }
