@@ -10849,7 +10849,139 @@ body.theme-dark .ux-mnemo .mn-go{background:#1c1c1e;border-color:#4a3f70;color:#
 body.theme-dark .ux-mnemo .mn-row{color:#e8e6e3;border-top-color:#242426}
 body.theme-dark .ux-mnemo .mn-row b{color:#b9a8ff}
 body.theme-dark .ux-mnemo .mn-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+.ux-mnemo .mn-img{margin:8px 0 2px}
+.ux-mnemo .mn-img img{width:96px;height:96px;border-radius:8px;object-fit:cover;border:1px solid #e8e0d0;cursor:zoom-in;display:block}
+.ux-mnemo .mn-img.big img{width:200px;height:200px;cursor:zoom-out}
+body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
 </style>
 
+<script>
+/* TPX1000 V3.1 - AI 記憶輔助圖片（96x96 WebP 縮圖） */
+(function(){
+  'use strict';
+  var THUMB = 96;
+  var QUALITY = 0.55;
+  var MODEL = 'gemini-2.5-flash-image';
+
+  function gmKey(){ try{ return localStorage.getItem('kinGeminiKey') || ''; }catch(e){ return ''; } }
+
+  function shrink(dataUrl){
+    return new Promise(function(res, rej){
+      var im = new Image();
+      im.onload = function(){
+        var s = Math.min(im.width, im.height);
+        var c = document.createElement('canvas');
+        c.width = c.height = THUMB;
+        var x = c.getContext('2d');
+        x.imageSmoothingQuality = 'high';
+        x.drawImage(im, (im.width - s) / 2, (im.height - s) / 2, s, s, 0, 0, THUMB, THUMB);
+        var out = c.toDataURL('image/webp', QUALITY);
+        if(out.indexOf('data:image/webp') !== 0) out = c.toDataURL('image/jpeg', QUALITY);
+        res(out);
+      };
+      im.onerror = function(){ rej(new Error('圖片解碼失敗')); };
+      im.src = dataUrl;
+    });
+  }
+
+  function genImage(prompt){
+    var k = gmKey();
+    if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰'));
+    var p = String(prompt || '').trim()
+      + ', minimal flat icon, single subject, solid background, no text, no letters, high contrast';
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL
+        + ':generateContent?key=' + encodeURIComponent(k), {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ contents: [{ parts: [{ text: p }] }] })
+    })
+    .then(function(r){
+      return r.ok ? r.json() : r.text().then(function(t){
+        throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 100));
+      });
+    })
+    .then(function(j){
+      var parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
+      for(var i = 0; i < parts.length; i++){
+        var d = parts[i].inlineData || parts[i].inline_data;
+        if(d && d.data) return shrink('data:' + (d.mimeType || d.mime_type || 'image/png') + ';base64,' + d.data);
+      }
+      throw new Error('回應沒有圖片');
+    });
+  }
+
+  window.KIN_MNEMO_IMG = { gen: genImage, shrink: shrink, THUMB: THUMB };
+
+  function entry(){
+    try{ if(currentList && currentList[currentIdx]) return currentList[currentIdx]; }catch(e){}
+    return null;
+  }
+
+  function msg(box, t, err){
+    var m = box.querySelector('.mn-msg');
+    if(!m) return;
+    m.textContent = t || '';
+    m.className = 'mn-msg' + (err ? ' err' : '');
+    if(t && !err) setTimeout(function(){ if(m.textContent === t) m.textContent = ''; }, 4000);
+  }
+
+  function paint(box, id, data){
+    var body = box.querySelector('.mn-body');
+    if(!body) return;
+    var old = body.querySelector('.mn-img');
+    if(old) old.parentNode.removeChild(old);
+    if(!data || !data.img) return;
+    var w = document.createElement('div');
+    w.className = 'mn-img';
+    w.innerHTML = '<img src="' + data.img + '" alt="" width="' + THUMB + '" height="' + THUMB
+      + '" loading="lazy" decoding="async">';
+    w.querySelector('img').addEventListener('click', function(){ w.classList.toggle('big'); });
+    var act = body.querySelector('.mn-act');
+    body.insertBefore(w, act || null);
+  }
+
+  function wire(box){
+    var e = entry();
+    if(!e) return;
+    var body = box.querySelector('.mn-body');
+    var act = body && body.querySelector('.mn-act');
+    if(!act || act.querySelector('[data-act="img"]')) return;
+
+    var data = window.KIN_MNEMO && KIN_MNEMO.get ? KIN_MNEMO.get(e.id) : null;
+    if(!data || !data.image_prompt) return;
+    paint(box, e.id, data);
+
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'mn-b';
+    b.setAttribute('data-act', 'img');
+    b.textContent = data.img ? '重新生成圖片' : '生成圖片';
+    act.insertBefore(b, act.firstChild);
+
+    b.addEventListener('click', function(ev){
+      ev.preventDefault(); ev.stopPropagation();
+      var cur = KIN_MNEMO.get(e.id);
+      if(!cur || !cur.image_prompt){ msg(box, '沒有圖像描述', true); return; }
+      b.disabled = true; b.textContent = '生成中…';
+      genImage(cur.image_prompt).then(function(src){
+        cur.img = src;
+        KIN_MNEMO.set(e.id, cur);
+        paint(box, e.id, cur);
+        msg(box, '圖片已生成，約 ' + Math.round(src.length * 0.75 / 1024) + ' KB');
+      }).catch(function(err){
+        msg(box, '生成失敗：' + err.message, true);
+      }).then(function(){
+        b.disabled = false;
+        b.textContent = (KIN_MNEMO.get(e.id) || {}).img ? '重新生成圖片' : '生成圖片';
+      });
+    });
+  }
+
+  setInterval(function(){
+    var box = document.getElementById('uxMnemo');
+    if(box && box.querySelector('.mn-act')) wire(box);
+  }, 600);
+})();
+</script>
 </body>
 </html>
