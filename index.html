@@ -4168,6 +4168,9 @@ body.theme-dark .rm-msg{color:#8a8680}
         <button type="button" class="pri" onclick="gmSave()">儲存並測試 Gemini</button>
         <button type="button" class="warn" onclick="gmClearKey()">清除 Gemini 金鑰</button>
       </div>
+      <button type="button" id="kkmEntry" class="kkm-entry"
+        onclick="if(window.KIN_KEYS_UI)KIN_KEYS_UI()">金鑰管理（可存多支，自動輪替）</button>
+      <div id="kkmMini" class="kkm-mini"></div>
       <div class="tip">未設定金鑰時使用系統語音，功能不受影響。設定翻譯金鑰後，收藏沒有中文的片語會自動翻譯。唸過的字會存進本機快取，重複複習不再呼叫 API。建議到 Google Cloud Console 將金鑰限制為僅 Cloud Text-to-Speech，並設定 HTTP 參照網址為你的網站，避免外流被盜用。</div>
     </div>
 
@@ -5959,6 +5962,13 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var k = i ? i.value.trim() : '';
     if(!k){ ttsMsg('請先貼上 Gemini 金鑰。', 'err'); return; }
     try{ localStorage.setItem(GM_KEY, k); }catch(e){}
+    /* 同步進多金鑰清單，單支輸入也能被輪替引擎接手 */
+    try{
+      if(window.KIN_GM && KIN_GM.keys){
+        var ks = KIN_GM.keys();
+        if(ks.indexOf(k) < 0) KIN_GM.saveKeys([k].concat(ks));
+      }
+    }catch(e){}
     ttsMsg('Gemini 金鑰已儲存，測試中\u2026');
     fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -11119,5 +11129,333 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
   };
 })();
 </script>
+<script>
+/* ==========================================================================
+   TPX1000 V3.3  Gemini 多金鑰輪替
+   - 可輸入任意多支金鑰，一行一支
+   - 撞到 429 自動換下一支，全部用完才回報失敗
+   - 每支金鑰各自記錄冷卻時間，到點自動解除
+   - 相容 V3.2 的 KIN_GM 傳輸層；舊的 kinGeminiKey 會自動匯入
+   貼在 </body> 之前，且必須放在 V3.2 的 KIN_GM 那段 script「之後」
+   ========================================================================== */
+(function(){
+  'use strict';
+
+  var LS_KEYS = 'kinGeminiKeys';
+  var LS_OLD  = 'kinGeminiKey';
+  var LS_COOL = 'kinGeminiKeyCool';
+  var TIMEOUT = 45000;
+  var MAX_TRY = 3;
+  var TEXT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+
+  function now(){ return Date.now(); }
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  /* ---------------- 金鑰存取 ---------------- */
+  function loadKeys(){
+    var arr = [];
+    try{ arr = JSON.parse(localStorage.getItem(LS_KEYS) || '[]') || []; }catch(e){}
+    if(!Array.isArray(arr)) arr = [];
+    arr = arr.map(function(s){ return String(s || '').trim(); }).filter(Boolean);
+    /* 首次啟用時，把舊的單一金鑰搬進來 */
+    if(!arr.length){
+      var old = '';
+      try{ old = (localStorage.getItem(LS_OLD) || '').trim(); }catch(e){}
+      if(old){ arr = [old]; saveKeys(arr); }
+    }
+    return arr;
+  }
+  function saveKeys(arr){
+    arr = (arr || []).map(function(s){ return String(s || '').trim(); }).filter(Boolean);
+    /* 去重但保留順序 */
+    var seen = {}, out = [];
+    arr.forEach(function(k){ if(!seen[k]){ seen[k] = 1; out.push(k); } });
+    try{
+      localStorage.setItem(LS_KEYS, JSON.stringify(out));
+      /* 同步第一支到舊欄位，讓還沒改寫的舊程式也能運作 */
+      if(out.length) localStorage.setItem(LS_OLD, out[0]);
+      else localStorage.removeItem(LS_OLD);
+    }catch(e){}
+    return out;
+  }
+
+  /* ---------------- 冷卻表 ---------------- */
+  function coolAll(){
+    try{ return JSON.parse(localStorage.getItem(LS_COOL) || '{}') || {}; }catch(e){ return {}; }
+  }
+  function coolSave(m){ try{ localStorage.setItem(LS_COOL, JSON.stringify(m)); }catch(e){} }
+  function coolUntil(k){
+    var u = coolAll()[k] || 0;
+    return u > now() ? u : 0;
+  }
+  function setCool(k, ms){
+    var m = coolAll();
+    m[k] = now() + ms;
+    coolSave(m);
+  }
+  function clearCool(k){
+    var m = coolAll();
+    if(k) delete m[k]; else m = {};
+    coolSave(m);
+  }
+  function tail(k){ return k.length > 8 ? ('…' + k.slice(-6)) : k; }
+
+  /* 可用金鑰：未冷卻的排前面，全冷卻時回傳最快解除的那支 */
+  function available(){
+    var ks = loadKeys();
+    if(!ks.length) return [];
+    var free = ks.filter(function(k){ return !coolUntil(k); });
+    return free.length ? free : [];
+  }
+  function soonest(){
+    var ks = loadKeys(), best = 0;
+    ks.forEach(function(k){
+      var u = coolUntil(k);
+      if(u && (!best || u < best)) best = u;
+    });
+    return best;
+  }
+
+  /* ---------------- 錯誤訊息 ---------------- */
+  function humanize(status, body){
+    var retry = 0;
+    var m = /"retryDelay"\s*:\s*"(\d+)s"/.exec(body || '');
+    if(m) retry = parseInt(m[1], 10) * 1000;
+    var perDay = /PerDay|RequestsPerDay|_per_day/i.test(body || '');
+    if(status === 429){
+      return { msg: perDay ? '每日配額已用完' : '每分鐘限流', perDay: perDay, retry: retry };
+    }
+    if(status === 403) return { msg: '金鑰無效或未啟用 Generative Language API' };
+    if(status === 400) return { msg: '請求格式有誤，或這支金鑰不支援此模型' };
+    if(status === 404) return { msg: '找不到指定模型' };
+    if(status >= 500) return { msg: 'Google 伺服器暫時異常' };
+    return { msg: 'HTTP ' + status };
+  }
+  function isNetErr(e){
+    return /Load failed|Failed to fetch|NetworkError|網路|timeout|逾時|abort/i
+      .test(String((e && e.message) || e || ''));
+  }
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function waitMsg(until){
+    var s = Math.max(0, Math.round((until - now()) / 1000));
+    if(s < 90) return '請等 ' + s + ' 秒後再試';
+    if(s < 5400) return '請等 ' + Math.ceil(s / 60) + ' 分鐘後再試';
+    return '免費額度約於台灣時間下午四點重置';
+  }
+
+  /* ---------------- 單次請求 ---------------- */
+  function once(model, key, payload){
+    var ctl = null, timer = null, opt = {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    };
+    try{ ctl = new AbortController(); }catch(e){}
+    if(ctl){
+      opt.signal = ctl.signal;
+      timer = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, TIMEOUT);
+    }
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + model + ':generateContent?key=' + encodeURIComponent(key);
+    return fetch(url, opt).then(function(r){
+      if(timer) clearTimeout(timer);
+      if(r.ok){ clearCool(key); return r.json(); }
+      return r.text().then(function(b){
+        var h = humanize(r.status, b);
+        var err = new Error(h.msg);
+        err.status = r.status;
+        err.quota = (r.status === 429);
+        err.perDay = !!h.perDay;
+        err.retry = h.retry || 0;
+        err.badKey = (r.status === 403 || r.status === 400);
+        throw err;
+      });
+    }, function(e){
+      if(timer) clearTimeout(timer);
+      var err = new Error(isNetErr(e) ? '連線失敗' : ((e && e.message) || '連線失敗'));
+      err.net = true;
+      throw err;
+    });
+  }
+
+  /* ---------------- 多金鑰輪替主流程 ---------------- */
+  function call(payload, opts){
+    opts = opts || {};
+    var models = opts.models || TEXT_MODELS;
+    var keys = available();
+
+    if(!loadKeys().length){
+      return Promise.reject(new Error('尚未設定 Gemini 金鑰，請按「金鑰管理」新增'));
+    }
+    if(!keys.length){
+      var u = soonest();
+      return Promise.reject(new Error('所有金鑰都已達配額上限。' + (u ? waitMsg(u) : '請稍後再試')));
+    }
+
+    var ki = 0, mi = 0, attempt = 0, notes = [];
+
+    function run(){
+      var key = keys[ki];
+      return once(models[mi], key, payload).catch(function(e){
+
+        /* 金鑰本身有問題或配額用盡：換下一支金鑰 */
+        if(e.quota || e.badKey){
+          if(e.quota) setCool(key, e.perDay ? (6 * 60 * 60 * 1000) : (e.retry || 60000));
+          notes.push(tail(key) + ' ' + e.message);
+          if(ki < keys.length - 1){
+            ki++; mi = 0; attempt = 0;
+            return sleep(250).then(run);
+          }
+          /* 金鑰全試完，改用備援模型再跑一輪 */
+          if(mi < models.length - 1){
+            mi++; ki = 0; attempt = 0;
+            return sleep(300).then(run);
+          }
+          var u2 = soonest();
+          var err = new Error('已試過 ' + keys.length + ' 支金鑰，全部無法使用。\n'
+            + notes.slice(0, 4).join('\n') + (u2 ? ('\n' + waitMsg(u2)) : ''));
+          throw err;
+        }
+
+        /* 網路或伺服器錯誤：同一支金鑰退避重試 */
+        if((e.net || (e.status && e.status >= 500)) && attempt < MAX_TRY - 1){
+          attempt++;
+          return sleep(700 * Math.pow(2, attempt - 1)).then(run);
+        }
+
+        /* 重試耗盡，還有其他金鑰就換 */
+        if(ki < keys.length - 1){
+          ki++; attempt = 0;
+          return sleep(250).then(run);
+        }
+        throw e;
+      });
+    }
+    return run();
+  }
+
+  function textOf(j){
+    var c0 = j && j.candidates && j.candidates[0];
+    var parts = (c0 && c0.content && c0.content.parts) || [];
+    for(var i = 0; i < parts.length; i++){ if(parts[i].text) return parts[i].text; }
+    return '';
+  }
+
+  /* 覆寫 V3.2 的傳輸層，其餘功能不必改動 */
+  window.KIN_GM = {
+    call: call,
+    text: textOf,
+    keys: loadKeys,
+    saveKeys: saveKeys,
+    clearCool: clearCool,
+    cooling: function(){ return available().length ? 0 : soonest(); },
+    models: TEXT_MODELS
+  };
+
+  /* ---------------- 金鑰管理介面 ---------------- */
+  function openMgr(){
+    var old = document.getElementById('kinKeyMgr');
+    if(old) old.parentNode.removeChild(old);
+
+    var box = document.createElement('div');
+    box.id = 'kinKeyMgr';
+    box.className = 'kkm-mask';
+    box.innerHTML =
+      '<div class="kkm-panel">'
+      + '<h2>Gemini 金鑰管理</h2>'
+      + '<p class="kkm-tip">一行一支金鑰。系統會由上往下輪流使用，'
+      + '某支撞到配額上限就自動換下一支。</p>'
+      + '<textarea id="kkmTa" rows="7" spellcheck="false" autocapitalize="off" '
+      + 'autocorrect="off" placeholder="AIzaSy...第一支&#10;AIzaSy...第二支&#10;AIzaSy...第三支"></textarea>'
+      + '<div id="kkmStat" class="kkm-stat"></div>'
+      + '<div class="kkm-act">'
+      + '<button type="button" class="kkm-b main" data-a="save">儲存</button>'
+      + '<button type="button" class="kkm-b" data-a="reset">解除冷卻</button>'
+      + '<button type="button" class="kkm-b" data-a="close">關閉</button>'
+      + '</div></div>';
+    document.body.appendChild(box);
+
+    var ta = box.querySelector('#kkmTa');
+    ta.value = loadKeys().join('\n');
+    paintStat();
+
+    function paintStat(){
+      var ks = loadKeys(), s = box.querySelector('#kkmStat');
+      if(!ks.length){ s.innerHTML = '<span class="warn">尚未設定任何金鑰</span>'; return; }
+      s.innerHTML = ks.map(function(k, i){
+        var u = coolUntil(k);
+        return '<div class="kkm-row"><b>' + (i + 1) + '</b><code>' + esc(tail(k)) + '</code>'
+          + (u ? '<span class="cool">冷卻中，' + esc(waitMsg(u)) + '</span>'
+               : '<span class="ok">可用</span>') + '</div>';
+      }).join('');
+    }
+
+    box.addEventListener('click', function(ev){
+      if(ev.target === box) box.parentNode.removeChild(box);
+      var b = ev.target.closest && ev.target.closest('.kkm-b');
+      if(!b) return;
+      var a = b.getAttribute('data-a');
+      if(a === 'close'){ box.parentNode.removeChild(box); return; }
+      if(a === 'reset'){ clearCool(); paintStat(); return; }
+      if(a === 'save'){
+        var out = saveKeys(ta.value.split(/[\r\n,;\s]+/));
+        ta.value = out.join('\n');
+        paintStat();
+        b.textContent = '已儲存 ' + out.length + ' 支';
+        setTimeout(function(){ b.textContent = '儲存'; }, 1800);
+      }
+    });
+  }
+  window.KIN_KEYS_UI = openMgr;
+
+  /* 使用者專區的即時狀態列 */
+  function paintMini(){
+    var el = document.getElementById('kkmMini');
+    if(!el) return;
+    var ks = loadKeys();
+    if(!ks.length){ el.innerHTML = ''; return; }
+    var free = ks.filter(function(k){ return !coolUntil(k); }).length;
+    el.innerHTML = '目前存有 <b>' + ks.length + '</b> 支金鑰，可用 <b>'
+      + free + '</b> 支' + (free < ks.length ? '，其餘配額冷卻中' : '');
+  }
+  setInterval(paintMini, 1500);
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paintMini);
+  else paintMini();
+})();
+</script>
+<style>
+.kkm-mask{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.kkm-panel{width:100%;max-width:460px;max-height:86vh;overflow-y:auto;background:#fff;border-radius:14px;padding:18px 16px}
+.kkm-panel h2{margin:0 0 8px;font-size:16px;color:#5b46a8}
+.kkm-tip{margin:0 0 10px;font-size:12px;line-height:1.7;color:#7a7671}
+#kkmTa{width:100%;box-sizing:border-box;padding:10px;border:1px solid #ddd;border-radius:8px;font:12px/1.7 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.kkm-stat{margin:10px 0 2px}
+.kkm-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid #f0ece4;font-size:12px}
+.kkm-row b{flex:0 0 16px;color:#5b46a8}
+.kkm-row code{flex:1;font:12px ui-monospace,Menlo,Consolas,monospace;color:#555}
+.kkm-row .ok{color:#2e7d32}
+.kkm-row .cool{color:#c0392b}
+.kkm-stat .warn{font-size:12px;color:#c0392b}
+.kkm-act{display:flex;gap:8px;margin-top:14px}
+.kkm-b{flex:1;height:38px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#333;font-size:13px;font-weight:700;touch-action:manipulation}
+.kkm-b.main{background:#5b46a8;border-color:#5b46a8;color:#fff}
+.kkm-entry{display:block;width:100%;margin-bottom:9px;height:36px;border-radius:8px;border:1px solid #c9bdf0;background:#f4f0ff;color:#5b46a8;font-size:12.5px;font-weight:700;touch-action:manipulation}
+.kkm-mini{font-size:11.5px;line-height:1.7;color:#7a7671;margin-bottom:9px}
+.kkm-mini:empty{display:none}
+.kkm-mini b{color:#5b46a8}
+body.theme-dark .kkm-panel{background:#141416;color:#e8e6e3}
+body.theme-dark .kkm-panel h2{color:#b9a8ff}
+body.theme-dark #kkmTa{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .kkm-row{border-top-color:#242426}
+body.theme-dark .kkm-row code{color:#cfcac4}
+body.theme-dark .kkm-b{background:#1c1c1e;border-color:#3a3a3c;color:#e8e6e3}
+body.theme-dark .kkm-b.main{background:#5b46a8;border-color:#5b46a8;color:#fff}
+body.theme-dark .kkm-entry{background:#1d1a2b;border-color:#4a3f70;color:#b9a8ff}
+body.theme-dark .kkm-mini b{color:#b9a8ff}
+</style>
 </body>
 </html>
