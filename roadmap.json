@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-12",
-  "note": "V3.6 Cloudflare frontend：助記圖片改由安全的 Cloudflare Worker URL 產生。",
+  "note": "V4.1 iPad 滾動修復：左右與中央三區獨立滾動，中央防壓縮，窄寬度右欄改抽屜。",
   "versions": [
     {
       "id": "v3.0",
@@ -307,6 +307,102 @@
           "s": "done",
           "t": "429 中文錯誤與文字助記保留",
           "d": ""
+        }
+      ]
+    },
+    {
+      "id": "hotfix-delete-capture-return",
+      "title": "完整刪除與閃卡捕獲流程",
+      "date": "2026-09-12",
+      "desc": "刪除所有學習資料；新增閃卡立即開啟並返回來源。",
+      "items": [
+        {
+          "id": "wipe-all",
+          "s": "done",
+          "t": "完整刪除使用者資料",
+          "d": "今日目標、學習時間、歷程、收藏、筆記、測驗、AI 助記與圖片"
+        },
+        {
+          "id": "capture-edit",
+          "s": "done",
+          "t": "新增閃卡立即開啟詳情",
+          "d": "可立刻 Gemini 補充或管理"
+        },
+        {
+          "id": "capture-return",
+          "s": "done",
+          "t": "返回原本閱讀位置",
+          "d": "保存來源書籍、單字與範圍"
+        }
+      ]
+    },
+    {
+      "id": "v5-ipad-context-shell",
+      "title": "iPad 全站情境工作台",
+      "date": "2026-09-12",
+      "desc": "功能頁不再疊在首頁；左右欄依文章、單字、測驗、閃卡、AI、弱點與紀錄模式更新。",
+      "items": [
+        {
+          "id": "ix-1",
+          "s": "done",
+          "t": "全站 iPad 三欄 Shell",
+          "d": "中央維持舒適內容寬度"
+        },
+        {
+          "id": "ix-2",
+          "s": "done",
+          "t": "情境式左右側欄",
+          "d": "文章、單字、測驗、閃卡、AI 教練、弱點、每日與歷程"
+        },
+        {
+          "id": "ix-3",
+          "s": "done",
+          "t": "視覺統一",
+          "d": "零 Emoji、零藍色操作文字、零漸層、白灰橘配色"
+        },
+        {
+          "id": "ix-4",
+          "s": "done",
+          "t": "手機版回退",
+          "d": "小於 768px 維持原操作流程"
+        }
+      ]
+    },
+    {
+      "id": "v4.1-ipad-scroll-fix",
+      "title": "iPad 三區獨立滾動修復",
+      "date": "2026-09-12",
+      "desc": "修正中央介面被側欄壓縮，以及 iPad Safari 滾動到底時整頁脫離。",
+      "items": [
+        {
+          "id": "scroll-1",
+          "s": "done",
+          "t": "左側獨立滾動",
+          "d": "固定高度 100dvh，overscroll contain"
+        },
+        {
+          "id": "scroll-2",
+          "s": "done",
+          "t": "中央獨立滾動",
+          "d": "body 鎖定，中央使用 ixCenterViewport"
+        },
+        {
+          "id": "scroll-3",
+          "s": "done",
+          "t": "右側獨立滾動",
+          "d": "不再與中央或 body 共用滾輪"
+        },
+        {
+          "id": "scroll-4",
+          "s": "done",
+          "t": "中央防壓縮",
+          "d": "保留至少 760px；空間不足時右欄自動轉抽屜"
+        },
+        {
+          "id": "scroll-5",
+          "s": "done",
+          "t": "iPad Safari 防脫離",
+          "d": "關閉 body 橡皮筋滾動，僅允許三個滾動容器"
         }
       ]
     }

@@ -11530,5 +11530,462 @@ body.theme-dark .kkm-mini b{color:#b9a8ff}
 .cfai-set{margin:10px 0;padding:11px;border:1px solid #d9d0f2;border-radius:10px;background:#faf8ff}.cfai-toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;font-size:12px;font-weight:700;color:#5b46a8}.cfai-toggle input{width:20px;height:20px;accent-color:#5b46a8}.cfai-stat{font-size:11.5px;line-height:1.6;min-height:18px}.cfai-stat.ok{color:#2e7d32}.cfai-stat.err{color:#c0392b}body.theme-dark .cfai-set{background:#171421;border-color:#413767}body.theme-dark .cfai-toggle{color:#b9a8ff}
 </style>
 
+
+<script>
+/* TPX1000 integrated fix: complete delete + capture-edit-return */
+(function(){
+'use strict';
+var RETURN_KEY='kinCaptureReturnV1';
+function uid(){try{if(window.KIN_USER&&typeof window.KIN_USER.id==='function'){var v=window.KIN_USER.id();if(v)return String(v);}}catch(e){}try{return String(localStorage.getItem('kinUser')||'paul');}catch(e2){return 'paul';}}
+function uname(){try{if(window.KIN_USER&&typeof window.KIN_USER.name==='function')return String(window.KIN_USER.name()||uid());}catch(e){}return uid();}
+function preserve(k){return /^(kinUser|kinTheme|kinUX|kinPlayMode|kinSpeed|kin_phrase_times|kinAutoSpeak|kinVoice|kinVoiceSrc|kinTtsKey|kinTransKey|kinGeminiKey|kinGeminiKeys|kinGeminiKeyCool|kinGeminiKeyCoolV2|kinGeminiModelCool|kinGeminiCaps|kinGeminiCapsV2|kinGeminiRouteStateV1|kinCfAiWorkerUrl|kinCfAiEnabled|kinLastBook|kinBook|kinBooks|kinDevice|deviceId)$/i.test(k)||/^(tts|translation|gemini|cloudflare|cfai|api)[.:_-]/i.test(k);}
+function scoped(k,u){var x=String(k).toLowerCase(),q=String(u).toLowerCase();return x.indexOf(':'+q+':')>=0||x.endsWith(':'+q)||x.indexOf('user:'+q)>=0||x.indexOf('/'+q+'/')>=0;}
+function learning(k){return /(status|srs|sense|progress|history|hist|study|session|today|daily|goal|streak|achiev|calendar|quiz|wrong|weak|collect|favorite|favourite|note|read|mnemo|memory|deck|elapsed|time|target|done|learn|review|strength)/i.test(k);}
+function removeKey(k,u){if(!k||preserve(k))return false;if(/^book:[^:]+:[^:]+:(status|srs)$/i.test(k))return scoped(k,u);if(/^(kinSense|kinCollect|kinNote|kinNotes|kinQuiz|kinQuizAi|kinRead|kinMnemo|kinStudy|kinStudyTime|kinStudyHistory|kinDailyGoal|kinGoal|kinGoalDays|kinAchievement|kinAchievements|kinCalendar|kinSession|kinSessions|kinWrong|kinWeak|kinDeck|kinWordHist|kinProgress|kinTarget|kinStrength)(:|$)/i.test(k))return scoped(k,u)||k.indexOf(':')<0;if(scoped(k,u)&&learning(k))return true;return /^(book:[^:]+:(status|srs)|kin(Status|Srs|Sense|Collect|Note|Notes|Quiz|QuizAi|Read|Mnemo|Study|StudyTime|History|DailyGoal|Goal|GoalDays|Achievement|Achievements|Calendar|Session|Sessions|Wrong|Weak|Deck|WordHist|Progress|Target|Strength)(:|$))/i.test(k);}
+function deletionKeys(u){var a=[];for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(removeKey(k,u))a.push(k);}return a;}
+function clearSession(u){var n=0;try{for(var i=sessionStorage.length-1;i>=0;i--){var k=sessionStorage.key(i);if(k&&(scoped(k,u)||learning(k)||/^kin(Return|Jump|Quiz|Study|Capture)/i.test(k))){sessionStorage.removeItem(k);n++;}}}catch(e){}return n;}
+function repaint(){try{statusMap={};}catch(e){}try{srsMap={};}catch(e){}try{senseMap={};}catch(e){}['loadStatus','srsLoad','updateStats','renderList','refreshAllStatusUI','srsBadge','srsRender'].forEach(function(n){try{if(typeof window[n]==='function')window[n]();}catch(e){}});['__kinPaintStrength','__kinPaintDeck','__kinPaintReadEntry','__kinPaintNoteWords','__kinRenderDeckManager','__kinPaintRecordStat'].forEach(function(n){try{if(typeof window[n]==='function')window[n]();}catch(e){}});}
+window.rmWipeUser=function(){var u=uid(),name=uname();if(!confirm('完整刪除「'+name+'」的全部學習資料？\n\n將刪除：所有書籍標記、SRS、詞義熟悉度、今日目標、學習時間、歷程、收藏、筆記、測驗、AI 助記與圖片。\n\n將保留：API Key、Cloudflare Worker URL、主題、語速與裝置設定。\n\n此操作無法復原。'))return;if(prompt('請輸入 DELETE 確認：','')!=='DELETE'){alert('未輸入 DELETE，已取消。');return;}var ks=deletionKeys(u);ks.forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});var sn=clearSession(u);try{['kinSyncCursor:'+u,'kinSyncMeta:'+u,'gsMeta:'+u,'kinCloudSnapshot:'+u].forEach(function(k){localStorage.removeItem(k);});localStorage.setItem('kinUserReset:'+u,JSON.stringify({at:new Date().toISOString(),removed:ks.length}));}catch(e){}repaint();alert('完整刪除完成。\n\n已刪除 '+ks.length+' 筆學習資料及 '+sn+' 筆暫存。\n今日目標、學習時間、歷程、收藏、筆記與助記圖片均已清除。\n\n頁面將重新載入。');location.reload();};
+function context(){var e=null;try{e=currentList&&currentList[currentIdx];}catch(x){}return{book:(window.CURRENT_BOOK&&window.CURRENT_BOOK.id)||'kin1000',id:e&&e.id?String(e.id):'',word:e&&e.word||'',levels:(typeof currentLevels!=='undefined'&&currentLevels)?currentLevels.slice():['all'],scroll:window.scrollY||0,at:Date.now()};}
+function saveCtx(c){try{sessionStorage.setItem(RETURN_KEY,JSON.stringify(c));}catch(e){}}
+function getCtx(){try{return JSON.parse(sessionStorage.getItem(RETURN_KEY)||'null');}catch(e){return null;}}
+function clearCtx(){try{sessionStorage.removeItem(RETURN_KEY);}catch(e){}}
+function openCard(c){if(!c||!c.id)return;window.__kinPendingOpen=c.id;if(typeof window.loadBookById==='function')window.loadBookById('custom');else if(typeof window.__kinOpenCustom==='function')window.__kinOpenCustom();}
+if(typeof window.nwTap==='function'&&window.KIN_COLLECT){var originalTap=window.nwTap;window.nwTap=function(text,el){var before=window.KIN_COLLECT.find(text),ctx=context(),r=originalTap.apply(this,arguments),after=window.KIN_COLLECT.find(text);if(!before&&after){saveCtx(ctx);setTimeout(function(){openCard(after);},80);}return r;};}
+window.kinReturnToCaptureSource=function(){var c=getCtx();if(!c)return;clearCtx();try{currentLevels=(c.levels&&c.levels.length)?c.levels:['all'];currentLevel=currentLevels.indexOf('all')>=0?'all':currentLevels[0];}catch(e){}window.__kinPendingOpen=c.id||null;if(window.CURRENT_BOOK&&window.CURRENT_BOOK.id===c.book){if(c.id&&typeof window.openDetail==='function')window.openDetail(c.id);else if(typeof window.showList==='function')window.showList();}else if(typeof window.loadBookById==='function')window.loadBookById(c.book);setTimeout(function(){if(!c.id)window.scrollTo(0,c.scroll||0);},250);};
+function paintReturn(){var old=document.getElementById('kinCaptureReturnBtn'),c=getCtx(),custom=!!(window.CURRENT_BOOK&&window.CURRENT_BOOK.id==='custom'),detail=document.getElementById('screen-detail');if(!c||!custom||!detail||!detail.classList.contains('active')){if(old)old.remove();return;}if(old)return;var b=document.createElement('button');b.id='kinCaptureReturnBtn';b.type='button';b.textContent='← 回到原本閱讀位置'+(c.word?'：'+c.word:'');b.onclick=window.kinReturnToCaptureSource;b.style.cssText='position:fixed;left:12px;right:12px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:12040;min-height:46px;border:0;border-radius:14px;background:#5b46a8;color:#fff;font-size:14px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.28)';document.body.appendChild(b);}
+setInterval(paintReturn,500);
+})();
+</script>
+
+
+<style id="kinIpadShellStyle">
+/* TPX1000 iPad Context Workspace. No emoji, no blue type, no gradients. */
+:root{--ix-bg:#080808;--ix-card:#141414;--ix-card2:#1c1c1e;--ix-line:#2c2c2e;--ix-text:#f5f5f5;--ix-muted:#a3a3a3;--ix-orange:#ff7a1a;--ix-green:#42b883;--ix-red:#e85a63}
+#ixLeft,#ixRight,#ixTop{display:none}
+@media (min-width:1024px){
+ html,body{background:var(--ix-bg)!important;color:var(--ix-text)!important}
+ body.ix-enabled{padding-left:236px!important;padding-right:286px!important;box-sizing:border-box!important}
+ body.ix-enabled *{background-image:none!important}
+ body.ix-enabled a,body.ix-enabled button{color:var(--ix-text)}
+ body.ix-enabled .blue,body.ix-enabled [style*="color:blue"],body.ix-enabled [style*="#06f"],body.ix-enabled [style*="#007aff"],body.ix-enabled [style*="#0a84ff"]{color:var(--ix-text)!important}
+ #ixLeft,#ixRight{display:flex;position:fixed;top:0;bottom:0;z-index:11800;background:#0d0d0d;border-color:var(--ix-line);flex-direction:column;color:var(--ix-text);overflow:auto;overscroll-behavior:contain}
+ #ixLeft{left:0;width:220px;border-right:1px solid var(--ix-line)}
+ #ixRight{right:0;width:270px;border-left:1px solid var(--ix-line)}
+ #ixTop{display:flex;position:fixed;left:220px;right:270px;top:0;height:54px;z-index:11790;background:#0b0b0b;border-bottom:1px solid var(--ix-line);align-items:center;padding:0 16px;gap:12px;color:var(--ix-text)}
+ body.ix-enabled #app,body.ix-enabled #root,body.ix-enabled main{max-width:900px!important;margin-left:auto!important;margin-right:auto!important}
+ body.ix-enabled .screen,body.ix-enabled #screen-read,body.ix-enabled .ux-screen{max-width:900px!important;margin-left:auto!important;margin-right:auto!important}
+ body.ix-enabled #screen-read{left:220px!important;right:270px!important;width:auto!important;max-width:none!important}
+ body.ix-enabled #uxQuiz{left:220px!important;right:270px!important;width:auto!important}
+ body.ix-enabled #usPanel{left:220px!important;right:270px!important;width:auto!important}
+ .ix-brand{padding:20px 16px 15px;border-bottom:1px solid var(--ix-line)}
+ .ix-brand b{font-size:19px;letter-spacing:.8px;color:var(--ix-text)}
+ .ix-brand small{display:block;margin-top:4px;color:var(--ix-muted);font-size:11px}
+ .ix-title{font-size:13px;font-weight:800;color:var(--ix-text);letter-spacing:.2px}
+ .ix-context{margin-left:auto;color:var(--ix-orange);font-size:12px;font-weight:800;border:1px solid #63330f;border-radius:999px;padding:6px 10px;background:#1a1009}
+ .ix-section{padding:14px 14px 4px}
+ .ix-section h3{font-size:11px;color:var(--ix-muted);text-transform:uppercase;letter-spacing:1px;margin:0 0 9px}
+ .ix-item,.ix-action{width:100%;display:flex;align-items:center;gap:9px;min-height:42px;padding:9px 10px;margin:0 0 6px;border:1px solid transparent;border-radius:9px;background:transparent!important;color:var(--ix-text)!important;text-align:left;font-size:13px;box-sizing:border-box}
+ .ix-item.active,.ix-action.primary{border-color:#8d410d;background:#1c1008!important;color:var(--ix-text)!important}
+ .ix-item:hover,.ix-action:hover{border-color:var(--ix-line);background:var(--ix-card)!important}
+ .ix-mark{width:8px;height:8px;border:1px solid var(--ix-muted);border-radius:2px;flex:0 0 auto}
+ .ix-item.active .ix-mark{background:var(--ix-orange);border-color:var(--ix-orange)}
+ .ix-card{border:1px solid var(--ix-line);background:var(--ix-card)!important;border-radius:12px;padding:12px;margin-bottom:10px;color:var(--ix-text)}
+ .ix-card h4{font-size:13px;margin:0 0 8px;color:var(--ix-text)}
+ .ix-card p,.ix-card small{font-size:12px;line-height:1.6;color:var(--ix-muted);margin:0}
+ .ix-num{font-size:28px;font-weight:800;color:var(--ix-text)}
+ .ix-orange{color:var(--ix-orange)!important}
+ .ix-row{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #242424;font-size:12px;color:var(--ix-text)}
+ .ix-row:last-child{border-bottom:0}
+ .ix-progress{height:6px;background:#292929;border-radius:6px;overflow:hidden;margin-top:8px}
+ .ix-progress i{display:block;height:100%;background:var(--ix-orange)}
+ .ix-bottom{margin-top:auto;padding:12px 14px;border-top:1px solid var(--ix-line)}
+ .ix-empty{padding:14px;color:var(--ix-muted);font-size:12px;line-height:1.65}
+ .ix-tabs{display:flex;gap:6px;overflow:auto;padding-bottom:4px}
+ .ix-tabs button{white-space:nowrap;border:1px solid var(--ix-line);background:var(--ix-card)!important;border-radius:8px;padding:7px 9px;color:var(--ix-text)!important;font-size:11px}
+ .ix-tabs button.active{border-color:var(--ix-orange);color:var(--ix-text)!important}
+}
+@media (min-width:768px) and (max-width:1023px){
+ #ixLeft{display:none!important}
+ #ixRight{display:flex;position:fixed;right:0;top:0;bottom:0;width:300px;z-index:11800;background:#0d0d0d;border-left:1px solid var(--ix-line);transform:translateX(100%);transition:transform .2s;flex-direction:column;overflow:auto}
+ body.ix-drawer-open #ixRight{transform:translateX(0)}
+ #ixTop{display:flex;position:fixed;top:8px;right:8px;z-index:11810}
+}
+</style>
+<div id="ixTop"><div class="ix-title" id="ixPageTitle">學習首頁</div><div class="ix-tabs" id="ixModeTabs"></div><div class="ix-context" id="ixContextLabel">首頁</div></div>
+<aside id="ixLeft"><div class="ix-brand"><b>TPX1000</b><small>TOEIC Vocabulary System</small></div><div id="ixLeftBody"></div><div class="ix-bottom"><button class="ix-action" onclick="IX.openSettings()"><span class="ix-mark"></span>介面與設定</button></div></aside>
+<aside id="ixRight"><div class="ix-brand"><b id="ixRightTitle">學習工具</b><small id="ixRightSub">依目前工作內容更新</small></div><div id="ixRightBody"></div></aside>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var LABEL={home:'學習首頁',article:'文章模式',word:'刷單字模式',exam:'測驗模式',flash:'閃卡模式',bank:'題庫模式',coach:'AI 教練模式',weak:'弱點分析',daily:'每日紀錄',history:'學習歷程',settings:'設定'};
+var last='',manual='';
+function visible(id){var e=$(id);if(!e)return false;var s=getComputedStyle(e);return s.display!=='none'&&s.visibility!=='hidden'&&(e.classList.contains('active')||e.classList.contains('show')||!e.classList.contains('hide'));}
+function context(){if(manual)return manual;if(visible('uxQuiz'))return'exam';if(visible('screen-read'))return'article';if(visible('uxQBank')||visible('bankModal'))return'bank';if(visible('uxCoachRead')||visible('coachModal'))return'coach';if(visible('usPanel'))return'settings';if(visible('screen-detail')){try{if(window.CURRENT_BOOK&&CURRENT_BOOK.id==='custom')return'flash';}catch(e){}return'word';}if(visible('screen-list'))return'home';return'home';}
+function data(){var a=[];try{a=Array.isArray(DATA)?DATA:[]}catch(e){}return a}
+function st(){try{return typeof statusMap==='object'&&statusMap?statusMap:{}}catch(e){return{}}}
+function cur(){try{return currentList&&currentList[currentIdx]||null}catch(e){return null}}
+function esc(x){return String(x==null?'':x).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function stat(){var s=st(),a=data(),ok=0,rv=0;a.forEach(function(x){if(s[x.id]==='ok')ok++;else if(s[x.id]==='review')rv++});return{all:a.length,ok:ok,review:rv,newn:Math.max(0,a.length-ok-rv)}}
+function words(kind,n){var s=st(),a=data().filter(function(x){return kind==='all'||s[x.id]===kind});return a.slice(0,n||6)}
+function nav(active){var items=[['home','首頁'],['article','文章'],['word','單字'],['exam','測驗'],['flash','閃卡'],['bank','題庫'],['coach','AI 教練'],['weak','弱點分析'],['daily','每日紀錄'],['history','學習歷程']];return'<div class="ix-section"><h3>工作模式</h3>'+items.map(function(x){return'<button class="ix-item '+(active===x[0]?'active':'')+'" onclick="IX.go(\''+x[0]+'\')"><span class="ix-mark"></span>'+x[1]+'</button>'}).join('')+'</div>'}
+function rows(a){return a.map(function(x,i){return'<button class="ix-item" onclick="IX.word(\''+esc(x.id)+'\')"><span class="ix-mark"></span><span>'+(i+1)+'. '+esc(x.word)+'</span></button>'}).join('')||'<div class="ix-empty">目前沒有資料。</div>'}
+function left(c){var q=stat(),e=cur(),html=nav(c);if(c==='article'){html+='<div class="ix-section"><h3>文章導航</h3><div class="ix-card"><h4>目前文章</h4><p>'+(e?esc(e.word):'短文閱讀')+'</p><div class="ix-progress"><i style="width:65%"></i></div></div><h3>本篇重點單字</h3>'+rows(words('review',5))}else if(c==='word'){html+='<div class="ix-section"><h3>本輪進度</h3><div class="ix-card"><div class="ix-num">'+q.ok+' / '+q.all+'</div><div class="ix-progress"><i style="width:'+(q.all?Math.round(q.ok/q.all*100):0)+'%"></i></div></div><h3>需要複習</h3>'+rows(words('review',6))}else if(c==='exam'){html+='<div class="ix-section"><h3>測驗導航</h3><div class="ix-card"><h4>答題狀態</h4><div class="ix-row"><span>已習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div><button class="ix-action primary" onclick="IX.startQuiz()">開始或繼續測驗</button></div>'}else if(c==='flash'){html+='<div class="ix-section"><h3>閃卡清單</h3>'+rows(words('all',8))+'<button class="ix-action" onclick="IX.backSource()">返回原本閱讀位置</button></div>'}else if(c==='coach'){html+='<div class="ix-section"><h3>教練工作區</h3><button class="ix-action primary" onclick="IX.openCoach()">建立新練習</button><button class="ix-action" onclick="IX.go(\'weak\')">查看弱點建議</button></div>'}else if(c==='weak'){html+='<div class="ix-section"><h3>弱點分類</h3><button class="ix-item active"><span class="ix-mark"></span>要複習單字 '+q.review+'</button><button class="ix-item"><span class="ix-mark"></span>未學習單字 '+q.newn+'</button>'+rows(words('review',6))+'</div>'}else if(c==='daily'||c==='history'){html+='<div class="ix-section"><h3>紀錄導覽</h3><div class="ix-card"><div class="ix-row"><span>習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div><div class="ix-row"><span>未學習</span><b>'+q.newn+'</b></div></div></div>'}else{html+='<div class="ix-section"><h3>今日概況</h3><div class="ix-card"><div class="ix-num">'+q.ok+' / '+q.all+'</div><p>已完成的學習進度</p><div class="ix-progress"><i style="width:'+(q.all?Math.round(q.ok/q.all*100):0)+'%"></i></div></div><div class="ix-card"><h4>待處理</h4><div class="ix-row"><span>要複習</span><b class="ix-orange">'+q.review+'</b></div><div class="ix-row"><span>未學習</span><b>'+q.newn+'</b></div></div></div>'}return html}
+function right(c){var q=stat(),e=cur(),h='<div class="ix-section">';if(c==='article'||c==='word'||c==='flash'){h+='<h3>目前單字</h3><div class="ix-card"><h4>'+(e?esc(e.word):'尚未選取')+'</h4><p>'+(e?esc(e.ja||e.mean||''):'點選中央內容中的單字')+'</p></div><button class="ix-action" onclick="IX.speak()">發音</button><button class="ix-action" onclick="IX.mark(\'ok\')">標記為習得</button><button class="ix-action" onclick="IX.mark(\'review\')">加入複習</button><button class="ix-action primary" onclick="IX.mnemo()">開啟 AI 記憶輔助</button>'}else if(c==='exam'){h+='<h3>答題分析</h3><div class="ix-card"><h4>作答前</h4><p>右側不顯示答案。作答後將顯示詞義解析、錯誤原因與 AI 分析。</p></div><div class="ix-card"><div class="ix-row"><span>習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div>'}else if(c==='coach'){h+='<h3>AI 學習助手</h3><div class="ix-card"><h4>目前焦點</h4><p>'+(e?esc(e.word):'尚未選取單字')+'</p></div><button class="ix-action primary" onclick="IX.openCoach()">開始 AI 練習</button><button class="ix-action" onclick="IX.mnemo()">記憶輔助</button><button class="ix-action" onclick="IX.note()">新增筆記</button>'}else if(c==='weak'){h+='<h3>複習建議</h3><div class="ix-card"><div class="ix-num ix-orange">'+q.review+'</div><p>目前標記為要複習的單字</p></div><button class="ix-action primary" onclick="IX.review()">立即開始複習</button><button class="ix-action" onclick="IX.startQuiz()">建立弱點測驗</button>'}else if(c==='daily'||c==='history'){h+='<h3>紀錄摘要</h3><div class="ix-card"><div class="ix-row"><span>總單字</span><b>'+q.all+'</b></div><div class="ix-row"><span>已習得</span><b>'+q.ok+'</b></div><div class="ix-row"><span>要複習</span><b>'+q.review+'</b></div></div><button class="ix-action" onclick="IX.openSettings()">調整今日目標</button>'}else{h+='<h3>快速開始</h3><button class="ix-action primary" onclick="IX.continueStudy()">繼續學習</button><button class="ix-action" onclick="IX.review()">今日複習</button><button class="ix-action" onclick="IX.startQuiz()">測驗</button><button class="ix-action" onclick="IX.openCoach()">AI 教練</button><div class="ix-card"><h4>弱點摘要</h4>'+words('review',5).map(function(x){return'<div class="ix-row"><span>'+esc(x.word)+'</span><span>要複習</span></div>'}).join('')+'</div>'}return h+'</div>'}
+function paint(){var c=context();if(c===last)return;last=c;document.body.classList.toggle('ix-enabled',innerWidth>=1024);$('ixPageTitle').textContent=LABEL[c]||'學習工作台';$('ixContextLabel').textContent=LABEL[c]||c;$('ixLeftBody').innerHTML=left(c);$('ixRightTitle').textContent=(c==='article'?'文章工具':c==='word'?'單字工具':c==='exam'?'測驗工具':c==='flash'?'閃卡工具':c==='coach'?'AI 學習助手':c==='weak'?'弱點建議':c==='daily'||c==='history'?'紀錄摘要':'學習工具');$('ixRightBody').innerHTML=right(c)}
+function replaceEmoji(root){var walker=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT),n,rx=/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;while(n=walker.nextNode()){if(rx.test(n.nodeValue))n.nodeValue=n.nodeValue.replace(rx,'').replace(/\s{2,}/g,' ')}}
+window.IX={go:function(c){manual=c;if(c==='home'){manual='';try{showList()}catch(e){}}else if(c==='article'){try{readOpen()}catch(e){manual=''} }else if(c==='word'){manual='';try{showList()}catch(e){}}else if(c==='exam')this.startQuiz();else if(c==='flash'){try{deckOpen()}catch(e){}}else if(c==='coach')this.openCoach();else if(c==='weak'){manual='weak'}else if(c==='daily'){manual='daily'}else if(c==='history'){manual='history'}paint()},word:function(id){manual='';try{openDetail(id)}catch(e){}},continueStudy:function(){var e=cur();if(e)this.word(e.id);else this.go('word')},review:function(){try{srsOpen()}catch(e){}},startQuiz:function(){manual='';try{uxQuizOpen()}catch(e){try{qzOpen()}catch(x){}}},openCoach:function(){manual='';try{uxCoachOpen()}catch(e){try{coachOpen()}catch(x){}}},openSettings:function(){manual='';try{usOpen()}catch(e){}},backSource:function(){try{kinReturnToCaptureSource()}catch(e){}},speak:function(){try{speakWord()}catch(e){try{nwOpen(cur().word)}catch(x){}}},mark:function(v){try{setStatus(v)}catch(e){}},mnemo:function(){try{window.__kinOpenMnemo()}catch(e){}},note:function(){try{window.__kinOpenNote()}catch(e){}}};
+function init(){document.body.classList.toggle('ix-enabled',innerWidth>=1024);replaceEmoji(document.body);paint();setInterval(function(){last='';paint()},750);new MutationObserver(function(m){m.forEach(function(x){x.addedNodes.forEach(function(n){if(n.nodeType===1)replaceEmoji(n)})})}).observe(document.body,{childList:true,subtree:true})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
+
+<script>
+/* TPX1000 iPad Context Workspace - layout and scroll fix v1.1
+   Load AFTER the existing iPad Context Shell module.
+   Goals:
+   1. Do not compress the original center interface.
+   2. Left, center, and right are independent scroll containers.
+   3. Prevent iPad Safari body overscroll / page detachment.
+   4. Automatically collapse the right rail when center width would be too narrow.
+*/
+(function () {
+  'use strict';
+
+  var STYLE_ID = 'ixScrollFixV11';
+  var MIN_CENTER = 760;
+  var LEFT_W = 220;
+  var RIGHT_W = 286;
+  var GAP = 0;
+
+  function installStyle() {
+    var old = document.getElementById(STYLE_ID);
+    if (old) old.remove();
+
+    var css = `
+      :root {
+        --ix-left-w: 220px;
+        --ix-right-w: 286px;
+        --ix-top-h: 54px;
+        --ix-viewport-h: 100dvh;
+      }
+
+      @supports not (height: 100dvh) {
+        :root { --ix-viewport-h: 100vh; }
+      }
+
+      @media (min-width: 1024px) {
+        html.ix-scroll-lock,
+        html.ix-scroll-lock body {
+          width: 100%;
+          height: var(--ix-viewport-h) !important;
+          min-height: 0 !important;
+          overflow: hidden !important;
+          overscroll-behavior: none !important;
+          touch-action: pan-x pan-y;
+          background: #080808 !important;
+        }
+
+        body.ix-enabled {
+          padding: 0 !important;
+          margin: 0 !important;
+          width: 100% !important;
+          height: var(--ix-viewport-h) !important;
+          min-width: 0 !important;
+          overflow: hidden !important;
+          box-sizing: border-box !important;
+        }
+
+        #ixLeft,
+        #ixRight {
+          position: fixed !important;
+          top: 0 !important;
+          bottom: auto !important;
+          height: var(--ix-viewport-h) !important;
+          min-height: 0 !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+          contain: layout paint !important;
+        }
+
+        #ixLeft {
+          left: 0 !important;
+          width: var(--ix-left-w) !important;
+        }
+
+        #ixRight {
+          right: 0 !important;
+          width: var(--ix-right-w) !important;
+        }
+
+        #ixTop {
+          position: fixed !important;
+          top: 0 !important;
+          left: var(--ix-left-w) !important;
+          right: var(--ix-right-w) !important;
+          width: auto !important;
+          height: var(--ix-top-h) !important;
+          box-sizing: border-box !important;
+        }
+
+        /* The real center scroll viewport. The body never scrolls. */
+        #ixCenterViewport {
+          position: fixed !important;
+          top: var(--ix-top-h) !important;
+          left: var(--ix-left-w) !important;
+          right: var(--ix-right-w) !important;
+          bottom: 0 !important;
+          width: auto !important;
+          height: auto !important;
+          min-width: 0 !important;
+          overflow-x: auto !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+          contain: layout paint !important;
+          background: #080808 !important;
+          box-sizing: border-box !important;
+        }
+
+        #ixCenterCanvas {
+          width: max-content !important;
+          min-width: 100% !important;
+          min-height: 100% !important;
+          box-sizing: border-box !important;
+        }
+
+        /* Keep the original mobile-oriented center at its native useful width. */
+        #ixCenterCanvas > #app,
+        #ixCenterCanvas > #root,
+        #ixCenterCanvas > main,
+        #ixCenterCanvas > .app,
+        #ixCenterCanvas > .wrap {
+          width: min(900px, 100%) !important;
+          min-width: 760px !important;
+          max-width: 900px !important;
+          margin-left: auto !important;
+          margin-right: auto !important;
+          box-sizing: border-box !important;
+        }
+
+        /* Old fixed screens must become absolute inside center viewport. */
+        body.ix-enabled #screen-read,
+        body.ix-enabled #uxQuiz,
+        body.ix-enabled #usPanel,
+        body.ix-enabled .ux-screen {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          min-width: 760px !important;
+          max-width: none !important;
+          height: auto !important;
+          min-height: 100% !important;
+          margin: 0 !important;
+          box-sizing: border-box !important;
+          overflow-x: hidden !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        /* Do not let center cards collapse into vertical single-character text. */
+        body.ix-enabled #ixCenterViewport .card,
+        body.ix-enabled #ixCenterViewport .ux-card,
+        body.ix-enabled #ixCenterViewport .coach-card,
+        body.ix-enabled #ixCenterViewport button,
+        body.ix-enabled #ixCenterViewport .btn {
+          min-width: 0 !important;
+          writing-mode: horizontal-tb !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
+        }
+
+        /* Compact mode: preserve center width by converting right rail to overlay drawer. */
+        body.ix-center-compact {
+          --ix-right-w: 0px;
+        }
+
+        body.ix-center-compact #ixRight {
+          width: 300px !important;
+          right: 0 !important;
+          transform: translateX(100%) !important;
+          transition: transform .2s ease !important;
+          box-shadow: -16px 0 32px rgba(0,0,0,.42) !important;
+          z-index: 11950 !important;
+        }
+
+        body.ix-center-compact.ix-right-open #ixRight {
+          transform: translateX(0) !important;
+        }
+
+        #ixRightToggle {
+          display: none;
+          position: fixed;
+          right: 12px;
+          top: 68px;
+          z-index: 11960;
+          width: 42px;
+          height: 42px;
+          border: 1px solid #8d410d;
+          border-radius: 10px;
+          background: #17100b;
+          color: #f5f5f5;
+          font-size: 13px;
+          font-weight: 800;
+        }
+
+        body.ix-center-compact #ixRightToggle {
+          display: block;
+        }
+      }
+
+      @media (min-width: 768px) and (max-width: 1023px) {
+        html.ix-scroll-lock,
+        html.ix-scroll-lock body {
+          height: var(--ix-viewport-h) !important;
+          overflow: hidden !important;
+          overscroll-behavior: none !important;
+        }
+
+        #ixCenterViewport {
+          position: fixed !important;
+          inset: 0 !important;
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+          overscroll-behavior: contain !important;
+          -webkit-overflow-scrolling: touch !important;
+        }
+
+        #ixRight {
+          height: var(--ix-viewport-h) !important;
+          overflow-y: auto !important;
+          overscroll-behavior: contain !important;
+        }
+      }
+    `;
+
+    var style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
+  function isShellNode(node) {
+    return node && node.nodeType === 1 && (
+      node.id === 'ixLeft' ||
+      node.id === 'ixRight' ||
+      node.id === 'ixTop' ||
+      node.id === 'ixRightToggle' ||
+      node.id === 'ixCenterViewport'
+    );
+  }
+
+  function ensureCenterViewport() {
+    var viewport = document.getElementById('ixCenterViewport');
+    if (viewport) return viewport;
+
+    viewport = document.createElement('div');
+    viewport.id = 'ixCenterViewport';
+
+    var canvas = document.createElement('div');
+    canvas.id = 'ixCenterCanvas';
+    viewport.appendChild(canvas);
+
+    var firstShell = document.getElementById('ixTop');
+    if (firstShell && firstShell.parentNode === document.body) {
+      document.body.insertBefore(viewport, firstShell);
+    } else {
+      document.body.appendChild(viewport);
+    }
+
+    var movable = [];
+    Array.prototype.forEach.call(document.body.children, function (node) {
+      if (node === viewport || isShellNode(node) || node.tagName === 'SCRIPT' || node.tagName === 'STYLE') return;
+      movable.push(node);
+    });
+
+    movable.forEach(function (node) {
+      canvas.appendChild(node);
+    });
+
+    return viewport;
+  }
+
+  function ensureRightToggle() {
+    var button = document.getElementById('ixRightToggle');
+    if (button) return button;
+
+    button = document.createElement('button');
+    button.id = 'ixRightToggle';
+    button.type = 'button';
+    button.textContent = '工具';
+    button.setAttribute('aria-label', '開啟或關閉右側工具欄');
+    button.addEventListener('click', function () {
+      document.body.classList.toggle('ix-right-open');
+    });
+    document.body.appendChild(button);
+    return button;
+  }
+
+  function updateLayout() {
+    var enabled = window.innerWidth >= 768 && document.getElementById('ixLeft');
+    document.documentElement.classList.toggle('ix-scroll-lock', Boolean(enabled));
+
+    if (!enabled) {
+      document.body.classList.remove('ix-center-compact', 'ix-right-open');
+      return;
+    }
+
+    ensureCenterViewport();
+    ensureRightToggle();
+
+    var available = window.innerWidth - LEFT_W - RIGHT_W - GAP;
+    var compact = window.innerWidth >= 1024 && available < MIN_CENTER;
+    document.body.classList.toggle('ix-center-compact', compact);
+
+    if (!compact) document.body.classList.remove('ix-right-open');
+  }
+
+  function preventBodyRubberBand() {
+    document.addEventListener('touchmove', function (event) {
+      if (!document.documentElement.classList.contains('ix-scroll-lock')) return;
+
+      var target = event.target;
+      var scroller = target && target.closest
+        ? target.closest('#ixLeft, #ixRight, #ixCenterViewport, #screen-read, #uxQuiz, #usPanel, .ux-screen')
+        : null;
+
+      if (!scroller) event.preventDefault();
+    }, { passive: false });
+  }
+
+  function init() {
+    installStyle();
+    updateLayout();
+    preventBodyRubberBand();
+
+    window.addEventListener('resize', updateLayout, { passive: true });
+    window.addEventListener('orientationchange', function () {
+      setTimeout(updateLayout, 250);
+    }, { passive: true });
+
+    var observer = new MutationObserver(function () {
+      if (!document.getElementById('ixCenterViewport')) updateLayout();
+    });
+    observer.observe(document.body, { childList: true });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+</script>
 </body>
 </html>
