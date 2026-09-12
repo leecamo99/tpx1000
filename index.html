@@ -10649,23 +10649,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function callGemini(prompt, temp){
     var k = gmKey();
     if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰，請到使用者專區填入'));
-    return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
+    if(window.KIN_GM){
+      return KIN_GM.call({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: (temp == null ? 0.55 : temp), responseMimeType: 'application/json' }
-      })
-    })
-    .then(function(r){
-      return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP ' + r.status + '\u3000' + t.slice(0, 120)); });
-    })
-    .then(function(j){
-      var c0 = j && j.candidates && j.candidates[0];
-      var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
-      if(!txt) throw new Error('回應沒有內容');
-      return JSON.parse(txt);
-    });
+      }).then(function(j){
+        var txt = KIN_GM.text(j);
+        if(!txt) throw new Error('回應沒有內容');
+        return JSON.parse(txt);
+      });
+    }
+    return Promise.reject(new Error('傳輸層未載入，請重新整理頁面'));
   }
 
   function buildPrompt(e){
@@ -10889,17 +10883,10 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
     if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰'));
     var p = String(prompt || '').trim()
       + ', minimal flat icon, single subject, solid background, no text, no letters, high contrast';
-    return fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL
-        + ':generateContent?key=' + encodeURIComponent(k), {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ contents: [{ parts: [{ text: p }] }] })
-    })
-    .then(function(r){
-      return r.ok ? r.json() : r.text().then(function(t){
-        throw new Error('HTTP ' + r.status + ' ' + t.slice(0, 100));
-      });
-    })
+    var send = window.KIN_GM
+      ? KIN_GM.call({ contents: [{ parts: [{ text: p }] }] }, { models: [MODEL] })
+      : Promise.reject(new Error('傳輸層未載入，請重新整理頁面'));
+    return send
     .then(function(j){
       var parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
       for(var i = 0; i < parts.length; i++){
@@ -10981,6 +10968,155 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
     var box = document.getElementById('uxMnemo');
     if(box && box.querySelector('.mn-act')) wire(box);
   }, 600);
+})();
+</script>
+
+<script>
+/* ==========================================================================
+   TPX1000 V3.2  Gemini 傳輸層強化
+   1. 429 配額用盡：改成看得懂的中文說明，並自動改用備援模型
+   2. Load failed：自動重試三次，指數退避，並加上逾時中止
+   3. 所有 Gemini 呼叫共用同一層，含既有的閃卡、測驗、記憶輔助
+   ========================================================================== */
+(function(){
+  'use strict';
+
+  var TEXT_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+  var TIMEOUT = 45000;
+  var MAX_TRY = 3;
+  var COOL_KEY = 'kinGmCooldown';
+
+  function now(){ return Date.now(); }
+
+  /* 配額冷卻：429 之後暫停呼叫，避免一直撞牆 */
+  function cooling(){
+    try{
+      var u = parseInt(localStorage.getItem(COOL_KEY) || '0', 10);
+      return u > now() ? u : 0;
+    }catch(e){ return 0; }
+  }
+  function setCool(ms){
+    try{ localStorage.setItem(COOL_KEY, String(now() + ms)); }catch(e){}
+  }
+  function clearCool(){
+    try{ localStorage.removeItem(COOL_KEY); }catch(e){}
+  }
+  function coolMsg(until){
+    var s = Math.max(0, Math.round((until - now()) / 1000));
+    if(s < 90) return '配額冷卻中，請等 ' + s + ' 秒後再試';
+    return '配額冷卻中，請等 ' + Math.ceil(s / 60) + ' 分鐘後再試';
+  }
+
+  /* 把 Gemini 的錯誤訊息翻成人看得懂的中文 */
+  function humanize(status, body){
+    var retry = 0;
+    var m = /"retryDelay"\s*:\s*"(\d+)s"/.exec(body || '');
+    if(m) retry = parseInt(m[1], 10) * 1000;
+    var perDay = /PerDay|RequestsPerDay|_per_day/i.test(body || '');
+
+    if(status === 429){
+      if(perDay){
+        setCool(30 * 60 * 1000);
+        return '今日免費配額已用完。\n免費額度以太平洋時間午夜重置，約為台灣時間下午四點。\n可改用其他金鑰，或到 Google AI Studio 開啟付費方案。';
+      }
+      setCool(retry || 60000);
+      return '呼叫太密集，已超過每分鐘上限。' + (retry ? ('\n約 ' + Math.ceil(retry / 1000) + ' 秒後可再試。') : '\n請稍候再試。');
+    }
+    if(status === 403) return '金鑰無效或未啟用 Generative Language API，請到使用者專區重新設定。';
+    if(status === 400) return '請求格式有誤，或這支金鑰不支援此模型。';
+    if(status === 404) return '找不到指定模型，可能名稱已變更或該帳號無權使用。';
+    if(status >= 500) return 'Google 伺服器暫時異常，稍後再試。';
+    return 'HTTP ' + status;
+  }
+
+  function isNetErr(e){
+    var s = String((e && e.message) || e || '');
+    return /Load failed|Failed to fetch|NetworkError|網路|timeout|逾時|aborted/i.test(s);
+  }
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  /* 單次呼叫，含逾時中止 */
+  function once(model, key, payload){
+    var ctl = null, timer = null;
+    try{ ctl = new AbortController(); }catch(e){}
+    var opt = {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    };
+    if(ctl){
+      opt.signal = ctl.signal;
+      timer = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, TIMEOUT);
+    }
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + model + ':generateContent?key=' + encodeURIComponent(key);
+    return fetch(url, opt).then(function(r){
+      if(timer) clearTimeout(timer);
+      if(r.ok){ clearCool(); return r.json(); }
+      return r.text().then(function(b){
+        var err = new Error(humanize(r.status, b));
+        err.status = r.status;
+        err.quota = (r.status === 429);
+        throw err;
+      });
+    }, function(e){
+      if(timer) clearTimeout(timer);
+      var err = new Error(isNetErr(e)
+        ? '連線失敗，請確認網路後再試一次'
+        : ((e && e.message) || '連線失敗'));
+      err.net = true;
+      throw err;
+    });
+  }
+
+  /* 對外：帶重試與模型備援的呼叫 */
+  function call(payload, opts){
+    opts = opts || {};
+    var key = '';
+    try{ key = localStorage.getItem('kinGeminiKey') || ''; }catch(e){}
+    if(!key) return Promise.reject(new Error('尚未設定 Gemini 金鑰，請到使用者專區填入'));
+
+    var c = cooling();
+    if(c && !opts.force) return Promise.reject(new Error(coolMsg(c)));
+
+    var models = opts.models || TEXT_MODELS;
+    var attempt = 0, mi = 0, lastErr = null;
+
+    function run(){
+      return once(models[mi], key, payload).catch(function(e){
+        lastErr = e;
+        /* 配額問題就換下一個備援模型，額度是分開計算的 */
+        if(e.quota && mi < models.length - 1){
+          mi++; attempt = 0;
+          clearCool();
+          return sleep(400).then(run);
+        }
+        /* 網路或伺服器錯誤就退避重試 */
+        if((e.net || (e.status && e.status >= 500)) && attempt < MAX_TRY - 1){
+          attempt++;
+          return sleep(700 * Math.pow(2, attempt - 1)).then(run);
+        }
+        throw e;
+      });
+    }
+    return run();
+  }
+
+  function textOf(j){
+    var c0 = j && j.candidates && j.candidates[0];
+    var parts = (c0 && c0.content && c0.content.parts) || [];
+    for(var i = 0; i < parts.length; i++){ if(parts[i].text) return parts[i].text; }
+    return '';
+  }
+
+  window.KIN_GM = {
+    call: call,
+    text: textOf,
+    cooling: cooling,
+    clearCool: clearCool,
+    models: TEXT_MODELS
+  };
 })();
 </script>
 </body>
