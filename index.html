@@ -11642,64 +11642,64 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
-<style id="ix411StableStyle">
-/* V4.1.1 stable three-pane layout. No DOM re-parenting. */
-:root{--ix411-left:206px;--ix411-right:258px;--ix411-line:#2c2c2e;--ix411-bg:#080808;--ix411-panel:#0d0d0d;--ix411-text:#f5f5f5;--ix411-orange:#ff7a1a}
-@media (min-width:1024px),(orientation:landscape) and (min-width:700px){
- html,body{background:var(--ix411-bg)!important;overscroll-behavior:none!important}
- body.ix-enabled{padding-left:var(--ix411-left)!important;padding-right:var(--ix411-right)!important;box-sizing:border-box!important;min-width:0!important}
- #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;transform:none!important;background:var(--ix411-panel)!important;z-index:11800!important;box-sizing:border-box!important}
- #ixLeft{left:0!important;width:var(--ix411-left)!important;border-right:1px solid var(--ix411-line)!important}
- #ixRight{right:0!important;width:var(--ix411-right)!important;border-left:1px solid var(--ix411-line)!important}
- #ixTop{display:flex!important;position:sticky!important;top:0!important;left:auto!important;right:auto!important;width:100%!important;height:52px!important;min-height:52px!important;z-index:900!important;background:#0b0b0b!important;border-bottom:1px solid var(--ix411-line)!important;box-sizing:border-box!important}
+<style id="ix412NativeCenterStyle">
+/* V4.1.2: keep the original 480px app coordinate system intact. */
+:root{--ixc-app:480px;--ixc-left:180px;--ixc-right:220px;--ixc-gap:12px;--ixc-bg:#080808;--ixc-line:#2c2c2e}
+@media (min-width:900px){
+ html,body{background:var(--ixc-bg)!important;overscroll-behavior:none!important}
+ body.ix-enabled{width:var(--ixc-app)!important;min-width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;margin-left:auto!important;margin-right:auto!important;padding-left:0!important;padding-right:0!important;box-sizing:border-box!important}
+ #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;transform:none!important;background:#0d0d0d!important;z-index:11800!important;box-sizing:border-box!important}
+ #ixLeft{left:calc(50% - (var(--ixc-app) / 2) - var(--ixc-gap) - var(--ixc-left))!important;width:var(--ixc-left)!important;border-right:1px solid var(--ixc-line)!important}
+ #ixRight{right:calc(50% - (var(--ixc-app) / 2) - var(--ixc-gap) - var(--ixc-right))!important;width:var(--ixc-right)!important;border-left:1px solid var(--ixc-line)!important}
+ #ixTop{display:flex!important;position:sticky!important;top:0!important;left:auto!important;right:auto!important;width:100%!important;height:50px!important;min-height:50px!important;z-index:900!important;box-sizing:border-box!important;background:#0b0b0b!important;border-bottom:1px solid var(--ixc-line)!important}
  #ixRightToggle{display:none!important}
- /* Center remains the original document flow, preserving all original events and offsets. */
- body.ix-enabled>#screen-books,body.ix-enabled>#screen-list,body.ix-enabled>#screen-detail,body.ix-enabled>#screen-read{width:100%!important;max-width:none!important;min-width:0!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box!important}
- body.ix-enabled #screen-list,body.ix-enabled #screen-detail{padding-left:14px!important;padding-right:14px!important}
- /* Fixed feature panels are constrained to center only. */
- body.ix-enabled #screen-read,body.ix-enabled #uxQuiz,body.ix-enabled #usPanel,body.ix-enabled .ux-screen{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important;background:#080808!important}
- body.ix-enabled #usMask,body.ix-enabled #pinMask{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important;background:rgba(0,0,0,.82)!important}
- body.ix-enabled #usPanel{transform:none!important;border-radius:0!important}
- /* Center bars never cross into rails. */
- body.ix-enabled .player-bar,body.ix-enabled .bottom-nav{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important;max-width:none!important;box-sizing:border-box!important}
- /* Stop controls/cards from collapsing into vertical text. */
- body.ix-enabled .card,body.ix-enabled .ux-card,body.ix-enabled .coach-card,body.ix-enabled .rd-card,body.ix-enabled .list-item,body.ix-enabled button,body.ix-enabled input,body.ix-enabled select,body.ix-enabled textarea{writing-mode:horizontal-tb!important;word-break:normal!important;overflow-wrap:break-word!important;min-width:0!important;box-sizing:border-box!important}
- /* No compact/drawer behavior in stable mode. */
- body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:fixed!important;transform:none!important;width:var(--ix411-right)!important;right:0!important;box-shadow:none!important}
+ body.ix-center-compact #ixRight,body.ix-right-open #ixRight,body.ix-drawer-open #ixRight{display:flex!important;position:fixed!important;transform:none!important;width:var(--ixc-right)!important;right:calc(50% - (var(--ixc-app) / 2) - var(--ixc-gap) - var(--ixc-right))!important;box-shadow:none!important}
+ /* Original center screens stay at the app's native width. */
+ #screen-books,#screen-list,#screen-detail{width:100%!important;min-width:0!important;max-width:var(--ixc-app)!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}
+ /* Original fixed coordinate system remains centered on viewport. */
+ #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;min-width:0!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#080808!important}
+ #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ixc-app)!important;transform:translateX(-50%)!important}
+ .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ixc-app)!important;transform:translateX(-50%)!important;box-sizing:border-box!important}
+ body.ix-enabled .card,body.ix-enabled .ux-card,body.ix-enabled .coach-card,body.ix-enabled .rd-card,body.ix-enabled .list-item,body.ix-enabled button,body.ix-enabled input,body.ix-enabled select,body.ix-enabled textarea{writing-mode:horizontal-tb!important;word-break:normal!important;overflow-wrap:break-word!important;box-sizing:border-box!important}
 }
-@media (min-width:1440px){:root{--ix411-left:228px;--ix411-right:286px}}
-@media (orientation:landscape) and (min-width:700px) and (max-width:1023px){
- :root{--ix411-left:122px;--ix411-right:148px}
- body.ix-enabled{padding-left:var(--ix411-left)!important;padding-right:var(--ix411-right)!important}
- #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-y:auto!important;transform:none!important;background:var(--ix411-panel)!important;z-index:11800!important}
- #ixLeft{left:0!important;width:var(--ix411-left)!important}
- #ixRight{right:0!important;width:var(--ix411-right)!important}
- #ixLeft .ix-brand,#ixRight .ix-brand{padding:10px 7px!important}
+@media (min-width:1200px){:root{--ixc-left:210px;--ixc-right:250px;--ixc-gap:16px}}
+@media (min-width:1500px){:root{--ixc-left:230px;--ixc-right:280px;--ixc-gap:20px}}
+/* Landscape phones/tablets: preserve 480px center and use compact rails. */
+@media (orientation:landscape) and (min-width:700px) and (max-width:899px){
+ :root{--ixc-left:92px;--ixc-right:112px;--ixc-gap:4px}
+ body.ix-enabled{width:var(--ixc-app)!important;min-width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;margin-left:auto!important;margin-right:auto!important;padding:0!important}
+ #ixLeft,#ixRight{display:flex!important;position:fixed!important;top:0!important;bottom:0!important;height:100dvh!important;overflow-y:auto!important;transform:none!important;background:#0d0d0d!important;z-index:11800!important}
+ #ixLeft{left:calc(50% - 240px - var(--ixc-gap) - var(--ixc-left))!important;width:var(--ixc-left)!important}
+ #ixRight{right:calc(50% - 240px - var(--ixc-gap) - var(--ixc-right))!important;width:var(--ixc-right)!important}
+ #ixLeft .ix-brand,#ixRight .ix-brand{padding:9px 5px!important}
+ #ixLeft .ix-brand b,#ixRight .ix-brand b{font-size:13px!important}
  #ixLeft .ix-brand small,#ixRight .ix-brand small{display:none!important}
- #ixLeft .ix-section,#ixRight .ix-section{padding-left:6px!important;padding-right:6px!important}
- #ixLeft .ix-item,#ixLeft .ix-action,#ixRight .ix-item,#ixRight .ix-action{padding:7px 5px!important;font-size:10.5px!important;gap:4px!important}
- #ixRight .ix-card{padding:7px!important}
- #ixTop{display:flex!important;position:sticky!important;top:0!important;height:42px!important;min-height:42px!important;z-index:900!important}
- body.ix-enabled #screen-read,body.ix-enabled #uxQuiz,body.ix-enabled #usPanel,body.ix-enabled .ux-screen,body.ix-enabled #usMask,body.ix-enabled #pinMask{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important}
- body.ix-enabled .player-bar,body.ix-enabled .bottom-nav{left:var(--ix411-left)!important;right:var(--ix411-right)!important;width:auto!important}
+ #ixLeft .ix-section,#ixRight .ix-section{padding:7px 4px 2px!important}
+ #ixLeft .ix-section h3,#ixRight .ix-section h3{font-size:8px!important;letter-spacing:.3px!important}
+ #ixLeft .ix-item,#ixLeft .ix-action,#ixRight .ix-item,#ixRight .ix-action{padding:6px 3px!important;font-size:9px!important;gap:3px!important;min-height:34px!important}
+ #ixRight .ix-card{padding:5px!important;font-size:9px!important}
+ #ixRight .ix-card h4{font-size:10px!important}
+ #ixRight .ix-card p,#ixRight .ix-row{font-size:9px!important}
+ #ixTop{display:flex!important;position:sticky!important;top:0!important;width:100%!important;height:38px!important;min-height:38px!important;z-index:900!important}
+ #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:var(--ixc-app)!important;max-width:var(--ixc-app)!important;transform:translateX(-50%)!important}
+ #usMask,#pinMask{left:50%!important;right:auto!important;width:var(--ixc-app)!important;transform:translateX(-50%)!important}
+ .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:var(--ixc-app)!important;transform:translateX(-50%)!important}
 }
-@media (orientation:portrait) and (max-width:1023px),(max-width:699px){body.ix-enabled{padding-left:0!important;padding-right:0!important}}
+@media (orientation:portrait) and (max-width:899px),(max-width:699px){body.ix-enabled{width:auto!important;min-width:0!important;max-width:none!important;margin:0!important;padding:0!important}}
 </style>
 <script>
 (function(){
 'use strict';
-function useThreePane(){return innerWidth>=1024||(innerWidth>=700&&innerWidth>innerHeight)}
-function syncMode(){document.body.classList.toggle('ix-enabled',useThreePane());document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open')}
-function closeKnownPanels(){try{if(typeof window.usClose==='function')window.usClose()}catch(e){}try{if(window.UX&&typeof window.UX.closeQuiz==='function')window.UX.closeQuiz()}catch(e){}}
-function realQuiz(){if(window.UX&&typeof window.UX.openQuiz==='function')return window.UX.openQuiz();var b=document.getElementById('uxHomeQuiz');if(b)b.click()}
-function realCoach(){if(typeof window.rdOpen==='function')return window.rdOpen();var b=document.getElementById('rdEntry');if(b)b.click()}
-function realDeck(){if(typeof window.deckOpen==='function')return window.deckOpen();var b=document.getElementById('deckBtn');if(b)b.click()}
-function realReview(){if(typeof window.srsOpen==='function')return window.srsOpen()}
-function realSettings(){if(typeof window.usOpen==='function')return window.usOpen()}
-function realList(){if(typeof window.showList==='function')return window.showList()}
-function wire(){if(!window.IX)return;window.IX.go=function(c){closeKnownPanels();if(c==='home'||c==='word')return realList();if(c==='article'||c==='coach'||c==='bank')return realCoach();if(c==='exam')return realQuiz();if(c==='flash')return realDeck();if(c==='weak')return realReview();if(c==='daily'||c==='history'||c==='settings')return realSettings()};window.IX.startQuiz=realQuiz;window.IX.openCoach=realCoach;window.IX.review=realReview;window.IX.openSettings=realSettings}
-function preventOuterBounce(e){if(!useThreePane())return;var target=e.target&&e.target.closest?e.target.closest('#ixLeft,#ixRight,#screen-read,#uxQuiz,#usPanel,.ux-screen'):null;if(!target&&e.target===document.documentElement)e.preventDefault()}
-function init(){syncMode();wire();window.addEventListener('resize',syncMode,{passive:true});window.addEventListener('orientationchange',function(){setTimeout(syncMode,250)},{passive:true});document.addEventListener('touchmove',preventOuterBounce,{passive:false})}
+function three(){return innerWidth>=900||(innerWidth>=700&&innerWidth>innerHeight)}
+function sync(){document.body.classList.toggle('ix-enabled',three());document.body.classList.remove('ix-center-compact','ix-right-open','ix-drawer-open')}
+function quiz(){if(window.UX&&typeof window.UX.openQuiz==='function')return window.UX.openQuiz();var b=document.getElementById('uxHomeQuiz');if(b)b.click()}
+function coach(){if(typeof window.rdOpen==='function')return window.rdOpen();var b=document.getElementById('rdEntry');if(b)b.click()}
+function deck(){if(typeof window.deckOpen==='function')return window.deckOpen()}
+function review(){if(typeof window.srsOpen==='function')return window.srsOpen()}
+function settings(){if(typeof window.usOpen==='function')return window.usOpen()}
+function list(){if(typeof window.showList==='function')return window.showList()}
+function wire(){if(!window.IX)return;window.IX.go=function(c){if(c==='home'||c==='word')return list();if(c==='article'||c==='coach'||c==='bank')return coach();if(c==='exam')return quiz();if(c==='flash')return deck();if(c==='weak')return review();if(c==='daily'||c==='history'||c==='settings')return settings()};window.IX.startQuiz=quiz;window.IX.openCoach=coach;window.IX.review=review;window.IX.openSettings=settings}
+function init(){sync();wire();window.addEventListener('resize',sync,{passive:true});window.addEventListener('orientationchange',function(){setTimeout(sync,250)},{passive:true})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
