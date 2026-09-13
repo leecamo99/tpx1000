@@ -5171,6 +5171,8 @@ body.theme-dark .cx-hh .hd{color:#5c5a57}
 body.theme-dark .cx-hist.open .cx-hh .hd{color:#ff9142}
 .cx-note{font-size:12.5px;line-height:1.65;color:#555}
 .cx-src-en{font-size:14px;line-height:1.7;color:#333;font-weight:600}
+.cx-src-en .cx-src-hl{color:#c45c1a;background:rgba(196,92,26,.14);font:inherit;font-weight:800;padding:0 2px;border-radius:3px;box-shadow:inset 0 -2px 0 rgba(196,92,26,.42)}
+body.theme-dark .cx-src-en .cx-src-hl{color:#ff9142;background:rgba(255,145,66,.13);box-shadow:inset 0 -2px 0 rgba(255,145,66,.52)}
 .cx-src-zh{font-size:12.5px;line-height:1.7;color:#7d7770;margin-top:3px}
 .cx-hint{font-size:11px;line-height:1.65;color:#a09a94;margin-top:7px}
 body.theme-dark .cx-src-en{color:#e8e6e3}
@@ -5653,6 +5655,43 @@ body.theme-dark #nwBox .note{color:#6a6661}
   function esc(t){ return (typeof escapeHtml === 'function') ? escapeHtml(t) : String(t || ''); }
   function jsq(t){ return String(t || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
 
+  /* 來源例句高亮：以來源條目的 headword 為準。 */
+  function srcRxEscape(s){ return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function srcInflection(word){
+    var w = String(word || '').toLowerCase();
+    if(!w) return '';
+    if(/[^aeiou]y$/.test(w)) return srcRxEscape(w.slice(0,-1)) + '(?:y|ies|ied|ying)';
+    if(/e$/.test(w)) return srcRxEscape(w) + '(?:s|d|ing)?';
+    if(/(?:s|x|z|ch|sh)$/.test(w)) return srcRxEscape(w) + '(?:es|ed|ing)?';
+    return srcRxEscape(w) + '(?:s|es|ed|ing)?';
+  }
+  function sourceExampleHtml(sentence, sourceWord){
+    var text = String(sentence || '');
+    var raw = String(sourceWord || '').replace(/\([^)]*\)/g, '').trim();
+    if(!text || !raw) return esc(text);
+    var variants = raw.split(/\s*\/\s*|\s*[,;]\s*/).map(function(v){ return v.trim(); }).filter(Boolean);
+    var patterns = [];
+    variants.forEach(function(v){
+      var words = v.toLowerCase().match(/[a-z]+(?:[-'][a-z]+)*/g) || [];
+      if(!words.length) return;
+      if(words.length > 1) patterns.push('\\b' + words.map(srcInflection).join('\\s+') + '\\b');
+      words.forEach(function(w){ patterns.push('\\b' + srcInflection(w) + '\\b'); });
+    });
+    if(!patterns.length) return esc(text);
+    patterns.sort(function(a,b){ return b.length-a.length; });
+    var re;
+    try{ re = new RegExp('(?:' + patterns.join('|') + ')', 'ig'); }catch(e){ return esc(text); }
+    var out='', last=0, m, found=false;
+    while((m=re.exec(text))){
+      found=true;
+      out += esc(text.slice(last,m.index));
+      out += '<mark class="cx-src-hl">' + esc(m[0]) + '</mark>';
+      last=m.index+m[0].length;
+      if(!m[0].length) re.lastIndex++;
+    }
+    return found ? out + esc(text.slice(last)) : esc(text);
+  }
+
   function renderCardExtra(){
     var box = document.getElementById('cardExtra');
     if(!box) return;
@@ -5743,7 +5782,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
         if(card.srcEx){
           html += '<div class="cx-box"><h5>來源例句　'
                +  esc(card.srcId || '') + ' ' + esc(card.srcWord || '') + '</h5>'
-               +  '<div class="cx-src-en">' + esc(card.srcEx) + '</div>'
+               +  '<div class="cx-src-en">' + sourceExampleHtml(card.srcEx, card.srcWord) + '</div>'
                +  (card.srcExZh ? ('<div class="cx-src-zh">' + esc(card.srcExZh) + '</div>') : '')
                +  '<div class="cx-hint">這是來源單字的例句，句中未必出現「'
                +  esc(card.word) + '」，因此不列入朗讀。</div></div>';
