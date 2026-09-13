@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-13",
-  "note": "Clean Router V4: source example headword highlighting.",
+  "note": "V5 integrated transition manager and corrected new-flashcard highlight target.",
   "versions": [
     {
       "id": "v3.0",
@@ -729,6 +729,38 @@
           "s": "done",
           "t": "詞形與片語支援",
           "d": "s/es/ed/ing/ies/ied及多詞片語"
+        }
+      ]
+    },
+    {
+      "id": "clean-router-v5-transition",
+      "title": "快速切換穩定與新閃卡高亮修正",
+      "date": "2026-09-13",
+      "desc": "內建中央過渡、最後點擊勝出、逾時復原，來源例句改高亮card.word。",
+      "items": [
+        {
+          "id": "v5t-1",
+          "s": "done",
+          "t": "中央讀取過渡",
+          "d": "立即遮住舊內容"
+        },
+        {
+          "id": "v5t-2",
+          "s": "done",
+          "t": "最後一次點擊勝出",
+          "d": "90ms合併與序號取消"
+        },
+        {
+          "id": "v5t-3",
+          "s": "done",
+          "t": "逾時復原",
+          "d": "1.6秒解除遮罩並回最後正常介面"
+        },
+        {
+          "id": "v5t-4",
+          "s": "done",
+          "t": "新閃卡單字高亮",
+          "d": "card.word，不退回card.srcWord"
         }
       ]
     }

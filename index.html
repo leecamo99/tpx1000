@@ -5782,7 +5782,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
         if(card.srcEx){
           html += '<div class="cx-box"><h5>來源例句　'
                +  esc(card.srcId || '') + ' ' + esc(card.srcWord || '') + '</h5>'
-               +  '<div class="cx-src-en">' + sourceExampleHtml(card.srcEx, card.srcWord) + '</div>'
+               +  '<div class="cx-src-en">' + sourceExampleHtml(card.srcEx, card.word) + '</div>'
                +  (card.srcExZh ? ('<div class="cx-src-zh">' + esc(card.srcExZh) + '</div>') : '')
                +  '<div class="cx-hint">這是來源單字的例句，句中未必出現「'
                +  esc(card.word) + '」，因此不列入朗讀。</div></div>';
@@ -11675,7 +11675,7 @@ function ixCloseAll(){
   var w=document.getElementById('ixWeakView'),d=document.getElementById('ixDailyView');
   if(w)w.classList.remove('show');if(d)d.classList.remove('show');
 }
-function ixOpenMode(c){
+function ixOpenModeRaw(c){
   ixCloseAll();manual=c;last='';
   if(c==='home'){if(typeof setListMode==='function')setListMode('study');if(typeof showList==='function')showList()}
   else if(c==='word'){if(typeof setListMode==='function')setListMode('browse');if(typeof showList==='function')showList()}
@@ -11688,6 +11688,49 @@ function ixOpenMode(c){
   else if(c==='history'){if(window.TPX_HISTORY&&typeof window.TPX_HISTORY.open==='function')window.TPX_HISTORY.open();else if(typeof window.usOpen==='function')window.usOpen()}
   paint();
 }
+var ixRouteSeq=0,ixRouteTimer=0,ixRouteFailSafe=0,ixLastGood='home';
+function ixTransitionEl(){return document.getElementById('ixRouteTransition')}
+function ixShowTransition(){var e=ixTransitionEl();if(e)e.classList.add('show')}
+function ixHideTransition(){var e=ixTransitionEl();if(e)e.classList.remove('show')}
+function ixRouteReady(c){
+  if(c==='article'||c==='coach'||c==='bank')return visible('screen-read');
+  if(c==='exam')return visible('uxQuiz');
+  if(c==='weak')return !!document.querySelector('#ixWeakView.show');
+  if(c==='daily')return !!document.querySelector('#ixDailyView.show');
+  if(c==='history')return !!document.querySelector('#tpxHistoryView.show');
+  if(c==='settings')return visible('usPanel');
+  if(c==='home'||c==='word'||c==='flash')return visible('screen-list')||visible('screen-detail')||visible('screen-books');
+  return true;
+}
+function ixWaitReady(c,token,started){
+  if(token!==ixRouteSeq)return;
+  if(ixRouteReady(c)||Date.now()-started>900){
+    ixHideTransition();
+    if(ixRouteReady(c))ixLastGood=c;
+    return;
+  }
+  setTimeout(function(){ixWaitReady(c,token,started)},34);
+}
+function ixOpenMode(c){
+  c=String(c||'home');
+  var token=++ixRouteSeq;
+  clearTimeout(ixRouteTimer);clearTimeout(ixRouteFailSafe);
+  ixShowTransition();
+  ixRouteTimer=setTimeout(function(){
+    if(token!==ixRouteSeq)return;
+    requestAnimationFrame(function(){requestAnimationFrame(function(){
+      if(token!==ixRouteSeq)return;
+      try{ixOpenModeRaw(c)}catch(err){console.error('[IX route]',err);ixHideTransition();return}
+      ixWaitReady(c,token,Date.now());
+    })});
+  },90);
+  ixRouteFailSafe=setTimeout(function(){
+    if(token!==ixRouteSeq)return;
+    ixHideTransition();
+    if(!ixRouteReady(c)&&c!==ixLastGood){try{ixOpenModeRaw(ixLastGood||'home')}catch(e){try{ixOpenModeRaw('home')}catch(x){}}}
+  },1600);
+}
+
 window.IX={go:ixOpenMode,word:function(id){ixCloseAll();manual='word';try{openDetail(id)}catch(e){}paint()},continueStudy:function(){var e=cur();if(e)this.word(e.id);else ixOpenMode('word')},review:function(){ixOpenMode('weak')},startQuiz:function(){ixOpenMode('exam')},openCoach:function(){ixOpenMode('coach')},openSettings:function(){ixCloseAll();manual='settings';try{usOpen()}catch(e){}paint()},backSource:function(){try{kinReturnToCaptureSource()}catch(e){}},speak:function(){try{if(cur())nwOpen(cur().word)}catch(e){}},mark:function(v){try{markStatus(v)}catch(e){}},mnemo:function(){try{window.__kinOpenMnemo()}catch(e){}},note:function(){try{window.__kinOpenNote()}catch(e){}}};
 function init(){document.body.classList.toggle('ix-enabled',innerWidth>=1024);paint();window.addEventListener('resize',function(){document.body.classList.toggle('ix-enabled',innerWidth>=1024)},{passive:true})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
@@ -11886,6 +11929,14 @@ function wrap(obj,name,mode){var fn=obj&&obj[name];if(typeof fn!=='function'||fn
 wrap(window,'rdClose','article');if(window.UX)wrap(window.UX,'closeQuiz','exam');
 })();
 </script>
+
+
+<style id="ixRouteTransitionStyle">
+#ixRouteTransition{display:none;position:fixed;left:50%;top:0;bottom:0;width:480px;transform:translateX(-50%);z-index:12990;background:#080808;color:#f5f5f5;align-items:center;justify-content:center;pointer-events:auto}
+#ixRouteTransition.show{display:flex}.ixrt-box{width:180px;padding:18px 16px;border:1px solid #303036;border-radius:14px;background:#141416;box-shadow:0 18px 50px rgba(0,0,0,.38)}.ixrt-title{text-align:center;font-size:13px;font-weight:700;color:#d8d8dc}.ixrt-line{height:3px;margin-top:13px;border-radius:99px;background:#29292e;overflow:hidden}.ixrt-line i{display:block;width:42%;height:100%;border-radius:99px;background:#ff9142;animation:ixrtMove 700ms ease-in-out infinite}@keyframes ixrtMove{0%{transform:translateX(-110%)}100%{transform:translateX(340%)}}
+@media(max-width:1023px){#ixRouteTransition{left:0;right:0;width:auto;transform:none}}
+</style>
+<div id="ixRouteTransition" aria-live="polite" aria-label="正在切換"><div class="ixrt-box"><div class="ixrt-title">正在切換</div><div class="ixrt-line"><i></i></div></div></div>
 
 </body>
 </html>
