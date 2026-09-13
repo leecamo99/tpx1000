@@ -11732,7 +11732,7 @@ function ixOpenMode(c){
 }
 
 window.IX={go:ixOpenMode,word:function(id){ixCloseAll();manual='word';try{openDetail(id)}catch(e){}paint()},continueStudy:function(){var e=cur();if(e)this.word(e.id);else ixOpenMode('word')},review:function(){ixOpenMode('weak')},startQuiz:function(){ixOpenMode('exam')},openCoach:function(){ixOpenMode('coach')},openSettings:function(){ixCloseAll();manual='settings';try{usOpen()}catch(e){}paint()},backSource:function(){try{kinReturnToCaptureSource()}catch(e){}},speak:function(){try{if(cur())nwOpen(cur().word)}catch(e){}},mark:function(v){try{markStatus(v)}catch(e){}},mnemo:function(){try{window.__kinOpenMnemo()}catch(e){}},note:function(){try{window.__kinOpenNote()}catch(e){}}};
-function init(){document.body.classList.toggle('ix-enabled',innerWidth>=1024);paint();window.addEventListener('resize',function(){document.body.classList.toggle('ix-enabled',innerWidth>=1024)},{passive:true})}
+function init(){document.body.classList.toggle('ix-enabled',innerWidth>=1024);paint();if(window.IX_ROTATE&&typeof window.IX_ROTATE.install==='function')window.IX_ROTATE.install()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
@@ -11937,6 +11937,69 @@ wrap(window,'rdClose','article');if(window.UX)wrap(window.UX,'closeQuiz','exam')
 @media(max-width:1023px){#ixRouteTransition{left:0;right:0;width:auto;transform:none}}
 </style>
 <div id="ixRouteTransition" aria-live="polite" aria-label="正在切換"><div class="ixrt-box"><div class="ixrt-title">正在切換</div><div class="ixrt-line"><i></i></div></div></div>
+
+
+<style id="ixRotationStateStyle">
+@media(min-width:1024px){
+ #kinCaptureReturnBtn{left:50%!important;right:auto!important;width:calc(480px - 24px)!important;max-width:456px!important;transform:translateX(-50%)!important;box-sizing:border-box!important}
+}
+body.ix-rotating #ixLeft,body.ix-rotating #ixRight,body.ix-rotating #screen-books,body.ix-rotating #screen-list,body.ix-rotating #screen-detail,body.ix-rotating #screen-read,body.ix-rotating #uxQuiz,body.ix-rotating #ixWeakView,body.ix-rotating #ixDailyView,body.ix-rotating #tpxHistoryView{transition:none!important}
+</style>
+<script>
+(function(){
+'use strict';
+var installed=false,resizeTimer=0,finishTimer=0,rotationSeq=0,lastWide=innerWidth>=1024,lastW=innerWidth,lastH=innerHeight,snapshot=null;
+function activeId(){try{var e=currentList&&currentList[currentIdx];return e&&e.id?String(e.id):''}catch(x){return''}}
+function currentMode(){
+ try{if(typeof manual==='string'&&manual)return manual}catch(e){}
+ if(document.querySelector('#ixWeakView.show'))return'weak';
+ if(document.querySelector('#ixDailyView.show'))return'daily';
+ if(document.querySelector('#tpxHistoryView.show'))return'history';
+ if(document.body.classList.contains('ix-center-article'))return'article';
+ if(document.body.classList.contains('ix-center-exam'))return'exam';
+ if(document.body.classList.contains('ix-center-flash'))return'flash';
+ var d=document.getElementById('screen-detail');if(d&&d.classList.contains('active')){try{return window.CURRENT_BOOK&&CURRENT_BOOK.id==='custom'?'flash':'word'}catch(e){return'word'}}
+ var l=document.getElementById('screen-list');if(l&&l.classList.contains('active'))return'home';
+ return'home';
+}
+function capture(){
+ var mode=currentMode(),detail=document.getElementById('screen-detail');
+ return{mode:mode,id:activeId(),scroll:window.scrollY||0,detailScroll:detail?detail.scrollTop||0:0,wide:innerWidth>=1024,at:Date.now()};
+}
+function show(){rotationSeq++;snapshot=capture();document.body.classList.add('ix-rotating');try{if(typeof ixShowTransition==='function')ixShowTransition()}catch(e){}}
+function visible(el){if(!el)return false;var s=getComputedStyle(el);return s.display!=='none'&&s.visibility!=='hidden'}
+function restore(s){
+ if(!s)return;
+ document.body.classList.toggle('ix-enabled',innerWidth>=1024);
+ try{manual=s.mode||''}catch(e){}
+ /* Keep the existing active surface. Rotation must not navigate to another mode. */
+ if(s.mode==='weak'){var w=document.getElementById('ixWeakView');if(w)w.classList.add('show');try{ixSetMode('weak')}catch(e){}}
+ else if(s.mode==='daily'){var d=document.getElementById('ixDailyView');if(d)d.classList.add('show');try{ixSetMode('daily')}catch(e){}}
+ else if(s.mode==='history'){var hv=document.getElementById('tpxHistoryView');if(hv)hv.classList.add('show');document.body.classList.add('tpx-history-open');try{ixSetMode('')}catch(e){}}
+ else if(s.mode==='article'||s.mode==='coach'||s.mode==='bank'){try{ixSetMode('article')}catch(e){}}
+ else if(s.mode==='exam'){try{ixSetMode('exam')}catch(e){}}
+ else if(s.mode==='flash'){try{ixSetMode('flash')}catch(e){}}
+ else{try{ixSetMode('')}catch(e){}}
+ try{last='';paint()}catch(e){}
+ requestAnimationFrame(function(){requestAnimationFrame(function(){
+   var detail=document.getElementById('screen-detail');if(detail&&s.detailScroll)detail.scrollTop=s.detailScroll;
+   window.scrollTo(0,s.scroll||0);
+   var ret=document.getElementById('kinCaptureReturnBtn');if(ret&&innerWidth>=1024){ret.style.left='50%';ret.style.right='auto';ret.style.width='456px';ret.style.transform='translateX(-50%)'}
+   document.body.classList.remove('ix-rotating');try{ixHideTransition()}catch(e){}
+ })});
+}
+function settle(token){if(token!==rotationSeq)return;clearTimeout(finishTimer);finishTimer=setTimeout(function(){if(token!==rotationSeq)return;restore(snapshot)},120)}
+function onViewport(){
+ var wide=innerWidth>=1024,orientationChanged=(wide!==lastWide)||Math.abs(innerWidth-lastW)>160||Math.abs(innerHeight-lastH)>160;
+ lastWide=wide;lastW=innerWidth;lastH=innerHeight;
+ if(!orientationChanged)return;
+ show();var token=rotationSeq;clearTimeout(resizeTimer);resizeTimer=setTimeout(function(){settle(token)},100);
+}
+function install(){if(installed)return;installed=true;window.addEventListener('resize',onViewport,{passive:true});window.addEventListener('orientationchange',function(){show();var token=rotationSeq;clearTimeout(resizeTimer);resizeTimer=setTimeout(function(){settle(token)},180)},{passive:true});if(window.visualViewport)visualViewport.addEventListener('resize',onViewport,{passive:true})}
+window.IX_ROTATE={install:install,capture:capture,restore:restore};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
+</script>
 
 </body>
 </html>

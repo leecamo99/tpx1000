@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-13",
-  "note": "V5 integrated transition manager and corrected new-flashcard highlight target.",
+  "note": "V6 preserves active route, word and scroll during portrait/landscape rotation.",
   "versions": [
     {
       "id": "v3.0",
@@ -761,6 +761,38 @@
           "s": "done",
           "t": "新閃卡單字高亮",
           "d": "card.word，不退回card.srcWord"
+        }
+      ]
+    },
+    {
+      "id": "clean-router-v6-rotation",
+      "title": "旋轉版面狀態保留",
+      "date": "2026-09-13",
+      "desc": "直幅與橫幅切換沿用過渡畫面，保留目前功能、單字與捲動位置。",
+      "items": [
+        {
+          "id": "v6r-1",
+          "s": "done",
+          "t": "旋轉前狀態快照",
+          "d": "功能模式、單字ID、頁面與詳情捲動"
+        },
+        {
+          "id": "v6r-2",
+          "s": "done",
+          "t": "旋轉期間過渡遮罩",
+          "d": "避免三欄形成時畫面跳動"
+        },
+        {
+          "id": "v6r-3",
+          "s": "done",
+          "t": "不重新導航",
+          "d": "只重排並恢復原模式"
+        },
+        {
+          "id": "v6r-4",
+          "s": "done",
+          "t": "返回來源按鈕限中央寬度",
+          "d": "橫幅不再跨越三欄"
         }
       ]
     }
