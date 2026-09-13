@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-13",
-  "note": "Clean single router v1: directly replaced original IX router; removed polling and MutationObserver.",
+  "note": "Clean Router V2: removed duplicate ixOpenMode and original center left/right rules.",
   "versions": [
     {
       "id": "v3.0",
@@ -651,6 +651,38 @@
           "s": "done",
           "t": "弱點與每日獨立頁",
           "d": "直接渲染，不依賴設定面板"
+        }
+      ]
+    },
+    {
+      "id": "clean-router-v2",
+      "title": "原生功能頁穿幫修復",
+      "date": "2026-09-13",
+      "desc": "刪除重複ixOpenMode，移除原Shell中央定位，文章與測驗採單一480px座標。",
+      "items": [
+        {
+          "id": "cr2-1",
+          "s": "done",
+          "t": "ixOpenMode只保留1份",
+          "d": "移除較舊路由函式"
+        },
+        {
+          "id": "cr2-2",
+          "s": "done",
+          "t": "刪除220/270中央定位",
+          "d": "不再和480px規則競爭"
+        },
+        {
+          "id": "cr2-3",
+          "s": "done",
+          "t": "文章與測驗互斥",
+          "d": "底層與其他原生表面完全隱藏"
+        },
+        {
+          "id": "cr2-4",
+          "s": "done",
+          "t": "閃卡明確模式",
+          "d": "清除原生覆層後開啟閃卡"
         }
       ]
     }
