@@ -5743,7 +5743,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
         if(card.srcEx){
           html += '<div class="cx-box"><h5>來源例句　'
                +  esc(card.srcId || '') + ' ' + esc(card.srcWord || '') + '</h5>'
-               +  '<div class="cx-src-en">' + esc(card.srcEx) + '</div>'
+               +  '<div class="cx-src-en">' + window.cxHighlightSource(card.srcEx, card) + '</div>'
                +  (card.srcExZh ? ('<div class="cx-src-zh">' + esc(card.srcExZh) + '</div>') : '')
                +  '<div class="cx-hint">這是來源單字的例句，句中未必出現「'
                +  esc(card.word) + '」，因此不列入朗讀。</div></div>';
@@ -11766,6 +11766,100 @@ function modelPanel(){var route=document.getElementById('gmRoutePanel');if(!rout
 window.gmDiscoverModels=function(force){modelPanel();var t=document.getElementById('gmrModelsText');if(t)t.textContent='正在向 Gemini models.list 查詢…';discover(!!force).then(function(c){if(t)t.textContent='目前排序：'+c.models.join(' → ');if(typeof gmRouteLogRefresh==='function')gmRouteLogRefresh()},function(e){if(t)t.textContent='模型探索失敗：'+e.message})};
 function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(hook,100)});else setTimeout(hook,100);
+})();
+</script>
+
+
+<style id="cxSourceHighlightStyle">
+.cx-src-en .hl{color:#c45c1a;font-weight:800}
+body.theme-dark .cx-src-en .hl{color:#ff9142;font-weight:800}
+</style>
+<script>
+/* New flashcard source-example highlighting. */
+(function(){
+'use strict';
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function rx(s){return String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}
+function tokens(s){return String(s||'').toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g)||[]}
+function rootPattern(w){
+ w=String(w||'').toLowerCase();
+ if(!w)return'';
+ if(/e$/.test(w))return rx(w)+'(?:s|d|ing)?';
+ if(/[^aeiou]y$/.test(w))return rx(w.slice(0,-1))+'(?:y|ies|ied|ying)';
+ return rx(w)+'(?:s|es|ed|ing)?';
+}
+function wrap(text,re){
+ var out='',last=0,m;re.lastIndex=0;
+ while((m=re.exec(text))){out+=esc(text.slice(last,m.index))+'<span class="hl">'+esc(m[0])+'</span>';last=m.index+m[0].length;if(!m[0].length)re.lastIndex++}
+ return out+esc(text.slice(last));
+}
+window.cxHighlightSource=function(sentence,card){
+ var text=String(sentence||''),word=String(card&&card.word||''),source=String(card&&card.srcWord||''),wt=tokens(word),st=tokens(source),patterns=[];
+ if(!text)return'';
+ /* Full phrase first. */
+ if(wt.length>1)patterns.push('\\b'+wt.map(function(w){return rootPattern(w)}).join('\\s+')+'\\b');
+ /* Grammar phrase such as expect to do -> is expected to. */
+ if(wt.length>=3&&wt[1]==='to'&&wt[2]==='do')patterns.push('\\b(?:(?:am|is|are|was|were|be|been|being)\\s+)?'+rootPattern(wt[0])+'\\s+to\\b');
+ /* Captured word and source headword with common inflections. */
+ if(wt[0])patterns.push('\\b'+rootPattern(wt[0])+'\\b');
+ if(st[0]&&st[0]!==wt[0])patterns.push('\\b'+rootPattern(st[0])+'\\b');
+ for(var i=0;i<patterns.length;i++){
+  var re=new RegExp(patterns[i],'ig');
+  if(re.test(text))return wrap(text,re);
+ }
+ return esc(text);
+};
+})();
+</script>
+
+
+<style id="tpxCentralExclusiveStyle">
+@media(min-width:1024px){
+ body.tpx-center-exclusive #screen-books,
+ body.tpx-center-exclusive #screen-list,
+ body.tpx-center-exclusive #screen-detail,
+ body.tpx-center-exclusive #tpxHistoryView,
+ body.tpx-center-exclusive .player-bar,
+ body.tpx-center-exclusive .bottom-nav{visibility:hidden!important;pointer-events:none!important}
+ body.tpx-center-article #screen-read,
+ body.tpx-center-exam #uxQuiz,
+ body.tpx-center-weak #tpxWeakView{visibility:visible!important;opacity:1!important;pointer-events:auto!important;background:#080808!important}
+ body.tpx-center-article #uxQuiz,
+ body.tpx-center-article #tpxWeakView,
+ body.tpx-center-exam #screen-read,
+ body.tpx-center-exam #tpxWeakView,
+ body.tpx-center-weak #screen-read,
+ body.tpx-center-weak #uxQuiz{visibility:hidden!important;pointer-events:none!important}
+ #tpxWeakView{display:none;position:fixed;left:50%;top:0;bottom:0;width:480px;transform:translateX(-50%);z-index:12250;background:#080808;color:#f5f5f5;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+ #tpxWeakView.show{display:block}
+}
+@media(max-width:1023px){#tpxWeakView{display:none!important}}
+.tpxw-head{position:sticky;top:0;z-index:5;height:58px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;background:#0b0b0b;border-bottom:1px solid #2c2c2e}.tpxw-head h2{margin:0;font-size:18px}.tpxw-close{width:40px;height:40px;border:1px solid #343434;border-radius:10px;background:#171717;color:#f5f5f5;font-size:22px}.tpxw-body{padding:16px}.tpxw-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.tpxw-card{padding:12px 8px;text-align:center;border:1px solid #2c2c2e;border-radius:12px;background:#141414}.tpxw-card b{font-size:24px;color:#ff9142}.tpxw-card span{display:block;margin-top:5px;color:#a3a3a3;font-size:11px}.tpxw-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0}.tpxw-actions button{min-height:44px;border:1px solid #6d3511;border-radius:11px;background:#211107;color:#f5f5f5;font-weight:750}.tpxw-title{margin:18px 0 9px;font-size:13px}.tpxw-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:11px 0;border-bottom:1px solid #242424}.tpxw-word{font-size:15px;font-weight:750}.tpxw-mean{margin-top:4px;color:#a3a3a3;font-size:12px;line-height:1.45}.tpxw-meta{align-self:center;color:#ff9142;font-size:11px}.tpxw-empty{padding:22px 0;color:#8b8b8b;text-align:center}
+</style>
+<div id="tpxWeakView" role="dialog" aria-label="弱點分析"><div class="tpxw-head"><h2>弱點分析</h2><button type="button" class="tpxw-close" onclick="TPX_CENTER.close()">×</button></div><div class="tpxw-body" id="tpxWeakBody"></div></div>
+<script>
+(function(){
+'use strict';
+var CLASSES=['tpx-center-exclusive','tpx-center-article','tpx-center-exam','tpx-center-weak'];
+function clearClasses(){CLASSES.forEach(function(c){document.body.classList.remove(c)})}
+function closeWeak(){var v=document.getElementById('tpxWeakView');if(v)v.classList.remove('show')}
+function closeNative(){try{if(typeof window.rdClose==='function')window.rdClose()}catch(e){}try{if(window.UX&&typeof window.UX.closeQuiz==='function')window.UX.closeQuiz()}catch(e){}try{if(typeof window.usClose==='function')window.usClose()}catch(e){}try{if(window.TPX_HISTORY&&typeof window.TPX_HISTORY.close==='function')window.TPX_HISTORY.close()}catch(e){}closeWeak();clearClasses()}
+function apply(mode){clearClasses();if(mode){document.body.classList.add('tpx-center-exclusive','tpx-center-'+mode)}}
+function allData(){try{return Array.isArray(DATA)?DATA:[]}catch(e){return[]}}
+function status(){try{return statusMap||{}}catch(e){return{}}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function strength(e){try{var b=window.CURRENT_BOOK&&CURRENT_BOOK.id||'kin1000',x=window.KIN_STRENGTH&&KIN_STRENGTH.stats(e.id,b);return x||null}catch(err){return null}}
+function weakEntries(){var s=status();return allData().map(function(e){var x=strength(e),score=0;if(s[e.id]==='review')score+=100;if(x){score+=(+x.wrong||0)*12+(+x.forget||0)*10+(+x.views||0);if(x.level==='weak')score+=40}return{e:e,x:x,score:score,state:s[e.id]||''}}).filter(function(r){return r.score>0||r.state==='review'}).sort(function(a,b){return b.score-a.score}).slice(0,80)}
+function renderWeak(){var rows=weakEntries(),s=status(),a=allData(),review=0,newn=0;a.forEach(function(e){if(s[e.id]==='review')review++;else if(s[e.id]!=='ok')newn++});var body=document.getElementById('tpxWeakBody');var html='<div class="tpxw-grid"><div class="tpxw-card"><b>'+review+'</b><span>要複習</span></div><div class="tpxw-card"><b>'+rows.length+'</b><span>弱點候選</span></div><div class="tpxw-card"><b>'+newn+'</b><span>未學習</span></div></div><div class="tpxw-actions"><button type="button" onclick="TPX_CENTER.review()">開始弱點複習</button><button type="button" onclick="TPX_CENTER.quiz()">建立弱點測驗</button></div><div class="tpxw-title">弱點單字排行</div>';
+ html+=rows.length?rows.map(function(r,i){var x=r.x||{},meta=r.state==='review'?'要複習':('弱點分數 '+r.score);return'<button type="button" class="tpxw-row" onclick="TPX_CENTER.word(\''+esc(r.e.id)+'\')"><span><span class="tpxw-word">'+(i+1)+'. '+esc(r.e.word)+'</span><span class="tpxw-mean">'+esc(r.e.ja||r.e.mean||'')+'</span></span><span class="tpxw-meta">'+esc(meta)+'</span></button>'}).join(''):'<div class="tpxw-empty">目前沒有弱點紀錄。</div>';body.innerHTML=html}
+function openArticle(bank){closeNative();try{if(typeof window.rdOpen==='function')window.rdOpen()}catch(e){}apply('article');if(bank){setTimeout(function(){try{if(typeof window.rdImportBank==='function')window.rdImportBank()}catch(e){}},120)}}
+function openExam(){closeNative();try{if(window.UX&&typeof window.UX.openQuiz==='function')window.UX.openQuiz()}catch(e){}apply('exam')}
+function openWeak(){closeNative();renderWeak();document.getElementById('tpxWeakView').classList.add('show');apply('weak')}
+window.TPX_CENTER={close:function(){closeNative()},article:function(){openArticle(false)},bank:function(){openArticle(true)},exam:openExam,weak:openWeak,review:function(){closeNative();try{if(typeof window.srsOpen==='function')window.srsOpen()}catch(e){}},quiz:openExam,word:function(id){closeNative();try{if(typeof window.openDetail==='function')window.openDetail(id)}catch(e){}}};
+var oldGo=window.IX&&window.IX.go;if(window.IX&&oldGo){window.IX.go=function(c){if(c==='article'||c==='coach'){openArticle(false);return}if(c==='bank'){openArticle(true);return}if(c==='exam'){openExam();return}if(c==='weak'){openWeak();return}closeNative();return oldGo.call(window.IX,c)};window.IX.startQuiz=openExam;window.IX.openCoach=function(){openArticle(false)};window.IX.review=openWeak}
+/* Closing native surfaces restores normal central content without observers. */
+function wrap(name){var fn=window[name];if(typeof fn!=='function'||fn.__tpxWrapped)return;var w=function(){var r=fn.apply(this,arguments);clearClasses();return r};w.__tpxWrapped=true;window[name]=w}
+wrap('rdClose');if(window.UX&&typeof window.UX.closeQuiz==='function'){var q=window.UX.closeQuiz;window.UX.closeQuiz=function(){var r=q.apply(this,arguments);clearClasses();return r}}
 })();
 </script>
 
