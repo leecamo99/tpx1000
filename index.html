@@ -1310,17 +1310,9 @@ function updateStats(){
   if(pn) pn.textContent = pct;
   var rt = document.getElementById('ringTitle');
   if(rt){
-    var lab = {all:'全部範圍','600':'600分級','730':'730分級','860':'860分級','990':'990分級',
-      S1:'Supplement 1',S2:'Supplement 2',S3:'Supplement 3',S4:'Supplement 4',
-      S5:'Supplement 5',S6:'Supplement 6',S7:'Supplement 7',COL:'Column 1–4'};
-    rt.textContent = (lab[currentLevel]||currentLevel) + '　' + ok + ' / ' + list.length;
+    rt.textContent = levelText(currentLevel) + '　' + ok + ' / ' + list.length;
   }
-  // modal counts
-  const count = lv => DATA.filter(e=>lv==='all'||e.level===lv).length;
-  ['All','600','730','860','990','S1','S2','S3','S4','S5','S6','S7','COL'].forEach(function(k){
-    var el = document.getElementById('f'+k);
-    if(el) el.textContent = count(k==='All'?'all':k)+' 字';
-  });
+
 }
 
 function renderList(){
@@ -1655,15 +1647,69 @@ function showList(){
   setTimeout(locate,500);
 }
 
+/* 依目前書籍資料動態建立學習範圍，不讓不同書籍共用固定分類。 */
+function levelMeta(){
+  var seen={}, out=[];
+  (DATA||[]).forEach(function(e){
+    var value=String((e&&e.level)||'').trim();
+    if(!value||seen[value]) return;
+    seen[value]=true;
+    var label=String((e&&e.level_label)||value).trim();
+    out.push({value:value,label:label,count:0});
+  });
+  var by={}; out.forEach(function(x){by[x.value]=x;});
+  (DATA||[]).forEach(function(e){
+    var value=String((e&&e.level)||'').trim();
+    if(by[value]) by[value].count++;
+  });
+  return out;
+}
+function levelText(value){
+  if(value==='all') return '全部範圍';
+  var hit=levelMeta().filter(function(x){return x.value===value;})[0];
+  return hit?hit.label:value;
+}
+function rebuildLevelControls(){
+  var meta=levelMeta(), valid={all:true};
+  meta.forEach(function(x){valid[x.value]=true;});
+  currentLevels=(currentLevels||[]).filter(function(x){return valid[x];});
+  if(!currentLevels.length) currentLevels=['all'];
+  currentLevel=currentLevels.indexOf('all')>=0?'all':currentLevels[0];
+
+  ['levelSelect','levelSelect2'].forEach(function(id){
+    var sel=document.getElementById(id); if(!sel) return;
+    sel.innerHTML='';
+    var all=document.createElement('option'); all.value='all'; all.textContent='全部'; sel.appendChild(all);
+    meta.forEach(function(x){var o=document.createElement('option');o.value=x.value;o.textContent=x.label;sel.appendChild(o);});
+    sel.value=currentLevel;
+  });
+
+  var modal=document.querySelector('#filterModal .modal');
+  if(modal){
+    Array.prototype.forEach.call(modal.querySelectorAll('label.opt'),function(el){el.remove();});
+    var done=modal.querySelector('.done-btn');
+    [{value:'all',label:'全部',count:(DATA||[]).length}].concat(meta).forEach(function(x){
+      var lab=document.createElement('label'); lab.className='opt';
+      var wrap=document.createElement('div'), title=document.createElement('div'), sub=document.createElement('div');
+      title.textContent=x.label; sub.className='sub'; sub.textContent=x.count+' 字';
+      wrap.appendChild(title); wrap.appendChild(sub);
+      var cb=document.createElement('input'); cb.type='checkbox'; cb.name='fl'; cb.value=x.value;
+      cb.checked=currentLevels.indexOf(x.value)>=0;
+      cb.onchange=function(){setLevel(x.value);};
+      lab.appendChild(wrap); lab.appendChild(cb);
+      modal.insertBefore(lab,done||null);
+    });
+  }
+}
+
 function filtered(){
   var levels=(currentLevels&&currentLevels.length)?currentLevels:['all'];
   if(levels.indexOf('all')>=0) return DATA.slice();
   return DATA.filter(function(e){return levels.indexOf(e.level)>=0;});
 }
 function levelLabel(){
-  var lab={all:'全部範圍','600':'600分級','730':'730分級','860':'860分級','990':'990分級',S1:'Supplement 1',S2:'Supplement 2',S3:'Supplement 3',S4:'Supplement 4',S5:'Supplement 5',S6:'Supplement 6',S7:'Supplement 7',COL:'Column 1–4'};
-  if(currentLevels.indexOf('all')>=0) return lab.all;
-  return currentLevels.map(function(x){return lab[x]||x;}).join('＋');
+  if(currentLevels.indexOf('all')>=0) return '全部範圍';
+  return currentLevels.map(levelText).join('＋');
 }
 function syncLevelUI(){
   document.querySelectorAll('input[name="fl"]').forEach(function(r){r.checked=currentLevels.indexOf(r.value)>=0;});
@@ -7903,6 +7949,15 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
     // 音檔路徑與紀錄鍵，全部隨書切換
     AUDIO_BASE = meta.audioBase || 'audio/kin1000/CLIPS/';
+    // 紀錄鍵同時帶書籍與使用者，兩人各自獨立。
+    var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
+    STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
+    SRS_KEY    = 'book:' + meta.id + ':' + uid + ':srs';
+    var switched = !prev || prev.id !== meta.id;
+    // 必須先把 CURRENT_BOOK 換成新書，syncLevelUI() 內部會用 CURRENT_BOOK.id 寫回
+    // localStorage，若在這行之前呼叫 syncLevelUI()，會把新書的篩選值誤存回「舊書」的鍵，
+    // 導致舊書的篩選設定被新書覆蓋（這是先前版本換書篩選失效的真正原因）。
+    window.CURRENT_BOOK = meta;
     // 學習範圍篩選（currentLevels）依書籍各自獨立，換書時務必改讀該書自己的設定，
     // 不可沿用前一本書的範圍（例如 kin1000 選 730分級，切到別本書不該還停在 730分級）。
     try{
@@ -7910,13 +7965,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       currentLevels = (Array.isArray(_bookLevels) && _bookLevels.length) ? _bookLevels : ['all'];
     }catch(e){ currentLevels = ['all']; }
     currentLevel = currentLevels.indexOf('all') >= 0 ? 'all' : (currentLevels[0] || 'all');
+    try{ rebuildLevelControls(); }catch(e){ console.warn('重建學習範圍失敗',e); }
     try{ syncLevelUI(); }catch(e){}
-    // 紀錄鍵同時帶書籍與使用者，兩人各自獨立。
-    var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
-    STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
-    SRS_KEY    = 'book:' + meta.id + ':' + uid + ':srs';
-    var switched = !prev || prev.id !== meta.id;
-    window.CURRENT_BOOK = meta;
     // 建立這本書的標題字索引，供捕獲時跨書比對。
     if(!meta.virtual && typeof window.__kinIndexBook === 'function'){
       try{ window.__kinIndexBook(meta.id, meta.title, DATA); }catch(e){}
