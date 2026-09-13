@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-13",
-  "note": "V3 中央權威層：capture路由，文章/測驗不透明互斥，弱點分析直接渲染。",
+  "note": "Clean single router v1: directly replaced original IX router; removed polling and MutationObserver.",
   "versions": [
     {
       "id": "v3.0",
@@ -617,104 +617,40 @@
       ]
     },
     {
-      "id": "flashcard-source-highlight",
-      "title": "閃卡來源例句高亮",
+      "id": "clean-single-router-v1",
+      "title": "三介面單一路由重構",
       "date": "2026-09-13",
-      "desc": "來源例句套用與一般例句一致的橘色高亮。",
+      "desc": "原始IX只保留一份路由，無wrapper、無capture、無observer。",
       "items": [
         {
-          "id": "fsh-1",
+          "id": "csr-1",
           "s": "done",
-          "t": "完整詞組優先匹配",
-          "d": "不分大小寫"
+          "t": "單一IX路由",
+          "d": "首頁/單字/文章/測驗/題庫/AI/弱點/每日/歷程"
         },
         {
-          "id": "fsh-2",
+          "id": "csr-2",
           "s": "done",
-          "t": "常見詞形變化",
-          "d": "s/es/ed/ing與y變化"
+          "t": "移除750ms重繪",
+          "d": "避免反覆重建側欄"
         },
         {
-          "id": "fsh-3",
+          "id": "csr-3",
           "s": "done",
-          "t": "to do 句型匹配",
-          "d": "expect to do可匹配is expected to"
+          "t": "移除MutationObserver",
+          "d": "避免Safari壓力"
         },
         {
-          "id": "fsh-4",
+          "id": "csr-4",
           "s": "done",
-          "t": "深淺主題一致",
-          "d": "沿用一般例句橘色"
-        }
-      ]
-    },
-    {
-      "id": "central-exclusive-and-weak-analysis",
-      "title": "中央互斥與弱點分析",
-      "date": "2026-09-13",
-      "desc": "文章、測驗、題庫開啟時完全隱藏中央底層；新增弱點分析主畫面。",
-      "items": [
-        {
-          "id": "cew-1",
-          "s": "done",
-          "t": "文章中央互斥",
-          "d": "隱藏首頁、單字、播放器與其他覆層"
+          "t": "中央固定480px",
+          "d": "解除壓縮"
         },
         {
-          "id": "cew-2",
+          "id": "csr-5",
           "s": "done",
-          "t": "測驗中央互斥",
-          "d": "與文章、弱點畫面互斥"
-        },
-        {
-          "id": "cew-3",
-          "s": "done",
-          "t": "題庫中央互斥",
-          "d": "先開教練工作區再進題庫匯入"
-        },
-        {
-          "id": "cew-4",
-          "s": "done",
-          "t": "弱點分析獨立頁",
-          "d": "統計、排行、複習與弱點測驗入口"
-        },
-        {
-          "id": "cew-5",
-          "s": "done",
-          "t": "來源例句橘色高亮",
-          "d": "片語與常見詞形變化"
-        }
-      ]
-    },
-    {
-      "id": "v3-central-authority",
-      "title": "文章測驗與弱點分析最終路由",
-      "date": "2026-09-13",
-      "desc": "以事件捕獲阻止舊路由，中央一次只顯示一個畫面。",
-      "items": [
-        {
-          "id": "ca-1",
-          "s": "done",
-          "t": "文章不透明中央畫面",
-          "d": "加入中央黑色Shield與最高層級"
-        },
-        {
-          "id": "ca-2",
-          "s": "done",
-          "t": "測驗不透明中央畫面",
-          "d": "文章、測驗、弱點互斥"
-        },
-        {
-          "id": "ca-3",
-          "s": "done",
-          "t": "弱點分析直接渲染",
-          "d": "不再依賴舊srsOpen作為主畫面"
-        },
-        {
-          "id": "ca-4",
-          "s": "done",
-          "t": "左欄Capture路由",
-          "d": "阻止舊wrapper再次執行"
+          "t": "弱點與每日獨立頁",
+          "d": "直接渲染，不依賴設定面板"
         }
       ]
     }
