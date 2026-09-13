@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-13",
-  "note": "Gemini v4 路由與三介面真實入口修復。",
+  "note": "Gemini 動態 models.list 探索、24小時快取與404強制更新。",
   "versions": [
     {
       "id": "v3.0",
@@ -511,6 +511,108 @@
           "s": "done",
           "t": "真實功能入口",
           "d": "rdOpen、UX.openQuiz、deckOpen、srsOpen、usOpen"
+        }
+      ]
+    },
+    {
+      "id": "v2-layout-gemini-model-fix",
+      "title": "中央版面與 Gemini 模型修復",
+      "date": "2026-09-13",
+      "desc": "修正 iPad 未放大時壓縮、學習歷程穿幫及 2.5 模型退役。",
+      "items": [
+        {
+          "id": "v2-1",
+          "s": "done",
+          "t": "中央固定原生 480px",
+          "d": "清除舊 Shell body padding"
+        },
+        {
+          "id": "v2-2",
+          "s": "done",
+          "t": "學習歷程獨立中央頁",
+          "d": "不再開啟設定面板"
+        },
+        {
+          "id": "v2-3",
+          "s": "done",
+          "t": "Gemini 3.6 Flash",
+          "d": "取代已退役的 2.5 Flash"
+        },
+        {
+          "id": "v2-4",
+          "s": "done",
+          "t": "Gemini 設定測試走輪替",
+          "d": "不再只測第一支Key"
+        }
+      ]
+    },
+    {
+      "id": "gemini-route-log-panel",
+      "title": "Gemini 路由紀錄面板",
+      "date": "2026-09-13",
+      "desc": "在設定頁顯示最近30筆模型、Key尾碼與結果。",
+      "items": [
+        {
+          "id": "gmr-1",
+          "s": "done",
+          "t": "路由紀錄清單",
+          "d": "時間、模型、Key尾碼、成功或錯誤"
+        },
+        {
+          "id": "gmr-2",
+          "s": "done",
+          "t": "重新整理",
+          "d": "立即讀取本機最新紀錄"
+        },
+        {
+          "id": "gmr-3",
+          "s": "done",
+          "t": "複製紀錄",
+          "d": "方便除錯與回報"
+        },
+        {
+          "id": "gmr-4",
+          "s": "done",
+          "t": "清除紀錄",
+          "d": "只清路由紀錄，不清Key或冷卻"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-gemini-model-discovery",
+      "title": "Gemini 動態模型探索",
+      "date": "2026-09-13",
+      "desc": "依每支Key取得可用generateContent模型，自動排序與快取。",
+      "items": [
+        {
+          "id": "dgm-1",
+          "s": "done",
+          "t": "models.list 動態查詢",
+          "d": "篩選支援 generateContent 的 Flash 模型"
+        },
+        {
+          "id": "dgm-2",
+          "s": "done",
+          "t": "每支Key獨立模型清單",
+          "d": "避免不同Project可用模型差異"
+        },
+        {
+          "id": "dgm-3",
+          "s": "done",
+          "t": "24小時快取",
+          "d": "平時不額外增加請求"
+        },
+        {
+          "id": "dgm-4",
+          "s": "done",
+          "t": "404自動強制更新",
+          "d": "模型退役時立即重新探索"
+        },
+        {
+          "id": "dgm-5",
+          "s": "done",
+          "t": "設定頁模型狀態",
+          "d": "顯示目前動態排序並可手動重抓"
         }
       ]
     }

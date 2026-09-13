@@ -5974,11 +5974,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       }
     }catch(e){}
     ttsMsg('Gemini 金鑰已儲存，測試中\u2026');
-    fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + encodeURIComponent(k), {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ contents:[{ parts:[{ text:'只回覆兩個字：測試成功' }] }] })
-    })
-    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP ' + r.status + '\u3000' + t.slice(0,140)); }); })
+    window.KIN_GM.call({contents:[{parts:[{text:'只回覆兩個字：測試成功'}]}]},{purpose:'settings-test'})
     .then(function(j){
       var c0 = j && j.candidates && j.candidates[0];
       var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
@@ -11655,7 +11651,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 (function(){
 'use strict';
 var KEY_STORE='kinGeminiKeys',OLD_KEY='kinGeminiKey',KEY_COOL='kinGeminiKeyCoolV4',MODEL_COOL='kinGeminiModelCoolV4',CURSOR='kinGeminiCursorV4',LOG='kinGeminiRouteLogV4';
-var MODELS=['gemini-2.5-flash','gemini-2.5-flash-lite'];
+var MODELS=['gemini-3.6-flash','gemini-3.5-flash-lite'];
 function now(){return Date.now()}function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function keys(){var a=[];try{a=JSON.parse(localStorage.getItem(KEY_STORE)||'[]')||[]}catch(e){}if(!Array.isArray(a))a=[];a=a.map(function(k){return String(k||'').trim()}).filter(Boolean);if(!a.length){var k='';try{k=(localStorage.getItem(OLD_KEY)||'').trim()}catch(e){}if(k)a=[k]}return a.filter(function(k,i,x){return x.indexOf(k)===i})}
 function getMap(k){try{return JSON.parse(localStorage.getItem(k)||'{}')||{}}catch(e){return{}}}function saveMap(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
@@ -11674,6 +11670,102 @@ function call(payload,opts){opts=opts||{};var ks=keys();if(!ks.length)return Pro
    return run()})}return run()}
 function text(j){var p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[];for(var i=0;i<p.length;i++)if(p[i].text)return p[i].text;return''}
 window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);try{localStorage.setItem(KEY_STORE,JSON.stringify(a));if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}},cooling:function(){return 0},models:MODELS,routeLog:function(){try{return JSON.parse(localStorage.getItem(LOG)||'[]')||[]}catch(e){return[]}}};
+})();
+</script>
+
+
+<style id="tpxFinalLayoutFix">
+:root{--tpx-app:480px;--tpx-left:190px;--tpx-right:230px;--tpx-gap:14px}
+@media(min-width:1024px){
+ body.ix-enabled{width:var(--tpx-app)!important;min-width:var(--tpx-app)!important;max-width:var(--tpx-app)!important;margin:0 auto!important;padding-left:0!important;padding-right:0!important;box-sizing:border-box!important}
+ #ixLeft{left:calc(50% - 240px - var(--tpx-gap) - var(--tpx-left))!important;width:var(--tpx-left)!important}
+ #ixRight{right:calc(50% - 240px - var(--tpx-gap) - var(--tpx-right))!important;width:var(--tpx-right)!important}
+ #screen-books,#screen-list,#screen-detail,#paneStudy,#paneBrowse,.ring-wrap,.list-stats,.list-actions,.section-pick{width:100%!important;min-width:0!important;max-width:480px!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}
+ #screen-read,#uxQuiz,#usPanel,.ux-screen{left:50%!important;right:auto!important;width:480px!important;min-width:480px!important;max-width:480px!important;transform:translateX(-50%)!important;box-sizing:border-box!important;background:#080808!important}
+ #usMask,#pinMask{left:50%!important;right:auto!important;width:480px!important;transform:translateX(-50%)!important}
+ .player-bar,.bottom-nav{left:50%!important;right:auto!important;width:100%!important;max-width:480px!important;transform:translateX(-50%)!important}
+ body.tpx-history-open #screen-books,body.tpx-history-open #screen-list,body.tpx-history-open #screen-detail,body.tpx-history-open #screen-read,body.tpx-history-open #uxQuiz,body.tpx-history-open #usPanel,body.tpx-history-open .player-bar,body.tpx-history-open .bottom-nav{visibility:hidden!important;pointer-events:none!important}
+ #tpxHistoryView{position:fixed;display:none;left:50%;top:0;bottom:0;width:480px;transform:translateX(-50%);z-index:12200;background:#080808;color:#f5f5f5;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+ #tpxHistoryView.show{display:block}
+}
+@media(min-width:1280px){:root{--tpx-left:215px;--tpx-right:260px;--tpx-gap:18px}}
+@media(max-width:1023px){#tpxHistoryView{display:none!important}}
+.tpxh-head{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;height:58px;padding:0 16px;background:#0b0b0b;border-bottom:1px solid #2c2c2e}.tpxh-head h2{margin:0;font-size:18px}.tpxh-close{width:40px;height:40px;border:1px solid #343434;border-radius:10px;background:#171717;color:#f5f5f5;font-size:22px}.tpxh-body{padding:16px}.tpxh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.tpxh-card{padding:14px;border:1px solid #2c2c2e;border-radius:12px;background:#141414}.tpxh-card b{font-size:26px}.tpxh-card span{display:block;margin-top:5px;color:#a3a3a3;font-size:12px}.tpxh-title{margin:18px 0 8px;font-size:13px}.tpxh-row{display:flex;gap:8px;padding:11px 0;border-bottom:1px solid #242424;font-size:13px}.tpxh-row small{margin-left:auto;color:#a3a3a3}.tpxh-empty{padding:20px 0;color:#a3a3a3}
+</style>
+<div id="tpxHistoryView"><div class="tpxh-head"><h2>學習歷程</h2><button class="tpxh-close" type="button" onclick="TPX_HISTORY.close()">×</button></div><div class="tpxh-body" id="tpxHistoryBody"></div></div>
+<script>
+(function(){'use strict';
+function uid(){try{return window.KIN_USER&&KIN_USER.id?KIN_USER.id():'paul'}catch(e){return'paul'}}
+function read(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function stat(){var a=[];try{a=Array.isArray(DATA)?DATA:[]}catch(e){}var s={};try{s=statusMap||{}}catch(e){}var ok=0,rv=0;a.forEach(function(x){if(s[x.id]==='ok')ok++;else if(s[x.id]==='review')rv++});return{all:a.length,ok:ok,review:rv,newn:Math.max(0,a.length-ok-rv)}}
+function histories(){var h=read('kinWordHist:'+uid(),{}),a=[];Object.keys(h||{}).forEach(function(k){var x=h[k]||{};a.push({key:k,views:+x.v||+x.views||0,ok:+x.ok||0,review:+x.r||+x.review||0,wrong:+x.w||+x.wrong||0,last:x.last||x.lastView||x.at||''})});a.sort(function(x,y){return String(y.last).localeCompare(String(x.last))});return a}
+function render(){var q=stat(),a=histories(),b=document.getElementById('tpxHistoryBody');var html='<div class="tpxh-grid"><div class="tpxh-card"><b>'+q.ok+'</b><span>已習得</span></div><div class="tpxh-card"><b>'+q.review+'</b><span>要複習</span></div><div class="tpxh-card"><b>'+q.newn+'</b><span>未學習</span></div><div class="tpxh-card"><b>'+a.length+'</b><span>有接觸紀錄</span></div></div><div class="tpxh-title">最近學習歷程</div>';html+=a.length?a.slice(0,80).map(function(x){var w=x.key.indexOf('/')>=0?x.key.split('/').pop():x.key;return'<div class="tpxh-row"><span>'+esc(w)+'</span><small>看過 '+x.views+'　習得 '+x.ok+'　複習 '+x.review+(x.wrong?'　答錯 '+x.wrong:'')+'</small></div>'}).join(''):'<div class="tpxh-empty">目前沒有學習歷程。</div>';b.innerHTML=html}
+window.TPX_HISTORY={open:function(){if(innerWidth<1024)return;try{if(typeof rdClose==='function')rdClose()}catch(e){}try{if(window.UX&&typeof UX.closeQuiz==='function')UX.closeQuiz()}catch(e){}try{if(typeof usClose==='function')usClose()}catch(e){}render();document.body.classList.add('tpx-history-open');document.getElementById('tpxHistoryView').classList.add('show')},close:function(){document.getElementById('tpxHistoryView').classList.remove('show');document.body.classList.remove('tpx-history-open')}};
+var oldGo=window.IX&&window.IX.go;if(window.IX&&oldGo){window.IX.go=function(c){if(c==='history'){TPX_HISTORY.open();return}TPX_HISTORY.close();return oldGo.call(window.IX,c)}}
+})();
+</script>
+
+
+<style id="gmRoutePanelStyle">
+.gmr-box{margin-top:12px;padding:12px;border:1px solid #3b3159;border-radius:12px;background:#141118;color:#f5f5f5}.gmr-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}.gmr-head b{font-size:13px;color:#f5f5f5}.gmr-count{margin-left:auto;font-size:11px;color:#a3a3a3}.gmr-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:9px}.gmr-actions button{min-height:38px;border:1px solid #4a4162;border-radius:9px;background:#1d1926;color:#f5f5f5;font-size:11px;font-weight:700}.gmr-actions button:active{background:#2b2440}.gmr-actions button.danger{border-color:#6b3438;color:#ff9ca3;background:#261719}.gmr-status{font-size:11px;line-height:1.55;color:#a3a3a3;margin-bottom:8px}.gmr-list{max-height:310px;overflow-y:auto;overscroll-behavior:contain;border:1px solid #2c2933;border-radius:9px;background:#0c0b0e}.gmr-empty{padding:18px 12px;text-align:center;color:#777;font-size:12px}.gmr-row{padding:9px 10px;border-bottom:1px solid #24212a;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.gmr-row:last-child{border-bottom:0}.gmr-time{font-size:10px;color:#777;margin-bottom:4px}.gmr-msg{font-size:11px;line-height:1.45;color:#d8d5df;overflow-wrap:anywhere}.gmr-row.ok .gmr-msg{color:#72d793}.gmr-row.fail .gmr-msg{color:#ff878f}.gmr-legend{display:flex;gap:12px;margin-top:8px;color:#888;font-size:10px}.gmr-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}.gmr-dot.ok{background:#42b883}.gmr-dot.fail{background:#e85a63}.gmr-note{font-size:10.5px;color:#8e8995;line-height:1.55;margin-top:8px}
+body:not(.theme-dark) .gmr-box{background:#f8f6fc;color:#242126;border-color:#d9d0ef}body:not(.theme-dark) .gmr-head b{color:#242126}body:not(.theme-dark) .gmr-actions button{background:#fff;color:#28242d;border-color:#cdc5df}body:not(.theme-dark) .gmr-list{background:#fff;border-color:#ddd8e6}body:not(.theme-dark) .gmr-row{border-color:#eeeaf2}body:not(.theme-dark) .gmr-msg{color:#433e49}
+</style>
+<script>
+(function(){
+'use strict';
+var LOG='kinGeminiRouteLogV4';
+function parse(){try{var a=JSON.parse(localStorage.getItem(LOG)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function split(line){var s=String(line||''),m=s.match(/^(\d{4}-\d\d-\d\dT[^ ]+)\s+(.*)$/);if(!m)return{time:'',msg:s};var d=new Date(m[1]),time=isNaN(d.getTime())?m[1]:d.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});return{time:time,msg:m[2]}}
+function isOk(s){return /成功/.test(s)}
+function ensure(){var existing=document.getElementById('gmRoutePanel');if(existing)return existing;var mini=document.getElementById('kkmMini'),parent=mini&&mini.parentNode;if(!parent){var bd=document.querySelector('#usPanel .bd');if(!bd)return null;parent=bd}var box=document.createElement('div');box.id='gmRoutePanel';box.className='gmr-box';box.innerHTML='<div class="gmr-head"><b>Gemini 路由紀錄</b><span class="gmr-count" id="gmrCount">0 / 30</span></div><div class="gmr-actions"><button type="button" onclick="gmRouteLogRefresh()">重新整理</button><button type="button" onclick="gmRouteLogCopy()">複製紀錄</button><button type="button" class="danger" onclick="gmRouteLogClear()">清除紀錄</button></div><div class="gmr-status" id="gmrStatus">顯示最近的模型、Key 尾碼與呼叫結果。</div><div class="gmr-list" id="gmrList"></div><div class="gmr-legend"><span><i class="gmr-dot ok"></i>成功</span><span><i class="gmr-dot fail"></i>失敗或跳過</span></div><div class="gmr-note">紀錄只保存在此裝置，最多 30 筆；不會顯示完整 API Key。若多支 Key 屬於同一 Google Project，配額仍可能共享。</div>';if(mini&&mini.nextSibling)parent.insertBefore(box,mini.nextSibling);else parent.appendChild(box);return box}
+function render(message){var box=ensure();if(!box)return;var a=parse(),list=document.getElementById('gmrList'),count=document.getElementById('gmrCount'),status=document.getElementById('gmrStatus');count.textContent=a.length+' / 30';status.textContent=message||'最近 '+a.length+' 筆 Gemini 路由結果';if(!a.length){list.innerHTML='<div class="gmr-empty">尚無路由紀錄。使用 AI 記憶輔助、Gemini 補充或連線測試後會顯示於此。</div>';return}list.innerHTML=a.map(function(line){var x=split(line),ok=isOk(x.msg);return'<div class="gmr-row '+(ok?'ok':'fail')+'"><div class="gmr-time">'+esc(x.time)+'</div><div class="gmr-msg">'+esc(x.msg)+'</div></div>'}).join('')}
+window.gmRouteLogRefresh=function(){render('已重新整理路由紀錄')};
+window.gmRouteLogCopy=function(){var a=parse(),text=a.join('\n');if(!text){render('沒有可複製的紀錄');return}var done=function(){render('路由紀錄已複製')};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done,function(){fallback(text,done)});else fallback(text,done)};
+function fallback(text,done){var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy')}catch(e){}ta.remove();done()}
+window.gmRouteLogClear=function(){if(!confirm('確定清除這台裝置的 Gemini 路由紀錄嗎？'))return;try{localStorage.removeItem(LOG)}catch(e){}render('路由紀錄已清除')};
+function hook(){ensure();render();if(typeof window.usOpen==='function'&&!window.usOpen.__gmrHook){var old=window.usOpen,wrap=function(){var r=old.apply(this,arguments);setTimeout(function(){ensure();render()},50);return r};wrap.__gmrHook=true;window.usOpen=wrap}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
+})();
+</script>
+
+
+<style id="gmDynamicModelsStyle">
+.gmr-models{margin:8px 0 10px;padding:9px 10px;border:1px solid #2d3140;border-radius:9px;background:#101219}.gmr-models b{display:block;font-size:11px;color:#f5f5f5;margin-bottom:5px}.gmr-models span{display:block;color:#9fa7b8;font-size:10.5px;line-height:1.5;overflow-wrap:anywhere}.gmr-models button{margin-top:7px;min-height:34px;padding:0 10px;border:1px solid #4a5267;border-radius:8px;background:#1a1e29;color:#f5f5f5;font-size:10.5px;font-weight:700}
+</style>
+<script>
+/* Gemini route engine v5: models.list discovery, per-key cache, automatic 404 refresh. */
+(function(){
+'use strict';
+var KEY_STORE='kinGeminiKeys',OLD_KEY='kinGeminiKey',KEY_COOL='kinGeminiKeyCoolV5',MODEL_COOL='kinGeminiModelCoolV5',CURSOR='kinGeminiCursorV5',LOG='kinGeminiRouteLogV4',CACHE='kinGeminiModelCatalogV1';
+var FALLBACK=['gemini-3.6-flash','gemini-3.5-flash-lite'];
+var CACHE_MS=24*60*60*1000;
+function now(){return Date.now()}function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function keys(){var a=[];try{a=JSON.parse(localStorage.getItem(KEY_STORE)||'[]')||[]}catch(e){}if(!Array.isArray(a))a=[];a=a.map(function(k){return String(k||'').trim()}).filter(Boolean);if(!a.length){var k='';try{k=(localStorage.getItem(OLD_KEY)||'').trim()}catch(e){}if(k)a=[k]}return a.filter(function(k,i,x){return x.indexOf(k)===i})}
+function fp(k){var s=String(k||'');return s.slice(0,4)+'…'+s.slice(-8)}
+function tail(k){return '…'+String(k).slice(-4)}
+function get(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function put(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function active(map,id){return +(map[id]||0)>now()}
+function addLog(line){var a=get(LOG,[]);if(!Array.isArray(a))a=[];a.unshift(new Date().toISOString()+' '+line);put(LOG,a.slice(0,30))}
+function stableId(name){return String(name||'').replace(/^models\//,'')}
+function allowed(m){var id=stableId(m.name),methods=m.supportedGenerationMethods||m.supportedActions||[];if(methods.indexOf('generateContent')<0)return false;if(!/^gemini-/i.test(id))return false;if(/embedding|embed|imagen|veo|live|tts|audio|image|aqa/i.test(id))return false;if(!/flash/i.test(id))return false;return true}
+function score(id){var s=0,m=String(id).match(/gemini-(\d+)\.(\d+)/i);if(m)s+=parseInt(m[1],10)*10000+parseInt(m[2],10)*100;if(/-flash$/i.test(id))s+=80;if(/flash-lite$/i.test(id))s+=45;if(/-\d{3}$/i.test(id))s+=20;if(/latest/i.test(id))s-=5;if(/preview/i.test(id))s-=150;if(/exp|experimental/i.test(id))s-=250;return s}
+function normalize(models){var seen={},a=[];(models||[]).forEach(function(m){var id=typeof m==='string'?stableId(m):stableId(m.name);if(id&&!seen[id]&&allowed(typeof m==='string'?{name:id,supportedGenerationMethods:['generateContent']}:m)){seen[id]=1;a.push(id)}});a.sort(function(x,y){return score(y)-score(x)||x.localeCompare(y)});return a.slice(0,6)}
+function listOne(key,force){var catalog=get(CACHE,{}),id=fp(key),old=catalog[id];if(!force&&old&&old.at&&now()-old.at<CACHE_MS&&old.models&&old.models.length)return Promise.resolve(old.models);var url='https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key='+encodeURIComponent(key);return fetch(url,{headers:{Accept:'application/json'}}).then(function(r){return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(!r.ok){var x=new Error(j&&j.error&&j.error.message||('HTTP '+r.status));x.status=r.status;throw x}var models=normalize(j.models||[]);if(!models.length)throw new Error('模型清單沒有可用的 Flash generateContent 模型');catalog[id]={at:now(),models:models};put(CACHE,catalog);addLog('模型探索 '+tail(key)+' '+models.join(', '));return models})})}
+function discover(force){var ks=keys();if(!ks.length)return Promise.reject(new Error('尚未設定 Gemini 金鑰'));return Promise.all(ks.map(function(k){return listOne(k,force).then(function(ms){return{key:k,models:ms}},function(e){addLog('模型探索 '+tail(k)+' 失敗 '+e.message);var old=get(CACHE,{})[fp(k)];return{key:k,models:old&&old.models&&old.models.length?old.models:FALLBACK.slice(),error:e.message}})})).then(function(perKey){var union=[],seen={};perKey.forEach(function(x){x.models.forEach(function(m){if(!seen[m]){seen[m]=1;union.push(m)}})});union.sort(function(a,b){return score(b)-score(a)});return{perKey:perKey,models:union.length?union:FALLBACK.slice(),at:now()}})}
+function parseRetry(j){var d=j&&j.error&&j.error.details||[];for(var i=0;i<d.length;i++){var s=d[i]&&d[i].retryDelay;if(s){var m=String(s).match(/([0-9.]+)s/);if(m)return Math.ceil(parseFloat(m[1])*1000)}}return 0}
+function request(model,key,payload){var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},45000),url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key);return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl.signal}).then(function(r){clearTimeout(timer);return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(r.ok)return j;var x=new Error(j&&j.error&&j.error.message||('HTTP '+r.status));x.status=r.status;x.retry=parseRetry(j);throw x})},function(e){clearTimeout(timer);var x=new Error(e&&e.name==='AbortError'?'Gemini 連線逾時':(e.message||'網路錯誤'));x.net=true;throw x})}
+function execute(payload,opts,catalog,refreshed){opts=opts||{};var ks=keys(),keyCool=get(KEY_COOL,{}),modelCool=get(MODEL_COOL,{}),start=parseInt(localStorage.getItem(CURSOR)||'0',10)||0,routes=[];catalog.perKey.forEach(function(entry){var ki=ks.indexOf(entry.key);entry.models.forEach(function(model){if(!active(keyCool,entry.key)&&!active(modelCool,model))routes.push({key:entry.key,ki:ki,model:model})})});routes.sort(function(a,b){var ak=(a.ki-start+ks.length)%ks.length,bk=(b.ki-start+ks.length)%ks.length;return score(b.model)-score(a.model)||ak-bk});var i=0,notes=[];
+ function run(){if(i>=routes.length){if(!refreshed&&notes.some(function(n){return / 404 /.test(n)}))return discover(true).then(function(fresh){return execute(payload,opts,fresh,true)});var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+'\n若多支 Key 同屬一個 Google Project，配額仍會共享。');e.routeLog=notes;throw e}var r=routes[i++];return request(r.model,r.key,payload).then(function(j){try{localStorage.setItem(CURSOR,String((r.ki+1)%ks.length))}catch(e){}addLog(r.model+' '+tail(r.key)+' 成功');return j}).catch(function(e){var line=r.model+' '+tail(r.key)+' '+(e.status||'NET')+' '+e.message;notes.push(line);addLog(line);if(e.status===404){modelCool[r.model]=now()+10*60*1000;put(MODEL_COOL,modelCool);return run()}if(e.status===429){keyCool[r.key]=now()+Math.min(Math.max(e.retry||60000,60000),15*60*1000);put(KEY_COOL,keyCool);return run()}if(e.status===401||e.status===403){keyCool[r.key]=now()+24*60*60*1000;put(KEY_COOL,keyCool);return run()}if(e.net||e.status===408||e.status>=500)return sleep(900+Math.random()*500).then(function(){return request(r.model,r.key,payload)}).catch(function(e2){notes.push(r.model+' '+tail(r.key)+' 重試失敗 '+e2.message);return run()});return run()})}return run()}
+function call(payload,opts){return discover(false).then(function(c){return execute(payload,opts,c,false)})}
+function text(j){var p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[];for(var i=0;i<p.length;i++)if(p[i].text)return p[i].text;return''}
+window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);put(KEY_STORE,a);try{if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}},cooling:function(){return 0},models:FALLBACK,discoverModels:discover,clearModelCache:function(){try{localStorage.removeItem(CACHE)}catch(e){}},routeLog:function(){return get(LOG,[])}};
+function modelPanel(){var route=document.getElementById('gmRoutePanel');if(!route||document.getElementById('gmrModels'))return;var e=document.createElement('div');e.id='gmrModels';e.className='gmr-models';e.innerHTML='<b>動態模型探索</b><span id="gmrModelsText">尚未讀取模型清單</span><button type="button" onclick="gmDiscoverModels(true)">立即重新抓取模型</button>';route.insertBefore(e,route.querySelector('.gmr-list'))}
+window.gmDiscoverModels=function(force){modelPanel();var t=document.getElementById('gmrModelsText');if(t)t.textContent='正在向 Gemini models.list 查詢…';discover(!!force).then(function(c){if(t)t.textContent='目前排序：'+c.models.join(' → ');if(typeof gmRouteLogRefresh==='function')gmRouteLogRefresh()},function(e){if(t)t.textContent='模型探索失敗：'+e.message})};
+function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')})}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(hook,100)});else setTimeout(hook,100);
 })();
 </script>
 

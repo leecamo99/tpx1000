@@ -1,0 +1,1 @@
+使用 Gemini models.list 動態取得每支Key可用且支援generateContent的Flash模型，快取24小時；404時強制重新探索。設定頁路由面板可查看及手動重抓。
