@@ -1219,7 +1219,16 @@ let STORE_KEY = 'book:kin1000:status';  // 由所選書籍覆寫
 let statusMap = {}; // id -> 'ok' | 'review' | ''
 let currentLevel = 'all';
 let currentLevels = ['all'];
-try{ var _savedLevels=JSON.parse(localStorage.getItem('kinLevels')||'null'); if(Array.isArray(_savedLevels)&&_savedLevels.length) currentLevels=_savedLevels; }catch(ignore){}
+// 學習範圍篩選改為「依書籍各自獨立」儲存，避免不同書籍互相沿用彼此的範圍設定。
+try{
+  var _lastBookId = localStorage.getItem('kinLastBook') || 'kin1000';
+  // 舊版僅有全域鍵 kinLevels，一次性搬遷到 kin1000 專屬鍵，之後不再使用全域鍵。
+  if(localStorage.getItem('kinLevels') !== null && localStorage.getItem('kinLevels:kin1000') === null){
+    localStorage.setItem('kinLevels:kin1000', localStorage.getItem('kinLevels'));
+  }
+  var _savedLevels=JSON.parse(localStorage.getItem('kinLevels:' + _lastBookId)||'null');
+  if(Array.isArray(_savedLevels)&&_savedLevels.length) currentLevels=_savedLevels;
+}catch(ignore){}
 let currentList = [];
 let currentIdx = 0;
 // 'new' | 'review' | 'all'
@@ -1659,7 +1668,7 @@ function levelLabel(){
 function syncLevelUI(){
   document.querySelectorAll('input[name="fl"]').forEach(function(r){r.checked=currentLevels.indexOf(r.value)>=0;});
   currentLevel=currentLevels.indexOf('all')>=0?'all':(currentLevels[0]||'all');
-  try{localStorage.setItem('kinLevels',JSON.stringify(currentLevels));}catch(ignore){}
+  try{localStorage.setItem('kinLevels:' + ((window.CURRENT_BOOK && window.CURRENT_BOOK.id) || 'kin1000'), JSON.stringify(currentLevels));}catch(ignore){}
   var h=document.getElementById('levelHead'); if(h) h.textContent=levelLabel();
 }
 function applyFilter(){ syncLevelUI(); updateStats(); currentList=filtered(); renderList(); }
@@ -3627,7 +3636,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       'kinTime:' + userId(),                             // 學習時間（UX 模組）
       'kinGoalDays:' + userId(),
       'kinSense:' + userId(),                            // 詞義級 SRS（多義字逐個意思）                         // 每日目標達成日（UX 模組）
-      'kinLevels','kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
+      'kinLevels:' + bookId(),'kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
     ];
   }
   // 同步狀態依「使用者 + 書籍」分開記錄，切換後不會誤判新舊。
@@ -7894,10 +7903,14 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
     // 音檔路徑與紀錄鍵，全部隨書切換
     AUDIO_BASE = meta.audioBase || 'audio/kin1000/CLIPS/';
-    if(meta.virtual){
-      currentLevels=['all']; currentLevel='all';
-      try{ syncLevelUI(); }catch(e){}
-    }
+    // 學習範圍篩選（currentLevels）依書籍各自獨立，換書時務必改讀該書自己的設定，
+    // 不可沿用前一本書的範圍（例如 kin1000 選 730分級，切到別本書不該還停在 730分級）。
+    try{
+      var _bookLevels = JSON.parse(localStorage.getItem('kinLevels:' + meta.id) || 'null');
+      currentLevels = (Array.isArray(_bookLevels) && _bookLevels.length) ? _bookLevels : ['all'];
+    }catch(e){ currentLevels = ['all']; }
+    currentLevel = currentLevels.indexOf('all') >= 0 ? 'all' : (currentLevels[0] || 'all');
+    try{ syncLevelUI(); }catch(e){}
     // 紀錄鍵同時帶書籍與使用者，兩人各自獨立。
     var uid = (window.KIN_USER && window.KIN_USER.id()) || 'paul';
     STORE_KEY  = 'book:' + meta.id + ':' + uid + ':status';
