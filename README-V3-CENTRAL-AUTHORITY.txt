@@ -1,0 +1,1 @@
+文章、測驗與弱點分析由最後的Capture路由控制，中央加入不透明shield，三者互斥。弱點分析直接讀取statusMap與KIN_STRENGTH渲染。

@@ -11863,5 +11863,59 @@ wrap('rdClose');if(window.UX&&typeof window.UX.closeQuiz==='function'){var q=win
 })();
 </script>
 
+
+<style id="tpxCentralAuthorityStyle">
+@media(min-width:1024px){
+ #tpxCenterShield{display:none;position:fixed;left:50%;top:0;bottom:0;width:480px;transform:translateX(-50%);z-index:12180;background:#080808;pointer-events:none}
+ body.tpx-authority-open #tpxCenterShield{display:block}
+ body.tpx-authority-open #screen-books,
+ body.tpx-authority-open #screen-list,
+ body.tpx-authority-open #screen-detail,
+ body.tpx-authority-open #tpxHistoryView,
+ body.tpx-authority-open .player-bar,
+ body.tpx-authority-open .bottom-nav{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+ body.tpx-authority-article #screen-read{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:12220!important;background:#080808!important}
+ body.tpx-authority-exam #uxQuiz{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:12220!important;background:#080808!important}
+ body.tpx-authority-weak #tpxWeakView{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:12240!important;background:#080808!important}
+ body.tpx-authority-article #uxQuiz,body.tpx-authority-article #tpxWeakView,
+ body.tpx-authority-exam #screen-read,body.tpx-authority-exam #tpxWeakView,
+ body.tpx-authority-weak #screen-read,body.tpx-authority-weak #uxQuiz{display:none!important;visibility:hidden!important;pointer-events:none!important}
+ #tpxWeakView{left:50%!important;right:auto!important;width:480px!important;min-width:480px!important;max-width:480px!important;transform:translateX(-50%)!important}
+}
+</style>
+<div id="tpxCenterShield" aria-hidden="true"></div>
+<script>
+(function(){
+'use strict';
+var A=['tpx-authority-open','tpx-authority-article','tpx-authority-exam','tpx-authority-weak'];
+function clearA(){A.forEach(function(c){document.body.classList.remove(c)})}
+function setA(mode){clearA();document.body.classList.add('tpx-authority-open','tpx-authority-'+mode)}
+function closeAll(){
+ clearA();
+ try{var w=document.getElementById('tpxWeakView');if(w)w.classList.remove('show')}catch(e){}
+ try{if(typeof window.rdClose==='function')window.rdClose()}catch(e){}
+ try{if(window.UX&&typeof window.UX.closeQuiz==='function')window.UX.closeQuiz()}catch(e){}
+ try{if(typeof window.usClose==='function')window.usClose()}catch(e){}
+ try{if(window.TPX_HISTORY&&typeof window.TPX_HISTORY.close==='function')window.TPX_HISTORY.close()}catch(e){}
+}
+function sourceData(){try{return Array.isArray(DATA)?DATA:[]}catch(e){return[]}}
+function status(){try{return statusMap||{}}catch(e){return{}}}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function strength(e){try{var b=window.CURRENT_BOOK&&CURRENT_BOOK.id||'kin1000';return window.KIN_STRENGTH&&KIN_STRENGTH.stats(e.id,b)||null}catch(x){return null}}
+function rows(){var s=status();return sourceData().map(function(e){var x=strength(e),score=0;if(s[e.id]==='review')score+=100;if(x){score+=(+x.wrong||0)*12+(+x.forget||0)*10+(+x.views||0);if(x.level==='weak')score+=40}return{e:e,x:x,score:score,state:s[e.id]||''}}).filter(function(r){return r.score>0||r.state==='review'}).sort(function(a,b){return b.score-a.score}).slice(0,80)}
+function renderWeak(){var list=rows(),s=status(),data=sourceData(),review=0,newn=0;data.forEach(function(e){if(s[e.id]==='review')review++;else if(s[e.id]!=='ok')newn++});var box=document.getElementById('tpxWeakBody');if(!box)return;var html='<div class="tpxw-grid"><div class="tpxw-card"><b>'+review+'</b><span>要複習</span></div><div class="tpxw-card"><b>'+list.length+'</b><span>弱點候選</span></div><div class="tpxw-card"><b>'+newn+'</b><span>未學習</span></div></div><div class="tpxw-actions"><button type="button" onclick="TPX_AUTH.review()">開始弱點複習</button><button type="button" onclick="TPX_AUTH.exam()">建立弱點測驗</button></div><div class="tpxw-title">弱點單字排行</div>';html+=list.length?list.map(function(r,i){var x=r.x||{},meta=[];if(r.state==='review')meta.push('要複習');if(x.wrong)meta.push('答錯 '+x.wrong);if(x.forget)meta.push('遺忘 '+x.forget);return'<button class="tpxw-row" type="button" onclick="TPX_AUTH.word(\''+esc(r.e.id)+'\')"><span><span class="tpxw-word">'+(i+1)+'. '+esc(r.e.word)+'</span><span class="tpxw-mean">'+esc(r.e.ja||r.e.mean||'')+'</span></span><span class="tpxw-meta">'+esc(meta.join('　')||'接觸紀錄')+'</span></button>'}).join(''):'<div class="tpxw-empty">目前沒有弱點紀錄。</div>';box.innerHTML=html}
+function article(){closeAll();setA('article');try{if(typeof window.rdOpen==='function')window.rdOpen()}catch(e){}setA('article')}
+function exam(){closeAll();setA('exam');try{if(window.UX&&typeof window.UX.openQuiz==='function')window.UX.openQuiz()}catch(e){}setA('exam')}
+function weak(){closeAll();renderWeak();var v=document.getElementById('tpxWeakView');if(v)v.classList.add('show');setA('weak')}
+function leave(){closeAll()}
+window.TPX_AUTH={article:article,exam:exam,weak:weak,close:leave,review:function(){leave();try{if(typeof window.srsOpen==='function')window.srsOpen()}catch(e){}},word:function(id){leave();try{if(typeof window.openDetail==='function')window.openDetail(id)}catch(e){}}};
+/* Capture the left rail before any older route wrapper can run. */
+document.addEventListener('click',function(ev){var b=ev.target&&ev.target.closest?ev.target.closest('#ixLeft button'):null;if(!b)return;var a=String(b.getAttribute('onclick')||'');var mode='';if(a.indexOf("'article'")>=0||a.indexOf("'coach'")>=0)mode='article';else if(a.indexOf("'exam'")>=0)mode='exam';else if(a.indexOf("'weak'")>=0)mode='weak';if(!mode){leave();return}ev.preventDefault();ev.stopImmediatePropagation();if(mode==='article')article();else if(mode==='exam')exam();else weak()},true);
+/* Make closing native screens release the authority layer. */
+function wrapClose(obj,name){var fn=obj&&obj[name];if(typeof fn!=='function'||fn.__auth)return;var w=function(){var r=fn.apply(this,arguments);clearA();return r};w.__auth=true;obj[name]=w}
+wrapClose(window,'rdClose');if(window.UX)wrapClose(window.UX,'closeQuiz');
+})();
+</script>
+
 </body>
 </html>
