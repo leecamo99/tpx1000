@@ -1,6 +1,6 @@
 {
   "updated": "2026-09-13",
-  "note": "Clean Router V2: removed duplicate ixOpenMode and original center left/right rules.",
+  "note": "Clean Router V3: daily progress and learning history now close each other in both directions.",
   "versions": [
     {
       "id": "v3.0",
@@ -683,6 +683,32 @@
           "s": "done",
           "t": "閃卡明確模式",
           "d": "清除原生覆層後開啟閃卡"
+        }
+      ]
+    },
+    {
+      "id": "clean-router-v3",
+      "title": "每日進度與學習歷程互斥修復",
+      "date": "2026-09-13",
+      "desc": "修正先開每日進度後無法開啟學習歷程。",
+      "items": [
+        {
+          "id": "cr3-1",
+          "s": "done",
+          "t": "歷程開啟前關閉每日頁",
+          "d": "呼叫IX_PAGES.close並清除ix-center-daily"
+        },
+        {
+          "id": "cr3-2",
+          "s": "done",
+          "t": "每日頁開啟前關閉歷程",
+          "d": "雙向互斥"
+        },
+        {
+          "id": "cr3-3",
+          "s": "done",
+          "t": "保留其他路由",
+          "d": "不修改已正常的文章、測驗與首頁"
         }
       ]
     }
