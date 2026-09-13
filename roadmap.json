@@ -1,6 +1,6 @@
 {
-  "updated": "2026-09-12",
-  "note": "V4.1.7：修復紀錄頁切換後殘留造成其他左欄功能穿幫，並最終覆寫原 Shell body padding，解除中央壓縮。",
+  "updated": "2026-09-13",
+  "note": "Gemini v4 路由與三介面真實入口修復。",
   "versions": [
     {
       "id": "v3.0",
@@ -467,6 +467,50 @@
           "s": "done",
           "t": "紀錄頁唯一中央表面",
           "d": "開啟時隱藏文章、測驗、設定、播放器與底導覽"
+        }
+      ]
+    },
+    {
+      "id": "gemini-v4-and-real-three-pane",
+      "title": "Gemini 真輪替與三介面真實連動",
+      "date": "2026-09-13",
+      "desc": "所有文字生成走 KIN_GM v4，404冷卻模型、429輪替Key；左欄改接真實功能。",
+      "items": [
+        {
+          "id": "gmv4-1",
+          "s": "done",
+          "t": "Gemini 補充改走多金鑰",
+          "d": "移除第一支 Key 直連"
+        },
+        {
+          "id": "gmv4-2",
+          "s": "done",
+          "t": "模型與 Key 分開冷卻",
+          "d": "404跳過模型，429換Key"
+        },
+        {
+          "id": "gmv4-3",
+          "s": "done",
+          "t": "Round-robin 指標",
+          "d": "成功後下次從下一支Key開始"
+        },
+        {
+          "id": "gmv4-4",
+          "s": "done",
+          "t": "路由紀錄",
+          "d": "保存模型、Key尾碼、狀態"
+        },
+        {
+          "id": "pane-1",
+          "s": "done",
+          "t": "首頁與單字分流",
+          "d": "study與browse"
+        },
+        {
+          "id": "pane-2",
+          "s": "done",
+          "t": "真實功能入口",
+          "d": "rdOpen、UX.openQuiz、deckOpen、srsOpen、usOpen"
         }
       ]
     }
