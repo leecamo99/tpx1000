@@ -1401,44 +1401,65 @@ function highlightWord(en, word){
 }
 
 // 中文翻譯高亮：只標示翻譯句中實際出現的主單字詞義，不把整句染成橘色。
-function highlightZhMeaning(zh, meaning){
+function highlightZhMeaning(zh, meaning, headword){
   var text = String(zh || '');
   var raw = String(meaning || '');
+  var key = String(headword || '').toLowerCase();
   if(!text || !raw) return escapeHtml(text);
 
-  // 移除詞性標記與括號補充，再依常見分隔符拆成獨立詞義。
-  raw = raw
-    .replace(/（[^）]*）|\([^)]*\)/g, '')
-    .replace(/^(?:名|動|形|副|介|前|連|代|助|多義)\s*/g, '')
-    .replace(/[　]/g, ' ');
+  // 主書逐筆審核後確認的同義翻譯。只在該單字卡套用，避免誤染其他字。
+  var aliases = {
+    'likely':['最可能'],'expect':['預計'],'feature':['亮點'],'charge':['免費'],
+    'create':['建立'],'delay':['延誤'],'annual':['年度'],'base':['總部設在'],
+    'register':['報名'],'promote':['升職'],'clothing':['服飾'],'exhibit':['美術展'],
+    'benefit':['福利'],'rent':['租'],'advance':['事先'],'reschedule':['改期'],
+    'quarter':['季'],'raise':['募款'],'involve':['參與'],'method':['方式'],
+    'responsible':['負責'],'district':['區'],'establish':['成立'],'earn':['取得'],
+    'claim':['申請'],'flavor':['口味'],'neighborhood':['社區'],'appropriate':['適合'],
+    'minimum':['至少'],'former':['前'],'initial':['初次'],'decline':['婉拒'],
+    'institute':['學院'],'fare':['票價'],'enable':['讓'],'locate':['找到'],
+    'basis':['按月'],'labor':['人力'],'dozen':['一打'],'proceed':['前往'],
+    'rush':['急件'],'associate':['相關'],'assembly':['裝配'],'refreshments':['點心'],
+    'prior':['之前'],'via':['透過'],'routine':['定期'],'tune':['收聽'],
+    'recall':['不記得'],'convert':['改成'],'postal':['郵遞'],'clarify':['釐清'],
+    'remark':['致詞'],'visible':['可見'],'entitle':['有權'],'transform':['變成'],
+    'removal':['除雪'],'ease':['便利性'],'substitute':['代理'],'relief':['放心'],
+    'bin':['回收桶'],'discontinue':['停產'],'voucher':['折扣券'],'freight':['貨運'],
+    'medication':['感冒藥'],'cardboard':['紙箱'],'checkup':['健檢'],
+    'prospective':['潛在'],'conservation':['保育'],'notable':['顯著'],
+    'outing':['出遊'],'trustee':['董事會'],'subsequently':['隨即'],
+    'prime':['絕佳'],'batch':['批號'],'crate':['一箱'],'gala':['盛宴'],
+    'endorsement':['背書'],'installment':['集','期'],'inaugural':['創刊號']
+  };
 
+  raw = raw.replace(/（[^）]*）|\([^)]*\)/g, '')
+           .replace(/\\u3000/g, ' ').replace(/[　]/g, ' ');
   var parts = raw.split(/[、，,；;／/]|\s{2,}/).map(function(v){
-    return v.replace(/^(?:名|動|形|副|介|前|連|代|助)\s*/, '').trim();
-  }).filter(function(v){
-    // 單一中文字也可能是有效詞義，但略過純標點或拉丁文字。
-    return v && /[\u3400-\u9fff]/.test(v);
+    return v.replace(/^(?:名|動|形|副|介|前|連|代|助|多義)\s*/, '')
+            .replace(/^[～…]+|[～…]+$/g, '')
+            .replace(/[的地得了]$/g, '').trim();
+  }).filter(function(v){ return v && /[\u3400-\u9fff]/.test(v); });
+
+  // 除完整詞義外，也加入 2 至 4 字連續詞組，可處理「可取得的→取得」等句型變化。
+  var expanded = [];
+  parts.forEach(function(v){
+    expanded.push(v);
+    var chars = (v.match(/[\u3400-\u9fff]/g) || []).join('');
+    for(var n=Math.min(4,chars.length); n>=2; n--){
+      for(var i=0;i+n<=chars.length;i++) expanded.push(chars.slice(i,i+n));
+    }
   });
+  expanded = (aliases[key] || []).concat(expanded)
+    .filter(function(v,i,a){ return v && a.indexOf(v)===i; })
+    .sort(function(a,b){ return b.length-a.length; });
 
-  // 先比對較長詞義，避免短詞吃掉長詞的一部分。
-  parts = parts.filter(function(v, i, a){ return a.indexOf(v) === i; })
-               .sort(function(a,b){ return b.length - a.length; });
-  if(!parts.length) return escapeHtml(text);
-
-  var pattern = parts.map(function(v){
-    return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }).join('|');
-  var re;
-  try{ re = new RegExp(pattern, 'g'); }catch(err){ return escapeHtml(text); }
-
-  var out = '', last = 0, m, found = false;
-  while((m = re.exec(text))){
-    found = true;
-    out += escapeHtml(text.slice(last, m.index));
-    out += '<span class="zh-hl">' + escapeHtml(m[0]) + '</span>';
-    last = m.index + m[0].length;
-    if(!m[0].length) re.lastIndex++;
-  }
-  return found ? out + escapeHtml(text.slice(last)) : escapeHtml(text);
+  var matched = expanded.filter(function(v){ return text.indexOf(v)>=0; });
+  if(!matched.length) return escapeHtml(text);
+  // 每張卡只標示最具體、最長的對應詞，避免同一句多處誤染。
+  var target = matched[0];
+  var at = text.indexOf(target);
+  return escapeHtml(text.slice(0,at)) + '<span class="zh-hl">' +
+         escapeHtml(target) + '</span>' + escapeHtml(text.slice(at+target.length));
 }
 
 
@@ -1913,13 +1934,13 @@ function showDetail(){
       html += '<div class="db-ex-zh">';
       if(s.pos) html += '<span class="db-pos">'+escapeHtml(s.pos)+'</span> ';
       if(s.mean) html += '<span style="color:#c45c1a">'+escapeHtml(s.mean)+'</span>　';
-      html += highlightZhMeaning(s.zh||'', s.mean||e.mean||'');
+      html += highlightZhMeaning(s.zh||'', s.mean||e.mean||'', e.word||'');
       html += '</div></div>';
     });
   } else {
     html += '<div class="db-ex">';
     html += '<div class="db-ex-en tap-play" id="dbExEn">'+exWordsHtml(e.en||'', e.word)+'</div>';
-    html += '<div class="db-ex-zh" id="dbExZh">'+highlightZhMeaning(e.ja||'', e.mean||'')+'</div>';
+    html += '<div class="db-ex-zh" id="dbExZh">'+highlightZhMeaning(e.ja||'', e.mean||'', e.word||'')+'</div>';
     html += '</div>';
   }
 
