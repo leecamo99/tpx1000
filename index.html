@@ -1400,6 +1400,47 @@ function highlightWord(en, word){
   return escapeHtml(en).replace(re,'<span class="hl">$1</span>');
 }
 
+// 中文翻譯高亮：只標示翻譯句中實際出現的主單字詞義，不把整句染成橘色。
+function highlightZhMeaning(zh, meaning){
+  var text = String(zh || '');
+  var raw = String(meaning || '');
+  if(!text || !raw) return escapeHtml(text);
+
+  // 移除詞性標記與括號補充，再依常見分隔符拆成獨立詞義。
+  raw = raw
+    .replace(/（[^）]*）|\([^)]*\)/g, '')
+    .replace(/^(?:名|動|形|副|介|前|連|代|助|多義)\s*/g, '')
+    .replace(/[　]/g, ' ');
+
+  var parts = raw.split(/[、，,；;／/]|\s{2,}/).map(function(v){
+    return v.replace(/^(?:名|動|形|副|介|前|連|代|助)\s*/, '').trim();
+  }).filter(function(v){
+    // 單一中文字也可能是有效詞義，但略過純標點或拉丁文字。
+    return v && /[\u3400-\u9fff]/.test(v);
+  });
+
+  // 先比對較長詞義，避免短詞吃掉長詞的一部分。
+  parts = parts.filter(function(v, i, a){ return a.indexOf(v) === i; })
+               .sort(function(a,b){ return b.length - a.length; });
+  if(!parts.length) return escapeHtml(text);
+
+  var pattern = parts.map(function(v){
+    return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }).join('|');
+  var re;
+  try{ re = new RegExp(pattern, 'g'); }catch(err){ return escapeHtml(text); }
+
+  var out = '', last = 0, m, found = false;
+  while((m = re.exec(text))){
+    found = true;
+    out += escapeHtml(text.slice(last, m.index));
+    out += '<span class="zh-hl">' + escapeHtml(m[0]) + '</span>';
+    last = m.index + m[0].length;
+    if(!m[0].length) re.lastIndex++;
+  }
+  return found ? out + escapeHtml(text.slice(last)) : escapeHtml(text);
+}
+
 
 // browse=一覽, study=習得
 // new | review
@@ -1872,13 +1913,13 @@ function showDetail(){
       html += '<div class="db-ex-zh">';
       if(s.pos) html += '<span class="db-pos">'+escapeHtml(s.pos)+'</span> ';
       if(s.mean) html += '<span style="color:#c45c1a">'+escapeHtml(s.mean)+'</span>　';
-      html += escapeHtml(s.zh||'');
+      html += highlightZhMeaning(s.zh||'', s.mean||e.mean||'');
       html += '</div></div>';
     });
   } else {
     html += '<div class="db-ex">';
     html += '<div class="db-ex-en tap-play" id="dbExEn">'+exWordsHtml(e.en||'', e.word)+'</div>';
-    html += '<div class="db-ex-zh" id="dbExZh">'+escapeHtml(e.ja||'')+'</div>';
+    html += '<div class="db-ex-zh" id="dbExZh">'+highlightZhMeaning(e.ja||'', e.mean||'')+'</div>';
     html += '</div>';
   }
 
@@ -5174,6 +5215,7 @@ body.theme-dark #detailBook .nw.cap-2{color:#dcd9d5}
 body.theme-dark #detailBook .nw.cap-1{color:#fff;font-weight:800}
 /* 例句裡的標題字維持橘色，不被熟悉度色階蓋掉 */
 #detailBook .db-ex-en .nw.hl{color:#c45c1a}
+#detailBook .db-ex-zh .zh-hl{color:#c45c1a;font-weight:700}
 body.theme-dark #detailBook .db-ex-en .nw.hl{color:#ff9142}
 /* 捕獲模式下，未捕獲的英文用細虛線提示可點 */
 body.cap-mode #detailBook .nw:not(.cap):not(.inbook){
