@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "userId": "user2",
+  "userName": "黃詩涵",
+  "updatedAt": "2026-09-16T12:59:52.222Z",
+  "deviceId": "dev-su8gfj",
+  "keys": {
+    "kinCollect:user2": "[{\"id\":\"X-001\",\"word\":\"try\",\"mean\":\"嘗試\",\"from\":\"001 anyway\",\"at\":\"2026-09-16\",\"srcId\":\"001\",\"srcWord\":\"anyway\",\"srcNote\":\"凡事不試試看就不會開始。\",\"srcEx\":\"Let’s try anyway.\",\"srcExZh\":\"總之先試試看吧。\",\"srcBook\":\"kin1000\",\"byMT\":true}]",
+    "kinAch:user2": "{\"first\":\"2026-09-16\"}",
+    "kinTime:user2": "{\"2026-09-16\":930}",
+    "kinSense:user2": "{}",
+    "kinLevels:custom": "[\"CUSTOM\"]",
+    "kinPlayMode": "detail-next",
+    "kinSpeed": "1.25",
+    "kin_phrase_times": "2",
+    "kinReturnContext": "{\"id\":\"X-001\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789563538209}"
+  }
+}
