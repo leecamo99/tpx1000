@@ -2,10 +2,10 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-16T12:51:44.380Z",
+  "updatedAt": "2026-09-16T12:52:18.589Z",
   "deviceId": "dev-su8gfj",
   "keys": {
-    "kinTime:user2": "{\"2026-09-16\":585}",
+    "kinTime:user2": "{\"2026-09-16\":600}",
     "kinSense:user2": "{}",
     "kinLevels:kin1000": "[\"all\"]",
     "kinPlayMode": "detail-next",
