@@ -12771,5 +12771,201 @@ window.tpxFps=function(sec){
   };
 })();
 </script>
+<style id="tpxActionBarStyle">
+/* ===== 學習操作列上移 =====
+   原本「上一個／未學習／習得／要複習／下一個」跟著內容捲動、停在卡片最下方，
+   會被固定的播放列壓住，手指也得一路移到螢幕底部。
+   改成固定在播放列正上方，與播放控制形成兩層固定操作區。
+   高度全部由 JS 量測實際值寫回，避免安全區或換行造成疊到／留空隙。 */
+:root{
+  --tpx-nav-h: 56px;
+  --tpx-player-h: 62px;
+  --tpx-act-h: 60px;
+}
+
+#screen-detail .detail-actions{
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--tpx-nav-h) + var(--tpx-player-h) + env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  max-width: 480px;
+  z-index: 9998;                 /* 播放列是 9999，維持在它下方一層 */
+  margin: 0;
+  padding: 8px 10px;
+  gap: 6px;
+  flex-wrap: nowrap;
+  background: #fff;
+  border-top: 1px solid #eee;
+  box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+  box-sizing: border-box;
+}
+
+#screen-detail .detail-actions button{
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 11px 2px;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 上一個／下一個較窄，把橫向空間讓給三顆狀態鍵，中文才不會被擠掉 */
+#screen-detail .detail-actions .btn-skip{
+  flex: 0 0 auto;
+  min-width: 60px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+/* 內容區預留兩層操作列的高度，捲到底時最後一段不會被蓋住 */
+#screen-detail{
+  padding-bottom: calc(
+    var(--tpx-nav-h) + var(--tpx-player-h) + var(--tpx-act-h)
+    + 16px + env(safe-area-inset-bottom, 0px)
+  ) !important;
+}
+
+/* 全螢幕畫面出現時一併收起，與播放列同進退 */
+body.mode-srs        #screen-detail .detail-actions,
+body.rd-open         #screen-detail .detail-actions,
+body.books-open      #screen-detail .detail-actions,
+body.ux-quiz-open    #screen-detail .detail-actions,
+body.tpx-history-open #screen-detail .detail-actions,
+body.ix-center-article #screen-detail .detail-actions,
+body.ix-center-exam    #screen-detail .detail-actions,
+body.ix-center-weak    #screen-detail .detail-actions,
+body.ix-center-daily   #screen-detail .detail-actions{
+  display: none !important;
+}
+
+/* 播放列被隱藏時，操作列下移補上那段空隙 */
+body.tpx-player-hidden #screen-detail .detail-actions{
+  bottom: calc(var(--tpx-nav-h) + env(safe-area-inset-bottom, 0px));
+}
+
+/* 深色模式 */
+body.theme-dark #screen-detail .detail-actions{
+  background: #0e0e0e;
+  border-top-color: #242426;
+  box-shadow: 0 -2px 12px rgba(0,0,0,.5);
+}
+
+/* 舊款 iPad 降級：拿掉陰影，減少每幀合成成本 */
+.tpx-legacy #screen-detail .detail-actions{
+  box-shadow: none !important;
+  background: #0d0d0d !important;
+}
+
+/* 收藏卡的「回到原本閱讀位置」原本停在 86px，會與操作列重疊，往上挪一層 */
+#kinCaptureReturnBtn{
+  bottom: calc(
+    var(--tpx-nav-h) + var(--tpx-player-h) + var(--tpx-act-h)
+    + 10px + env(safe-area-inset-bottom, 0px)
+  ) !important;
+}
+
+/* iPad 三欄版面：跟著中央欄置中，不要橫跨整個視窗 */
+@media (min-width: 1024px){
+  #screen-detail .detail-actions{
+    left: 50% !important;
+    right: auto !important;
+    width: 480px !important;
+    max-width: 480px !important;
+    transform: translateX(-50%) !important;
+  }
+}
+</style>
+
+<script>
+/* ===========================================================
+   量測導覽列與播放列的實際高度，寫回 CSS 變數。
+   安全區、字級縮放、播放列換行都會影響高度，
+   寫死數值在部分機型會疊到或留下空隙。
+   =========================================================== */
+(function(){
+  'use strict';
+
+  var raf = 0;
+
+  function h(el){
+    if(!el) return 0;
+    var s = getComputedStyle(el);
+    if(s.display === 'none' || s.visibility === 'hidden') return 0;
+    return el.offsetHeight || 0;
+  }
+
+  function measure(){
+    raf = 0;
+
+    var nav    = document.querySelector('.bottom-nav');
+    var player = document.getElementById('playerBar');
+    var act    = document.querySelector('#screen-detail .detail-actions');
+
+    var navH = h(nav);
+    var plH  = h(player);
+
+    // 操作列本身是 fixed，量它的高度時不受父層 padding 影響
+    var acH  = act ? (act.offsetHeight || 0) : 0;
+
+    var root = document.documentElement;
+    if(navH) root.style.setProperty('--tpx-nav-h', navH + 'px');
+    if(plH)  root.style.setProperty('--tpx-player-h', plH + 'px');
+    if(acH)  root.style.setProperty('--tpx-act-h', acH + 'px');
+
+    // 播放列被隱藏時讓操作列下移，不要懸空
+    document.body.classList.toggle('tpx-player-hidden', plH === 0);
+  }
+
+  function schedule(){
+    if(raf) return;
+    raf = requestAnimationFrame(measure);
+  }
+  window.tpxActionBarRemeasure = measure;
+
+  ['resize', 'orientationchange', 'load'].forEach(function(ev){
+    window.addEventListener(ev, schedule, { passive: true });
+  });
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize', schedule, { passive: true });
+  }
+
+  // 播放列顯示／隱藏、切換單字、切換模式都會改動高度
+  if(window.MutationObserver){
+    var mo = new MutationObserver(schedule);
+    function watch(){
+      var pb = document.getElementById('playerBar');
+      var nv = document.querySelector('.bottom-nav');
+      var sd = document.getElementById('screen-detail');
+      if(pb) mo.observe(pb, { attributes:true, attributeFilter:['class','style'], childList:true, subtree:true });
+      if(nv) mo.observe(nv, { attributes:true, attributeFilter:['class','style'] });
+      if(sd) mo.observe(sd, { attributes:true, attributeFilter:['class'] });
+      mo.observe(document.body, { attributes:true, attributeFilter:['class'] });
+    }
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch, { once:true });
+    else watch();
+  }
+
+  // 開啟解說時重新量一次，字級設定不同時高度會變
+  var tries = 0;
+  var t = setInterval(function(){
+    if(++tries > 40){ clearInterval(t); return; }
+    if(typeof window.showDetail !== 'function') return;
+    clearInterval(t);
+    var orig = window.showDetail;
+    window.showDetail = function(){
+      var r = orig.apply(this, arguments);
+      schedule();
+      return r;
+    };
+  }, 300);
+
+  // 開頭幾秒版面還在組裝，連續校正幾次
+  [0, 120, 400, 900, 1800].forEach(function(ms){ setTimeout(schedule, ms); });
+})();
+</script>
+
 </body>
 </html>
