@@ -6323,10 +6323,9 @@ body.theme-dark #nwBox .note{color:#6a6661}
         ttsAudio.onerror = null;
         ttsAudio.oncanplay = null;
         ttsAudio.pause();
-        ttsAudio.removeAttribute('src');
-        ttsAudio.load();
+        // 不再 removeAttribute('src') / load()，避免解鎖後的元素被重置
       }catch(e){}
-      ttsAudio = null;
+      // 保留 ttsAudio 參照，播放權才不會在換卡後失效
     }
     try{ window.speechSynthesis.cancel(); }catch(e){}
     ttsGen++;
@@ -6334,15 +6333,62 @@ body.theme-dark #nwBox .note{color:#6a6661}
   window.__kinTtsStop = ttsStop;
 
   var ttsGen = 0;
+
+  /* ---------- iOS 播放權：單一持久元素 + 手勢解鎖 ----------
+     iOS Safari 只允許「曾在使用者手勢的同步堆疊中播放過」的那個
+     audio 實例，之後才能由程式呼叫 play()。
+     原本每次 new Audio() 都是全新元素，加上改走 IndexedDB 後
+     play() 落在 Promise 回呼裡，兩者相加就被靜默擋下，
+     必須先點介面產生手勢才會響一次。
+     這裡改成全站共用同一個元素，並在首次互動時用無聲音訊解鎖。 */
+  var ttsEl = null, ttsUnlocked = false;
+  var TTS_SILENT = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEA' +
+                   'RKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+
+  function ttsPlayer(){
+    if(ttsEl) return ttsEl;
+    ttsEl = document.getElementById('kinTtsAudio');
+    if(!ttsEl){
+      ttsEl = document.createElement('audio');
+      ttsEl.id = 'kinTtsAudio';
+      ttsEl.setAttribute('playsinline','');
+      ttsEl.setAttribute('webkit-playsinline','');
+      ttsEl.preload = 'auto';
+      ttsEl.style.display = 'none';
+      document.body.appendChild(ttsEl);
+    }
+    return ttsEl;
+  }
+
+  function ttsUnlock(){
+    if(ttsUnlocked) return;
+    var a = ttsPlayer();
+    try{
+      a.src = TTS_SILENT;
+      a.muted = true;
+      var p = a.play();
+      if(p && p.then){
+        p.then(function(){
+          a.pause(); a.muted = false;
+          a.removeAttribute('src'); a.load();
+          ttsUnlocked = true; window.__kinTtsUnlockState = true;
+        }).catch(function(){ a.muted = false; });
+      }else{
+        a.pause(); a.muted = false; ttsUnlocked = true; window.__kinTtsUnlockState = true;
+      }
+    }catch(e){ a.muted = false; }
+  }
+  window.__kinTtsUnlock = ttsUnlock;
+
+  ['touchstart','touchend','pointerdown','mousedown','click','keydown'].forEach(function(ev){
+    document.addEventListener(ev, ttsUnlock, {capture:true, passive:true});
+  });
+
   function ttsPlayB64(b64, onend){
     ttsStop();
     var gen = ++ttsGen;
-    var a = new Audio('data:audio/mp3;base64,' + b64);
+    var a = ttsPlayer();          // 重用已解鎖的元素，不再 new Audio()
     ttsAudio = a;
-    try{
-      var r = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined') ? SPEEDS[speedIdx] : 1;
-      a.playbackRate = r || 1;
-    }catch(e){}
     var fired = false;
     function done(){
       // 只認自己這一代、且只觸發一次，避免 ended 與 error 重複進來
@@ -6352,7 +6398,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     a.onended = done;
     a.onerror = function(){ if(gen === ttsGen) done(); };
-    a.play().catch(function(){ if(gen === ttsGen) done(); });
+    try{ a.src = 'data:audio/mp3;base64,' + b64; }catch(e){ done(); return; }
+    try{
+      var r = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined') ? SPEEDS[speedIdx] : 1;
+      a.playbackRate = r || 1;
+    }catch(e){}
+    var pr = a.play();
+    if(pr && pr.catch) pr.catch(function(err){
+      if(gen !== ttsGen) return;
+      console.warn('[TTS] play 被擋：', err && err.name);
+      done();
+    });
   }
 
   function speakSystem(text, onend){
@@ -12354,5 +12410,87 @@ window.tpxFps=function(sec){
 };
 </script>
 
+<script>
+/* ===== TTS 預抓與診斷 =====
+   開啟解說後把這張卡的單字與例句先備妥，按播放時走 L1 同步路徑，
+   不必等 IndexedDB 或網路，反應更即時。 */
+(function(){
+  'use strict';
+  function ls(k,d){ try{ return localStorage.getItem(k)||d; }catch(e){ return d; } }
+  function key(){ return ls('kinTtsKey',''); }
+  function voice(){ return ls('kinTtsVoice','en-US-Neural2-C'); }
+  function src(){ return ls('kinVoiceSrc','cloud')==='system'?'system':'cloud'; }
+  function cacheAll(){ try{ return JSON.parse(localStorage.getItem('kinTtsCache')||'{}')||{}; }catch(e){ return {}; } }
+  function has(t){ return !!cacheAll()[voice()+'|'+String(t).toLowerCase()]; }
+  function put(t,b64){
+    try{
+      var c=cacheAll(), ks=Object.keys(c);
+      if(ks.length>=60) delete c[ks[0]];
+      c[voice()+'|'+String(t).toLowerCase()]=b64;
+      localStorage.setItem('kinTtsCache',JSON.stringify(c));
+    }catch(e){}
+  }
+  function dk(t){ return voice()+'|'+String(t).toLowerCase().trim(); }
+
+  function warm(text){
+    text=String(text||'').trim();
+    if(!text) return;
+    var k=key();
+    if(!k || src()==='system' || has(text)) return;
+    if(!window.TPX_TTSDB) return;
+    TPX_TTSDB.get(dk(text)).then(function(rec){
+      if(rec && rec.b64){ put(text, rec.b64); return; }
+      fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(k),{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          input:{text:text},
+          voice:{languageCode:voice().slice(0,5), name:voice()},
+          audioConfig:{audioEncoding:'MP3', speakingRate:0.92}
+        })
+      }).then(function(r){ return r.ok?r.json():null; })
+        .then(function(j){
+          if(j && j.audioContent){
+            put(text, j.audioContent);
+            TPX_TTSDB.put(dk(text), {b64:j.audioContent, at:Date.now(), text:text});
+          }
+        }).catch(function(){});
+    });
+  }
+
+  var tries=0;
+  var t=setInterval(function(){
+    if(++tries>40){ clearInterval(t); return; }
+    if(typeof window.showDetail!=='function') return;
+    clearInterval(t);
+    var orig=window.showDetail;
+    window.showDetail=function(){
+      var r=orig.apply(this,arguments);
+      try{
+        var e=(typeof currentList!=='undefined' && currentList[currentIdx])||null;
+        if(e) setTimeout(function(){ warm(e.word); warm(e.en||e.srcEx); },300);
+      }catch(x){}
+      return r;
+    };
+  },300);
+
+  window.tpxAudioDiag=function(){
+    var a=document.getElementById('kinTtsAudio');
+    console.table({
+      '解鎖狀態': a && a.src!==undefined ? (window.__kinTtsUnlockState?'已解鎖 ✓':'請先點畫面任一處') : '元素未建立',
+      '播放元素': a?'#kinTtsAudio ✓':'尚未建立',
+      '音源': src()==='cloud'?'雲端語音':'系統語音',
+      '金鑰': key()?('已設定 ••••'+key().slice(-4)):'未設定',
+      '音色': voice(),
+      'L1 快取': Object.keys(cacheAll()).length+' 筆'
+    });
+    if(window.TPX_TTSDB) TPX_TTSDB.keys().then(function(ks){ console.log('[TTS] IndexedDB '+ks.length+' 筆'); });
+  };
+  window.tpxAudioTest=function(){
+    if(typeof window.__kinTtsUnlock==='function') window.__kinTtsUnlock();
+    var ok=window.kinSpeak('vocabulary', function(){ console.log('[TTS] 測試播放完成'); });
+    console.log('[TTS] 測試已送出：', ok);
+  };
+})();
+</script>
 </body>
 </html>
