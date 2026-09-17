@@ -5458,6 +5458,8 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     list.push(card);
     save(list);
+    // 收藏當下立刻用 Gemini 補齊資料與 AI 記憶輔助（函式宣告已提升，可在此呼叫）
+    try{ setTimeout(function(){ autoEnrich(card); }, 150); }catch(e){}
     return true;
   }
   function update(id, patch){
@@ -5477,6 +5479,133 @@ body.theme-dark #nwBox .note{color:#6a6661}
   }
 
   window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, update:update, key:key };
+
+  /* ========== 收藏當下自動補資料 ==========
+     加入收藏時立刻用 Gemini 補齊詞性、中文意思、音標與例句，
+     並同步產生 AI 記憶輔助（字根、聯想、易混字、圖像描述）。
+     兩件事並行送出，互不等待；失敗只記錄在主控台，不打擾使用者。 */
+  var autoBusy = {};
+
+  function autoKey(){
+    try{ return (localStorage.getItem('kinGeminiKey') || '').trim(); }catch(e){ return ''; }
+  }
+
+  function autoAsk(prompt){
+    // 優先走既有的路由層（含金鑰輪替、模型降級）
+    if(window.KIN_GM && KIN_GM.call){
+      return KIN_GM.call({
+        contents:[{ parts:[{ text: prompt }] }],
+        generationConfig:{ temperature:0.5, maxOutputTokens:900,
+                           responseMimeType:'application/json',
+                           thinkingConfig:{ thinkingBudget:0 } }
+      }).then(function(j){
+        var t = KIN_GM.text(j);
+        if(!t) throw new Error('回應沒有內容');
+        return JSON.parse(t);
+      });
+    }
+    var k = autoKey();
+    if(!k) return Promise.reject(new Error('尚未設定 Gemini 金鑰'));
+    return fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(k), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text: prompt }] }],
+        generationConfig:{ temperature:0.5, responseMimeType:'application/json' }
+      })
+    }).then(function(r){
+      return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,120)); });
+    }).then(function(j){
+      var c0 = j && j.candidates && j.candidates[0];
+      var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
+      if(!txt) throw new Error('回應沒有內容');
+      return JSON.parse(txt);
+    });
+  }
+
+  /* 補齊字卡本身的欄位 */
+  function fillCard(card){
+    var ctx = '';
+    if(card.srcEx)   ctx += '\n該字出現在句中：' + card.srcEx;
+    if(card.srcExZh) ctx += '\n該句中文：' + card.srcExZh;
+
+    var p = '你是 TOEIC 單字教練。請針對英文單字「' + card.word + '」補齊資料。'
+      + ctx
+      + '\n全部使用繁體中文（台灣用語），內容精簡。'
+      + '\n只回覆 JSON，不要任何其他文字。欄位：'
+      + '\npos：詞性，只填一個字，如 動/名/形/副/介'
+      + '\nmean：中文意思，15 字內，可用頓號分隔多義'
+      + '\nphon：KK 或 IPA 音標，含方括號'
+      + '\nen：一句 TOEIC 情境的英文例句，12 字內，須包含該單字'
+      + '\nja：該例句的繁體中文翻譯';
+
+    return autoAsk(p).then(function(g){
+      var patch = {};
+      if(g.pos)  patch.pos  = String(g.pos).slice(0, 4);
+      if(g.mean) patch.mean = String(g.mean).slice(0, 40);
+      if(g.phon) patch.phon = String(g.phon).slice(0, 40);
+      // 已有來源例句就不覆蓋，那是最準的語境
+      if(g.en && !card.srcEx){ patch.en = String(g.en); patch.ja = String(g.ja || ''); }
+      patch.autoAt = new Date().toISOString().slice(0, 10);
+      if(Object.keys(patch).length) update(card.id, patch);
+      return patch;
+    });
+  }
+
+  /* 產生 AI 記憶輔助，寫進 KIN_MNEMO，解說頁可直接看到 */
+  function fillMnemo(card){
+    if(!window.KIN_MNEMO || !KIN_MNEMO.set) return Promise.resolve(null);
+    if(KIN_MNEMO.get && KIN_MNEMO.get(card.id)) return Promise.resolve(null);
+
+    var p = '你是 TOEIC 單字記憶教練。學習者記不起來單字「' + card.word + '」。'
+      + '請產生幫助長期記憶的助記資料。'
+      + '\n全部使用繁體中文，內容務必簡短，禁止長篇解釋。'
+      + '\n只回覆 JSON，不要加任何其他文字。欄位如下：'
+      + '\nroot：字根或構詞拆解，格式例如 pre-（前）+ dict（說）→ 預先說出；若非拉丁字源，改說明來源或構詞，40 字內'
+      + '\nassociation：一句聯想或諧音記憶，畫面要具體，25 字內'
+      + '\nconfusable：陣列，最多 2 筆，每筆包含 word（形近或義近的英文字）與 diff（一句話說明差異，20 字內）'
+      + '\nimage_prompt：一句英文圖像描述，單一畫面、構圖簡單、不含文字，便於一眼辨識';
+
+    return autoAsk(p).then(function(g){
+      var data = {
+        root: g.root || '',
+        association: g.association || '',
+        confusable: Array.isArray(g.confusable) ? g.confusable.slice(0, 2).map(function(c){
+          return { word: String(c.word || ''), diff: String(c.diff || '') };
+        }).filter(function(c){ return c.word; }) : [],
+        image_prompt: g.image_prompt || '',
+        at: new Date().toISOString().slice(0, 10)
+      };
+      KIN_MNEMO.set(card.id, data);   // set 內已掛自動生圖
+      return data;
+    });
+  }
+
+  function autoEnrich(card){
+    if(!card || !card.id || autoBusy[card.id]) return;
+    if(!autoKey() && !(window.KIN_GM && KIN_GM.keys && KIN_GM.keys().length)) return;
+    autoBusy[card.id] = true;
+
+    if(typeof window.__kinToast === 'function') window.__kinToast('已收藏，正在補充資料…');
+
+    // 兩件事並行，各自失敗互不影響
+    var a = fillCard(card).catch(function(e){ console.warn('[收藏補資料] 失敗：', e.message); });
+    var b = fillMnemo(card).catch(function(e){ console.warn('[收藏助記] 失敗：', e.message); });
+
+    Promise.all([a, b]).then(function(){
+      delete autoBusy[card.id];
+      if(typeof window.__kinToast === 'function') window.__kinToast('「' + card.word + '」資料已補齊');
+      // 若正在看這張卡，重繪讓新資料立刻顯示
+      try{
+        if(typeof currentList !== 'undefined' && currentList[currentIdx] &&
+           currentList[currentIdx].id === card.id && typeof showDetail === 'function'){
+          showDetail(currentIdx);
+        }
+      }catch(e){}
+    });
+  }
+  window.KIN_COLLECT.enrich = autoEnrich;
+
+
 
   /* ========== 跨書單字索引 ==========
      每次載入書籍就記下它的標題字，之後捕獲時可比對所有讀過的書。 */
@@ -6325,6 +6454,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
         ttsAudio.pause();
         // 不再 removeAttribute('src') / load()，避免解鎖後的元素被重置
       }catch(e){}
+      ttsBusy = false;
       // 保留 ttsAudio 參照，播放權才不會在換卡後失效
     }
     try{ window.speechSynthesis.cancel(); }catch(e){}
@@ -6360,8 +6490,9 @@ body.theme-dark #nwBox .note{color:#6a6661}
     return ttsEl;
   }
 
+  var ttsBusy = false;   // 真正的語音正在使用元素時，解鎖程序不得清理它
   function ttsUnlock(){
-    if(ttsUnlocked) return;
+    if(ttsUnlocked || ttsBusy) return;
     var a = ttsPlayer();
     try{
       a.src = TTS_SILENT;
@@ -6369,12 +6500,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var p = a.play();
       if(p && p.then){
         p.then(function(){
+          ttsUnlocked = true; window.__kinTtsUnlockState = true;
+          // 清理前先確認元素沒有被真正的語音接手，
+          // 否則會把剛設好的單字音訊抹掉，造成「只播例句」。
+          if(ttsBusy) { a.muted = false; return; }
           a.pause(); a.muted = false;
           a.removeAttribute('src'); a.load();
-          ttsUnlocked = true; window.__kinTtsUnlockState = true;
         }).catch(function(){ a.muted = false; });
       }else{
-        a.pause(); a.muted = false; ttsUnlocked = true; window.__kinTtsUnlockState = true;
+        if(!ttsBusy){ a.pause(); }
+        a.muted = false;
+        ttsUnlocked = true; window.__kinTtsUnlockState = true;
       }
     }catch(e){ a.muted = false; }
   }
@@ -6396,15 +6532,18 @@ body.theme-dark #nwBox .note{color:#6a6661}
       fired = true;
       if(typeof onend === 'function') onend();
     }
-    a.onended = done;
-    a.onerror = function(){ if(gen === ttsGen) done(); };
-    try{ a.src = 'data:audio/mp3;base64,' + b64; }catch(e){ done(); return; }
+    ttsBusy = true;               // 佔用元素，擋掉解鎖程序的清理動作
+    a.muted = false;              // 解鎖若剛靜音過，這裡要還原
+    a.onended = function(){ ttsBusy = false; done(); };
+    a.onerror = function(){ ttsBusy = false; if(gen === ttsGen) done(); };
+    try{ a.src = 'data:audio/mp3;base64,' + b64; }catch(e){ ttsBusy = false; done(); return; }
     try{
       var r = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined') ? SPEEDS[speedIdx] : 1;
       a.playbackRate = r || 1;
     }catch(e){}
     var pr = a.play();
     if(pr && pr.catch) pr.catch(function(err){
+      ttsBusy = false;
       if(gen !== ttsGen) return;
       console.warn('[TTS] play 被擋：', err && err.name);
       done();
