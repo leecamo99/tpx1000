@@ -2,19 +2,19 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-17T03:04:46.965Z",
+  "updatedAt": "2026-09-17T03:13:14.507Z",
   "deviceId": "dev-su8gfj",
   "keys": {
-    "book:kin1000:user2:status": "{\"001\":\"ok\",\"002\":\"ok\",\"003\":\"ok\",\"004\":\"ok\"}",
-    "book:kin1000:user2:srs": "{\"cards\":{\"001\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-17\",\"last\":\"2026-09-16\"},\"002\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-17\",\"last\":\"2026-09-16\"},\"003\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-17\",\"last\":\"2026-09-16\"},\"004\":{\"ease\":2.6,\"ivl\":1,\"reps\":1,\"lapses\":0,\"due\":\"2026-09-17\",\"last\":\"2026-09-16\"}},\"log\":{\"2026-09-16\":4},\"v\":1}",
+    "book:kin1000:user2:status": "{\"033\":\"review\"}",
+    "book:kin1000:user2:srs": "{\"cards\":{\"001\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-18\",\"last\":\"2026-09-17\"},\"002\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":2,\"due\":\"2026-09-18\",\"last\":\"2026-09-17\"},\"003\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-18\",\"last\":\"2026-09-17\"},\"004\":{\"ease\":2.4,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-18\",\"last\":\"2026-09-17\"},\"033\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-18\",\"last\":\"2026-09-17\"}},\"log\":{\"2026-09-16\":4,\"2026-09-17\":7},\"v\":1}",
     "kinCollect:user2": "[{\"id\":\"X-001\",\"word\":\"try\",\"mean\":\"嘗試\",\"from\":\"001 anyway\",\"at\":\"2026-09-16\",\"srcId\":\"001\",\"srcWord\":\"anyway\",\"srcNote\":\"凡事不試試看就不會開始。\",\"srcEx\":\"Let’s try anyway.\",\"srcExZh\":\"總之先試試看吧。\",\"srcBook\":\"kin1000\",\"byMT\":true}]",
     "kinAch:user2": "{\"first\":\"2026-09-16\"}",
-    "kinTime:user2": "{\"2026-09-16\":1020,\"2026-09-17\":30}",
+    "kinTime:user2": "{\"2026-09-16\":1020,\"2026-09-17\":525}",
     "kinSense:user2": "{}",
     "kinLevels:kin1000": "[\"all\"]",
     "kinPlayMode": "once",
-    "kinSpeed": "1.25",
+    "kinSpeed": "1",
     "kin_phrase_times": "2",
-    "kinReturnContext": "{\"id\":\"059\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789614203132}"
+    "kinReturnContext": "{\"id\":\"004\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789614400479}"
   }
 }
