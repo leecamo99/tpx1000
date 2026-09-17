@@ -2574,10 +2574,15 @@ function speakEntry(e, times, onDone){
 
   // 先確實掐斷上一輪，避免兩個朗讀佇列同時搶播放器
   try{ if(typeof window.__kinTtsStop === 'function') window.__kinTtsStop(); }catch(e){}
+  if(window._kinSpeakWatch){ clearTimeout(window._kinSpeakWatch); window._kinSpeakWatch = null; }
+
   var myGen = (window._kinSpeakSeq = (window._kinSpeakSeq || 0) + 1);
   var idx = 0;
+
   function step(){
     if(myGen !== window._kinSpeakSeq) return;
+    if(window._kinSpeakWatch){ clearTimeout(window._kinSpeakWatch); window._kinSpeakWatch = null; }
+
     if(idx >= seq.length){
       if(typeof setPlayerButtonState === 'function') setPlayerButtonState('play');
       if(typeof onDone === 'function') onDone();
@@ -2589,13 +2594,28 @@ function speakEntry(e, times, onDone){
     if(pt) pt.textContent = it.title;
     if(ps) ps.textContent = it.sub;
     if(typeof setPlayerButtonState === 'function') setPlayerButtonState('pause');
+
+    var moved = false;
+    function next(){
+      if(moved) return;                       // 同一格只前進一次
+      moved = true;
+      if(myGen !== window._kinSpeakSeq) return;
+      setTimeout(step, 260);
+    }
+
+    /* 看門狗：萬一回呼因為網路逾時或瀏覽器吞掉事件而沒進來，
+       依字數估一個上限時間後自行前進，佇列就不會永遠卡住。 */
+    var guardMs = 4000 + String(it.text).length * 90;
+    window._kinSpeakWatch = setTimeout(function(){
+      if(myGen !== window._kinSpeakSeq) return;
+      console.warn('[TTS] 逾時未回，自動前進：', it.text);
+      next();
+    }, guardMs);
+
     // 單字與例句之間留一點間隔，聽起來才不會黏在一起。
-    // 回呼要再檢查一次世代，否則中途換書仍會唸出下一段。
-    if(!kinSpeak(it.text, function(){
-        if(myGen !== window._kinSpeakSeq) return;
-        setTimeout(step, 260);
-    })) step();
+    if(!kinSpeak(it.text, next)) next();
   }
+
   step();
   return true;
 }
@@ -6530,6 +6550,10 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     try{ window.speechSynthesis.cancel(); }catch(e){}
     ttsGen++;
+    // 清掉看門狗，避免它在下一輪播放中途誤觸發前進
+    try{
+      if(window._kinSpeakWatch){ clearTimeout(window._kinSpeakWatch); window._kinSpeakWatch = null; }
+    }catch(e){}
   }
   window.__kinTtsStop = ttsStop;
 
@@ -6596,29 +6620,54 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var gen = ++ttsGen;
     var a = ttsPlayer();          // 重用已解鎖的元素，不再 new Audio()
     ttsAudio = a;
+    // 先確實停住，降低「新 src 打斷前一次 play()」的機率
+    try{ a.pause(); }catch(e){}
     var fired = false;
     function done(){
-      // 只認自己這一代、且只觸發一次，避免 ended 與 error 重複進來
-      if(fired || gen !== ttsGen) return;
+      // 只觸發一次，避免 ended 與 error 重複進來。
+      // 注意：即使世代已經改變也要呼叫 onend —— 呼叫端自己會把關，
+      // 這裡若默默吞掉，朗讀佇列會永久卡住，導致後續順序錯亂。
+      if(fired) return;
       fired = true;
       if(typeof onend === 'function') onend();
     }
     ttsBusy = true;               // 佔用元素，擋掉解鎖程序的清理動作
     a.muted = false;              // 解鎖若剛靜音過，這裡要還原
     a.onended = function(){ ttsBusy = false; done(); };
-    a.onerror = function(){ ttsBusy = false; if(gen === ttsGen) done(); };
+    a.onerror = function(){ ttsBusy = false; done(); };
     try{ a.src = 'data:audio/mp3;base64,' + b64; }catch(e){ ttsBusy = false; done(); return; }
     try{
       var r = (typeof SPEEDS !== 'undefined' && typeof speedIdx !== 'undefined') ? SPEEDS[speedIdx] : 1;
       a.playbackRate = r || 1;
     }catch(e){}
-    var pr = a.play();
-    if(pr && pr.catch) pr.catch(function(err){
-      ttsBusy = false;
-      if(gen !== ttsGen) return;
-      console.warn('[TTS] play 被擋：', err && err.name);
-      done();
-    });
+
+    /* 送出播放。若前一次的 play() 還沒落地就被新的 src 打斷，
+       瀏覽器會丟出 AbortError —— 那代表「這次播放被取代」，
+       不是「播完了」。從快取同步播放時（例如倒回上一張卡，
+       單字已在快取中）特別容易發生，若當成播完就會直接跳到例句，
+       聽起來就是單字被整個略過。因此 AbortError 要重試一次，
+       而不是往下推進佇列。 */
+    function launch(retry){
+      var pr;
+      try{ pr = a.play(); }catch(e){ ttsBusy = false; done(); return; }
+      if(!pr || !pr.catch) return;
+      pr.catch(function(err){
+        var name = err && err.name;
+        if(gen !== ttsGen) return;               // 已被新的播放取代，交給它處理
+        if(name === 'AbortError' && !retry){
+          // 等前一次的載入動作結束再試一次，通常一個 tick 就夠
+          setTimeout(function(){
+            if(gen !== ttsGen) return;
+            launch(true);
+          }, 60);
+          return;
+        }
+        ttsBusy = false;
+        console.warn('[TTS] play 被擋：', name);
+        done();
+      });
+    }
+    launch(false);
   }
 
   function speakSystem(text, onend){
@@ -6663,9 +6712,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var myGen = ttsGen;
     function stale(){ return myGen !== ttsGen; }
 
+    /* 作廢時必須「放行」而不是默默丟掉。
+       呼叫端（speakEntry）的回呼本身已用 _kinSpeakSeq 把關，
+       過期的回呼進去會立刻被擋下，不會播錯東西；
+       但若完全不呼叫，整條朗讀佇列就永遠卡在這一格，
+       onDone 不會觸發、_kinAfterEntry 變成孤兒，
+       等到下一次播放結束才被誤觸發，於是跳到不相干的卡片 —— 這正是順序錯亂的來源。 */
+    function release(){ if(typeof onend === 'function') onend(); }
+
     // L2：IndexedDB。沒有才真的去打 Google TTS。
     TTSDB.get(dbKey).then(function(rec){
-      if(stale()) return;
+      if(stale()){ release(); return; }
       if(rec && rec.b64){
         ttsCachePut(text, rec.b64);                       // 升到 L1
         TTSDB.put(dbKey, {b64:rec.b64, at:Date.now()});   // 更新使用時間
@@ -6688,11 +6745,11 @@ body.theme-dark #nwBox .note{color:#6a6661}
         // 音檔照存進快取，下次仍可重用；但已過期就不播出來。
         ttsCachePut(text, j.audioContent);
         TTSDB.put(dbKey, {b64:j.audioContent, at:Date.now(), text:String(text)});
-        if(stale()) return;
+        if(stale()){ release(); return; }
         ttsPlayB64(j.audioContent, onend);
       })
       .catch(function(err){
-        if(stale()) return;
+        if(stale()){ release(); return; }
         console.warn('Cloud TTS 失敗，改用系統語音：', err.message);
         if(typeof window.__kinToast === 'function') window.__kinToast('雲端語音失敗，改用系統語音');
         speakSystem(text, onend);
