@@ -2554,7 +2554,8 @@ function playCurrent(autoContinue){
 function speakEntry(e, times, onDone){
   if(typeof kinSpeak !== 'function' || !e || !e.word) return false;
   var seq = [{ text: e.word, title: e.word, sub: '單字' }];
-  var ex = String(e.en || '').trim();
+  // 收藏字卡（X-xxx）的例句存在 srcEx，不是 en，否則只唸得出單字
+  var ex = String(e.en || e.srcEx || '').trim();
   var t = (times == null) ? 1 : Math.max(0, times|0);
   if(ex && t > 0){
     for(var i = 0; i < t; i++){
@@ -6197,8 +6198,83 @@ body.theme-dark #nwBox .note{color:#6a6661}
   var TTS_KEY   = 'kinTtsKey';      // API 金鑰，只存本機
   var TTS_VOICE = 'kinTtsVoice';
   var TTS_CACHE = 'kinTtsCache';    // { "voice|word": base64 }
-  var TTS_MAX   = 60;               // 快取上限，避免撐爆 localStorage
+  var TTS_MAX   = 60;               // L1 快取上限，避免撐爆 localStorage
   var ttsAudio  = null;
+
+  /* ---------- L2 語音快取：IndexedDB ----------
+     localStorage 只有 5MB，base64 MP3 每筆 10~40KB，
+     60 筆就逼近上限而不斷淘汰、不斷重新請求。
+     這裡加一層 IndexedDB（容量以百 MB 計）當第二層。 */
+  var TTSDB = (function(){
+    var NAME='tpxTtsDB', STORE='clips', dbp=null;
+    function open(){
+      if(dbp) return dbp;
+      dbp = new Promise(function(res,rej){
+        var q=indexedDB.open(NAME,1);
+        q.onupgradeneeded=function(){
+          var db=q.result;
+          if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+        };
+        q.onsuccess=function(){res(q.result)};
+        q.onerror=function(){rej(q.error)};
+      });
+      return dbp;
+    }
+    function store(mode){
+      return open().then(function(db){
+        return db.transaction(STORE,mode).objectStore(STORE);
+      });
+    }
+    return {
+      get:function(k){
+        return store('readonly').then(function(os){
+          return new Promise(function(res){
+            var r=os.get(k);
+            r.onsuccess=function(){res(r.result||null)};
+            r.onerror=function(){res(null)};
+          });
+        }).catch(function(){return null});
+      },
+      put:function(k,v){
+        return store('readwrite').then(function(os){
+          os.put(v,k); return true;
+        }).catch(function(){return false});
+      },
+      keys:function(){
+        return store('readonly').then(function(os){
+          return new Promise(function(res){
+            var r=os.getAllKeys();
+            r.onsuccess=function(){res(r.result||[])};
+            r.onerror=function(){res([])};
+          });
+        }).catch(function(){return []});
+      },
+      del:function(k){
+        return store('readwrite').then(function(os){os.delete(k);return true})
+          .catch(function(){return false});
+      },
+      clear:function(){
+        return store('readwrite').then(function(os){os.clear();return true})
+          .catch(function(){return false});
+      }
+    };
+  })();
+  window.TPX_TTSDB = TTSDB;
+
+  /* 超過 800 筆時砍掉最舊的 200 筆 */
+  function ttsSweep(){
+    TTSDB.keys().then(function(ks){
+      if(ks.length < 800) return;
+      Promise.all(ks.map(function(k){
+        return TTSDB.get(k).then(function(v){ return {k:k, at:(v&&v.at)||0}; });
+      })).then(function(all){
+        all.sort(function(a,b){return a.at-b.at});
+        all.slice(0,200).forEach(function(x){ TTSDB.del(x.k); });
+        console.log('[TTS] 快取淘汰 200 筆');
+      });
+    });
+  }
+  setTimeout(ttsSweep, 10000);
 
   function ttsKey(){ try{ return localStorage.getItem(TTS_KEY) || ''; }catch(e){ return ''; } }
   var TTS_SRC = 'kinVoiceSrc';      // 'cloud'（預設）| 'system'
@@ -6306,29 +6382,43 @@ body.theme-dark #nwBox .note{color:#6a6661}
     // 沒有金鑰或使用者指定系統語音時，直接走系統語音。
     if(!key || ttsSrc() === 'system') return speakSystem(text, onend);
 
+    // L1：localStorage 熱快取
     var hit = ttsCacheGet(text);
     if(hit){ ttsPlayB64(hit, onend); return true; }
 
     ttsStop();
-    fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        input:{ text: String(text) },
-        voice:{ languageCode: ttsVoice().slice(0,5), name: ttsVoice() },
-        audioConfig:{ audioEncoding:'MP3', speakingRate:0.92 }
+    var dbKey = ttsVoice() + '|' + String(text).toLowerCase().trim();
+
+    // L2：IndexedDB。沒有才真的去打 Google TTS。
+    TTSDB.get(dbKey).then(function(rec){
+      if(rec && rec.b64){
+        ttsCachePut(text, rec.b64);                       // 升到 L1
+        TTSDB.put(dbKey, {b64:rec.b64, at:Date.now()});   // 更新使用時間
+        ttsPlayB64(rec.b64, onend);
+        return;
+      }
+
+      fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key=' + encodeURIComponent(key), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          input:{ text: String(text) },
+          voice:{ languageCode: ttsVoice().slice(0,5), name: ttsVoice() },
+          audioConfig:{ audioEncoding:'MP3', speakingRate:0.92 }
+        })
       })
-    })
-    .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,120)); }); })
-    .then(function(j){
-      if(!j.audioContent) throw new Error('回應沒有音訊內容');
-      ttsCachePut(text, j.audioContent);
-      ttsPlayB64(j.audioContent, onend);
-    })
-    .catch(function(err){
-      console.warn('Cloud TTS 失敗，改用系統語音：', err.message);
-      if(typeof window.__kinToast === 'function') window.__kinToast('雲端語音失敗，改用系統語音');
-      speakSystem(text, onend);
+      .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,120)); }); })
+      .then(function(j){
+        if(!j.audioContent) throw new Error('回應沒有音訊內容');
+        ttsCachePut(text, j.audioContent);
+        TTSDB.put(dbKey, {b64:j.audioContent, at:Date.now(), text:String(text)});
+        ttsPlayB64(j.audioContent, onend);
+      })
+      .catch(function(err){
+        console.warn('Cloud TTS 失敗，改用系統語音：', err.message);
+        if(typeof window.__kinToast === 'function') window.__kinToast('雲端語音失敗，改用系統語音');
+        speakSystem(text, onend);
+      });
     });
     return true;
   };
@@ -10939,6 +11029,30 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       mnSet(id, data);
       renderMnemo(id, data, box);
       setMsg(box, '助記已產生');
+
+      /* 文字完成後立刻接著生圖，不必再手動按一次「生成圖片」。
+         需已設定 Cloudflare Worker URL 且開關開啟。 */
+      (function autoImage(){
+        if(!data.image_prompt || data.img) return;
+        var on=false, url='';
+        try{
+          on  = localStorage.getItem('kinCfAiEnabled') === '1';
+          url = (localStorage.getItem('kinCfAiWorkerUrl')||'').trim();
+        }catch(e){}
+        if(!on || !url) return;
+        if(!window.KIN_MNEMO_IMG || !KIN_MNEMO_IMG.gen) return;
+
+        setMsg(box, '助記已產生，圖片生成中…');
+        KIN_MNEMO_IMG.gen(data.image_prompt).then(function(src){
+          var cur = mnGet(id) || data;
+          cur.img = src;
+          mnSet(id, cur);
+          renderMnemo(id, cur, box);
+          setMsg(box, '助記與圖片已完成');
+        }).catch(function(err){
+          setMsg(box, '助記已產生（圖片失敗：' + err.message + '）', true);
+        });
+      })();
     }).catch(function(err){
       setMsg(box, '產生失敗：' + err.message, true);
     }).then(function(){
@@ -11869,7 +11983,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 (function(){
 'use strict';
 var KEY_STORE='kinGeminiKeys',OLD_KEY='kinGeminiKey',KEY_COOL='kinGeminiKeyCoolV4',MODEL_COOL='kinGeminiModelCoolV4',CURSOR='kinGeminiCursorV4',LOG='kinGeminiRouteLogV4';
-var MODELS=['gemini-3.6-flash','gemini-3.5-flash-lite'];
+var MODELS=['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-flash-8b'];
 function now(){return Date.now()}function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function keys(){var a=[];try{a=JSON.parse(localStorage.getItem(KEY_STORE)||'[]')||[]}catch(e){}if(!Array.isArray(a))a=[];a=a.map(function(k){return String(k||'').trim()}).filter(Boolean);if(!a.length){var k='';try{k=(localStorage.getItem(OLD_KEY)||'').trim()}catch(e){}if(k)a=[k]}return a.filter(function(k,i,x){return x.indexOf(k)===i})}
 function getMap(k){try{return JSON.parse(localStorage.getItem(k)||'{}')||{}}catch(e){return{}}}function saveMap(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
@@ -11877,10 +11991,10 @@ function active(map,id){return +(map[id]||0)>now()}function tail(k){return '…'
 function addLog(line){var a=[];try{a=JSON.parse(localStorage.getItem(LOG)||'[]')||[]}catch(e){}a.unshift(new Date().toISOString()+' '+line);a=a.slice(0,30);try{localStorage.setItem(LOG,JSON.stringify(a))}catch(e){}}
 function parseRetry(j){var d=j&&j.error&&j.error.details||[];for(var i=0;i<d.length;i++){var s=d[i]&&d[i].retryDelay;if(s){var m=String(s).match(/([0-9.]+)s/);if(m)return Math.ceil(parseFloat(m[1])*1000)}}return 0}
 function msg(j,status){return j&&j.error&&j.error.message||('HTTP '+status)}
-function request(model,key,payload){var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},45000),url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key);return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl.signal}).then(function(r){clearTimeout(timer);return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(r.ok)return j;var e=new Error(msg(j,r.status));e.status=r.status;e.retry=parseRetry(j);e.raw=j;throw e})},function(e){clearTimeout(timer);var x=new Error(e&&e.name==='AbortError'?'Gemini 連線逾時':(e.message||'網路錯誤'));x.net=true;throw x})}
+function request(model,key,payload){var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},15000),url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key);return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl.signal}).then(function(r){clearTimeout(timer);return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(r.ok)return j;var e=new Error(msg(j,r.status));e.status=r.status;e.retry=parseRetry(j);e.raw=j;throw e})},function(e){clearTimeout(timer);var x=new Error(e&&e.name==='AbortError'?'Gemini 連線逾時':(e.message||'網路錯誤'));x.net=true;throw x})}
 function call(payload,opts){opts=opts||{};var ks=keys();if(!ks.length)return Promise.reject(new Error('尚未設定 Gemini 金鑰'));var models=opts.models||MODELS,keyCool=getMap(KEY_COOL),modelCool=getMap(MODEL_COOL),start=0;try{start=parseInt(localStorage.getItem(CURSOR)||'0',10)||0}catch(e){}var routes=[];for(var mi=0;mi<models.length;mi++){var model=models[mi];if(active(modelCool,model))continue;for(var x=0;x<ks.length;x++){var ki=(start+x)%ks.length,key=ks[ki];if(!active(keyCool,key))routes.push({model:model,key:key,ki:ki})}}
  if(!routes.length){keyCool={};saveMap(KEY_COOL,keyCool);for(var m=0;m<models.length;m++)if(!active(modelCool,models[m]))for(var q=0;q<ks.length;q++)routes.push({model:models[m],key:ks[(start+q)%ks.length],ki:(start+q)%ks.length})}
- var i=0,notes=[];function run(){if(i>=routes.length){var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+'\n若四支 Key 屬於同一 Google Project，配額仍會共享。');e.routeLog=notes;throw e}var r=routes[i++];return request(r.model,r.key,payload).then(function(j){try{localStorage.setItem(CURSOR,String((r.ki+1)%ks.length))}catch(e){}addLog(r.model+' '+tail(r.key)+' 成功');return j}).catch(function(e){var line=r.model+' '+tail(r.key)+' '+e.status+' '+e.message;notes.push(line);addLog(line);
+ var i=0,notes=[];function run(){if(i>=routes.length){var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+'\n若四支 Key 屬於同一 Google Project，配額仍會共享。');e.routeLog=notes;throw e}var r=routes[i++];return request(r.model,r.key,payload).then(function(j){try{localStorage.setItem(CURSOR,String((r.ki+1)%ks.length))}catch(e){}try{localStorage.setItem('tpxGmSticky',JSON.stringify({model:r.model,at:Date.now()}))}catch(e){}addLog(r.model+' '+tail(r.key)+' 成功');return j}).catch(function(e){var line=r.model+' '+tail(r.key)+' '+e.status+' '+e.message;notes.push(line);addLog(line);
    if(e.status===404){modelCool[r.model]=now()+24*3600e3;saveMap(MODEL_COOL,modelCool);routes=routes.filter(function(z){return z.model!==r.model});return run()}
    if(e.status===429){keyCool[r.key]=now()+Math.min(Math.max(e.retry||60000,60000),15*60e3);saveMap(KEY_COOL,keyCool);return run()}
    if(e.status===401||e.status===403){keyCool[r.key]=now()+24*3600e3;saveMap(KEY_COOL,keyCool);return run()}
@@ -11957,8 +12071,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 (function(){
 'use strict';
 var KEY_STORE='kinGeminiKeys',OLD_KEY='kinGeminiKey',KEY_COOL='kinGeminiKeyCoolV5',MODEL_COOL='kinGeminiModelCoolV5',CURSOR='kinGeminiCursorV5',LOG='kinGeminiRouteLogV4',CACHE='kinGeminiModelCatalogV1';
-var FALLBACK=['gemini-3.6-flash','gemini-3.5-flash-lite'];
-var CACHE_MS=24*60*60*1000;
+var FALLBACK=['gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-flash','gemini-1.5-flash-8b'];
+var CACHE_MS=7*24*60*60*1000;
 function now(){return Date.now()}function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function keys(){var a=[];try{a=JSON.parse(localStorage.getItem(KEY_STORE)||'[]')||[]}catch(e){}if(!Array.isArray(a))a=[];a=a.map(function(k){return String(k||'').trim()}).filter(Boolean);if(!a.length){var k='';try{k=(localStorage.getItem(OLD_KEY)||'').trim()}catch(e){}if(k)a=[k]}return a.filter(function(k,i,x){return x.indexOf(k)===i})}
 function fp(k){var s=String(k||'');return s.slice(0,4)+'…'+s.slice(-8)}
@@ -11974,10 +12088,40 @@ function normalize(models){var seen={},a=[];(models||[]).forEach(function(m){var
 function listOne(key,force){var catalog=get(CACHE,{}),id=fp(key),old=catalog[id];if(!force&&old&&old.at&&now()-old.at<CACHE_MS&&old.models&&old.models.length)return Promise.resolve(old.models);var url='https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key='+encodeURIComponent(key);return fetch(url,{headers:{Accept:'application/json'}}).then(function(r){return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(!r.ok){var x=new Error(j&&j.error&&j.error.message||('HTTP '+r.status));x.status=r.status;throw x}var models=normalize(j.models||[]);if(!models.length)throw new Error('模型清單沒有可用的 Flash generateContent 模型');catalog[id]={at:now(),models:models};put(CACHE,catalog);addLog('模型探索 '+tail(key)+' '+models.join(', '));return models})})}
 function discover(force){var ks=keys();if(!ks.length)return Promise.reject(new Error('尚未設定 Gemini 金鑰'));return Promise.all(ks.map(function(k){return listOne(k,force).then(function(ms){return{key:k,models:ms}},function(e){addLog('模型探索 '+tail(k)+' 失敗 '+e.message);var old=get(CACHE,{})[fp(k)];return{key:k,models:old&&old.models&&old.models.length?old.models:FALLBACK.slice(),error:e.message}})})).then(function(perKey){var union=[],seen={};perKey.forEach(function(x){x.models.forEach(function(m){if(!seen[m]){seen[m]=1;union.push(m)}})});union.sort(function(a,b){return score(b)-score(a)});return{perKey:perKey,models:union.length?union:FALLBACK.slice(),at:now()}})}
 function parseRetry(j){var d=j&&j.error&&j.error.details||[];for(var i=0;i<d.length;i++){var s=d[i]&&d[i].retryDelay;if(s){var m=String(s).match(/([0-9.]+)s/);if(m)return Math.ceil(parseFloat(m[1])*1000)}}return 0}
-function request(model,key,payload){var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},45000),url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key);return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl.signal}).then(function(r){clearTimeout(timer);return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(r.ok)return j;var x=new Error(j&&j.error&&j.error.message||('HTTP '+r.status));x.status=r.status;x.retry=parseRetry(j);throw x})},function(e){clearTimeout(timer);var x=new Error(e&&e.name==='AbortError'?'Gemini 連線逾時':(e.message||'網路錯誤'));x.net=true;throw x})}
+function request(model,key,payload){var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},15000),url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key);return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl.signal}).then(function(r){clearTimeout(timer);return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(r.ok)return j;var x=new Error(j&&j.error&&j.error.message||('HTTP '+r.status));x.status=r.status;x.retry=parseRetry(j);throw x})},function(e){clearTimeout(timer);var x=new Error(e&&e.name==='AbortError'?'Gemini 連線逾時':(e.message||'網路錯誤'));x.net=true;throw x})}
 function execute(payload,opts,catalog,refreshed){opts=opts||{};var ks=keys(),keyCool=get(KEY_COOL,{}),modelCool=get(MODEL_COOL,{}),start=parseInt(localStorage.getItem(CURSOR)||'0',10)||0,routes=[];catalog.perKey.forEach(function(entry){var ki=ks.indexOf(entry.key);entry.models.forEach(function(model){if(!active(keyCool,entry.key)&&!active(modelCool,model))routes.push({key:entry.key,ki:ki,model:model})})});routes.sort(function(a,b){var ak=(a.ki-start+ks.length)%ks.length,bk=(b.ki-start+ks.length)%ks.length;return score(b.model)-score(a.model)||ak-bk});var i=0,notes=[];
- function run(){if(i>=routes.length){if(!refreshed&&notes.some(function(n){return / 404 /.test(n)}))return discover(true).then(function(fresh){return execute(payload,opts,fresh,true)});var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+'\n若多支 Key 同屬一個 Google Project，配額仍會共享。');e.routeLog=notes;throw e}var r=routes[i++];return request(r.model,r.key,payload).then(function(j){try{localStorage.setItem(CURSOR,String((r.ki+1)%ks.length))}catch(e){}addLog(r.model+' '+tail(r.key)+' 成功');return j}).catch(function(e){var line=r.model+' '+tail(r.key)+' '+(e.status||'NET')+' '+e.message;notes.push(line);addLog(line);if(e.status===404){modelCool[r.model]=now()+10*60*1000;put(MODEL_COOL,modelCool);return run()}if(e.status===429){keyCool[r.key]=now()+Math.min(Math.max(e.retry||60000,60000),15*60*1000);put(KEY_COOL,keyCool);return run()}if(e.status===401||e.status===403){keyCool[r.key]=now()+24*60*60*1000;put(KEY_COOL,keyCool);return run()}if(e.net||e.status===408||e.status>=500)return sleep(900+Math.random()*500).then(function(){return request(r.model,r.key,payload)}).catch(function(e2){notes.push(r.model+' '+tail(r.key)+' 重試失敗 '+e2.message);return run()});return run()})}return run()}
-function call(payload,opts){return discover(false).then(function(c){return execute(payload,opts,c,false)})}
+ function run(){if(i>=routes.length){if(!refreshed&&notes.some(function(n){return / 404 /.test(n)}))return discover(true).then(function(fresh){return execute(payload,opts,fresh,true)});var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+'\n若多支 Key 同屬一個 Google Project，配額仍會共享。');e.routeLog=notes;throw e}var r=routes[i++];return request(r.model,r.key,payload).then(function(j){try{localStorage.setItem(CURSOR,String((r.ki+1)%ks.length))}catch(e){}try{localStorage.setItem('tpxGmSticky',JSON.stringify({model:r.model,at:Date.now()}))}catch(e){}addLog(r.model+' '+tail(r.key)+' 成功');return j}).catch(function(e){var line=r.model+' '+tail(r.key)+' '+(e.status||'NET')+' '+e.message;notes.push(line);addLog(line);if(e.status===404){modelCool[r.model]=now()+10*60*1000;put(MODEL_COOL,modelCool);return run()}if(e.status===429){keyCool[r.key]=now()+Math.min(Math.max(e.retry||60000,60000),15*60*1000);put(KEY_COOL,keyCool);return run()}if(e.status===401||e.status===403){keyCool[r.key]=now()+24*60*60*1000;put(KEY_COOL,keyCool);return run()}if(e.net||e.status===408||e.status>=500)return sleep(900+Math.random()*500).then(function(){return request(r.model,r.key,payload)}).catch(function(e2){notes.push(r.model+' '+tail(r.key)+' 重試失敗 '+e2.message);return run()});return run()})}return run()}
+/* 黏著最近成功的模型：30 分鐘內直接用它，省掉整輪嘗試。
+   短輸出關掉 thinking，flash 系列上差距明顯。 */
+var STICKY='tpxGmSticky', STICKY_MS=30*60*1000;
+function stickyGet(){try{var s=JSON.parse(localStorage.getItem(STICKY)||'null');if(s&&s.at&&Date.now()-s.at<STICKY_MS)return s.model}catch(e){}return ''}
+function stickySet(m){try{localStorage.setItem(STICKY,JSON.stringify({model:m,at:Date.now()}))}catch(e){}}
+function stickyClear(){try{localStorage.removeItem(STICKY)}catch(e){}}
+window.tpxGmReset=function(){stickyClear();console.log('[Gemini] 已清除模型偏好')};
+window.tpxGmStatus=function(){console.table({'目前偏好模型':stickyGet()||'（無）','逾時':'15 秒','備援清單':FALLBACK.join(' → ')})};
+
+function call(payload,opts){
+  // 短輸出關 thinking
+  try{
+    if(payload&&payload.generationConfig&&(payload.generationConfig.maxOutputTokens||0)<=1024&&!payload.generationConfig.thinkingConfig)
+      payload.generationConfig.thinkingConfig={thinkingBudget:0};
+  }catch(e){}
+
+  var pinned=stickyGet(), ks=keys();
+  // 有偏好模型就先單獨試一次，成功即回，失敗才走完整路由
+  if(pinned&&ks.length){
+    var t0=Date.now();
+    return request(pinned,ks[0],payload).then(function(j){
+      console.log('[Gemini] '+pinned+' 直達 '+(Date.now()-t0)+'ms');
+      return j;
+    },function(err){
+      stickyClear();
+      console.log('[Gemini] 偏好模型失敗（'+(err.status||'net')+'），改走完整路由');
+      return discover(false).then(function(c){return execute(payload,opts,c,false)});
+    });
+  }
+  return discover(false).then(function(c){return execute(payload,opts,c,false)});
+}
 function text(j){var p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[];for(var i=0;i<p.length;i++)if(p[i].text)return p[i].text;return''}
 window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);put(KEY_STORE,a);try{if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}},cooling:function(){return 0},models:FALLBACK,discoverModels:discover,clearModelCache:function(){try{localStorage.removeItem(CACHE)}catch(e){}},routeLog:function(){return get(LOG,[])}};
 function modelPanel(){var route=document.getElementById('gmRoutePanel');if(!route||document.getElementById('gmrModels'))return;var e=document.createElement('div');e.id='gmrModels';e.className='gmr-models';e.innerHTML='<b>動態模型探索</b><span id="gmrModelsText">尚未讀取模型清單</span><button type="button" onclick="gmDiscoverModels(true)">立即重新抓取模型</button>';route.insertBefore(e,route.querySelector('.gmr-list'))}
@@ -12127,5 +12271,88 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
  <script src="tpx1000-patch-v7.js"></script> 
+<script>
+/* ===== 舊款 iPad（A9X / A10X）三欄渲染降級 =====
+   A10X 上最貴的是 backdrop-filter，每一幀都要重新合成整層背景，
+   三欄同時存在時成本乘三。偵測到舊機就關掉毛玻璃與多層陰影。 */
+(function(){
+  'use strict';
+  function legacy(){
+    var ua=navigator.userAgent;
+    var iPad=/iPad/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+    if(!iPad) return false;
+    var cores=navigator.hardwareConcurrency||2;
+    var w=Math.min(screen.width,screen.height), h=Math.max(screen.width,screen.height);
+    var oldSize=(w===768&&h===1024)||(w===834&&h===1112)||(w===1024&&h===1366);
+    var gpu='';
+    try{
+      var gl=document.createElement('canvas').getContext('webgl');
+      var ext=gl&&gl.getExtension('WEBGL_debug_renderer_info');
+      if(ext) gpu=gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)||'';
+    }catch(e){}
+    return /A9X|A10X|Apple A9|Apple A10/i.test(gpu)||(oldSize&&cores<=3);
+  }
+
+  var force=null;
+  try{ var v=localStorage.getItem('tpxLegacyMode'); if(v==='1')force=true; if(v==='0')force=false; }catch(e){}
+  var on = (force===null) ? legacy() : force;
+
+  window.tpxForceLegacy=function(x){
+    try{ localStorage.setItem('tpxLegacyMode', x===false?'0':'1'); }catch(e){}
+    location.reload();
+  };
+
+  if(!on){ console.log('[iPad] 一般裝置，未降級'); return; }
+  document.documentElement.classList.add('tpx-legacy');
+
+  var css=document.createElement('style');
+  css.textContent=[
+    '.tpx-legacy *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}',
+    '.tpx-legacy #ixLeft,.tpx-legacy #ixRight,.tpx-legacy #ixTop,.tpx-legacy .player-bar,.tpx-legacy .bottom-nav{background-color:#0d0d0d!important}',
+    '.tpx-legacy .ix-card,.tpx-legacy #nwBox,.tpx-legacy .mn-body{box-shadow:none!important;border:1px solid rgba(255,255,255,.08)}',
+    '.tpx-legacy #ixLeft,.tpx-legacy #ixRight{contain:layout paint style;transform:translateZ(0);overscroll-behavior:contain}',
+    '.tpx-legacy .ix-card,.tpx-legacy .ix-row,.tpx-legacy .gmr-row{content-visibility:auto;contain-intrinsic-size:auto 60px}',
+    '.tpx-legacy *{transition-duration:.12s!important;animation-duration:.2s!important}',
+    '.tpx-legacy .mn-img img{max-width:128px;height:auto}'
+  ].join('\n');
+  document.head.appendChild(css);
+
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){ try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(e){} }
+  });
+
+  window.tpxTwoPane=function(){
+    var r=document.getElementById('ixRight');
+    if(r) r.style.display='none';
+    console.log('[iPad] 已隱藏右欄');
+  };
+
+  console.log('[iPad] 已啟用舊機降級模式');
+})();
+
+/* ===== 診斷 ===== */
+window.tpxDiag=function(){
+  var o={};
+  o['降級模式']=document.documentElement.classList.contains('tpx-legacy')?'已啟用':'未啟用';
+  o['螢幕']=screen.width+'x'+screen.height+' @'+(window.devicePixelRatio||1)+'x';
+  o['核心數']=navigator.hardwareConcurrency||'未知';
+  o['DOM 節點']=document.getElementsByTagName('*').length;
+  var b=0,all=document.querySelectorAll('*');
+  for(var i=0;i<all.length;i++){var s=getComputedStyle(all[i]);if(s.backdropFilter&&s.backdropFilter!=='none')b++}
+  o['backdrop-filter']=b+(b?' ⚠':' ✓');
+  try{var k=JSON.parse(localStorage.getItem('tpxGmSticky')||'null');o['Gemini 偏好']=k?k.model:'（無）'}catch(e){}
+  console.table(o);
+  if(window.TPX_TTSDB) TPX_TTSDB.keys().then(function(ks){console.log('[TTS] IndexedDB 快取 '+ks.length+' 筆')});
+  return o;
+};
+window.tpxFps=function(sec){
+  sec=sec||3;var n=0,t0=performance.now();
+  return new Promise(function(res){(function t(){n++;
+    if(performance.now()-t0<sec*1000)requestAnimationFrame(t);
+    else{var f=(n/sec).toFixed(1);console.log('[FPS] '+f+' — '+(f>=55?'順暢':f>=40?'可接受':'明顯卡頓'));res(+f)}
+  })()});
+};
+</script>
+
 </body>
 </html>
