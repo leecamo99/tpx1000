@@ -1960,18 +1960,20 @@ function showDetail(){
   if(typeof window.__kinPaintNoteWords==='function') window.__kinPaintNoteWords();
 
   // tap to play on book elements
+  /* 收藏字卡沒有錄音時間軸，但 playPart 會自動退回語音朗讀，
+     所以點擊一律綁上，不再因為沒有音檔就完全不能點。 */
   var has = !!getAudioForEntry(e);
   var w = document.getElementById('dbWord');
   if(w){
-    w.classList.toggle('tap-play', has);
-    w.onclick = has ? function(){ playPart(e, 'word'); } : null;
+    w.classList.add('tap-play');
+    w.onclick = function(){ playPart(e, 'word'); };
   }
   host.querySelectorAll('.db-ex-en').forEach(function(el, idx){
-    el.classList.toggle('tap-play', has);
-    el.onclick = has ? (function(senseIndex){
+    el.classList.add('tap-play');
+    el.onclick = (function(senseIndex){
       return function(){
         var info = getAudioForEntry(e);
-        if(!info) return;
+        if(!info){ playPart(e, 'dExEn'); return; }
         var pairs = getPhrasePairs(info);
         var times = Math.max(getPhraseTimes(), 1);
         if(pairs[senseIndex]){
@@ -1985,7 +1987,7 @@ function showDetail(){
           playPart(e, 'dExEn');
         }
       };
-    })(idx) : null;
+    })(idx);
   });
 
   
@@ -2570,6 +2572,8 @@ function speakEntry(e, times, onDone){
   var bar = document.getElementById('playerBar');
   if(bar){ bar.classList.add('show'); bar.style.display = 'flex'; }
 
+  // 先確實掐斷上一輪，避免兩個朗讀佇列同時搶播放器
+  try{ if(typeof window.__kinTtsStop === 'function') window.__kinTtsStop(); }catch(e){}
   var myGen = (window._kinSpeakSeq = (window._kinSpeakSeq || 0) + 1);
   var idx = 0;
   function step(){
@@ -2738,6 +2742,19 @@ function setPlayerButtonState(state){
 }
 
 function togglePlay(){
+  /* 收藏字卡走語音合成，用的是 #kinTtsAudio 而不是 #audioEl。
+     只看 #audioEl 的話，語音正在播時仍會被判定為「已暫停」，
+     於是再按一次不是暫停而是重新開始，兩輪朗讀就疊在一起。 */
+  var t = document.getElementById('kinTtsAudio');
+  var ttsPlaying = !!(t && t.src && !t.paused && !t.ended);
+  var speaking = false;
+  try{ speaking = !!(window.speechSynthesis && window.speechSynthesis.speaking); }catch(e){}
+  if(ttsPlaying || speaking){
+    if(typeof hardStopAllPlayback === 'function') hardStopAllPlayback();
+    setPlayerButtonState('play');
+    return;
+  }
+
   const a = ensureAudio();
   if(a.paused){
     if(currentClip) a.play();
@@ -5522,7 +5539,43 @@ body.theme-dark #nwBox .note{color:#6a6661}
     });
   }
 
-  /* 補齊字卡本身的欄位 */
+  /* 補齊字卡本身的欄位：必須與手動「Gemini 補充」寫入同一個 card.gm 結構，
+     否則解說頁仍會判定為「尚缺資料」，看起來就像沒有啟動。 */
+  function fillCardGm(card){
+    if(card.gm && card.gm.at) return Promise.resolve(null);   // 已補過就略過
+
+    var p = '你是 TOEIC 單字教學助手。針對英文「' + card.word + '」，在 TOEIC 商務語境下提供學習資料。'
+      + (card.srcNote ? ('\n來源書上的說明：' + card.srcNote) : '')
+      + (card.mean ? ('\n書上的中文定義：' + card.mean + '，請以此語意為準。') : '')
+      + '\n只回覆 JSON，不要加說明文字。欄位如下，除英文例句外一律使用繁體中文：'
+      + '\nphon：音標，含方括號'
+      + '\npos：詞性，用一個中文字，例如 動 名 形 副'
+      + '\nmean：語意，以 TOEIC 商務語境優先，20 字內'
+      + '\nex：一句簡短的 TOEIC 英文例句，必須自然用到「' + card.word + '」本身。'
+      + '長度嚴格限制 5 到 10 個英文單字，最多不得超過 12 個單字，'
+      + '只用一個主要子句，不要關係子句、分號、破折號、括號或多餘修飾，'
+      + '不要人名、公司名與日期，長度需與單字書的短例句相當，'
+      + '場景限定辦公室、會議、出差、客服、採購、人事、財報等商務情境'
+      + '\nexZh：該例句的繁體中文翻譯，同樣維持一句短句'
+      + '\nsyn：同義字，英文，逗號分隔，最多 3 個'
+      + '\nant：反義字，英文，逗號分隔，最多 3 個'
+      + '\ntip：一句使用提醒或易混淆說明，40 字內';
+
+    return autoAsk(p).then(function(g){
+      if(window.__kinTrimEx) g = window.__kinTrimEx(g, card.word);
+      var patch = { gm: {
+        phon:g.phon||'', pos:g.pos||'', mean:g.mean||'',
+        ex:g.ex||'', exZh:g.exZh||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
+        at:new Date().toISOString().slice(0,10)
+      }};
+      // 書上定義優先，只有原本沒有中文時才用 Gemini 補上。
+      if(!card.mean && g.mean) patch.mean = g.mean;
+      update(card.id, patch);
+      return patch;
+    });
+  }
+
+  /* 舊版：只補基本欄位，保留給沒有 gm 結構的情境 */
   function fillCard(card){
     var ctx = '';
     if(card.srcEx)   ctx += '\n該字出現在句中：' + card.srcEx;
@@ -5588,17 +5641,31 @@ body.theme-dark #nwBox .note{color:#6a6661}
     if(typeof window.__kinToast === 'function') window.__kinToast('已收藏，正在補充資料…');
 
     // 兩件事並行，各自失敗互不影響
-    var a = fillCard(card).catch(function(e){ console.warn('[收藏補資料] 失敗：', e.message); });
-    var b = fillMnemo(card).catch(function(e){ console.warn('[收藏助記] 失敗：', e.message); });
+    var okGm = false, okMn = false;
+    var a = fillCardGm(card).then(function(){ okGm = true; })
+              .catch(function(e){ console.warn('[收藏 Gemini 補充] 失敗：', e.message); });
+    var b = fillMnemo(card).then(function(){ okMn = true; })
+              .catch(function(e){ console.warn('[收藏 AI 助記] 失敗：', e.message); });
 
     Promise.all([a, b]).then(function(){
       delete autoBusy[card.id];
-      if(typeof window.__kinToast === 'function') window.__kinToast('「' + card.word + '」資料已補齊');
-      // 若正在看這張卡，重繪讓新資料立刻顯示
+
+      var done = [];
+      if(okGm) done.push('補充');
+      if(okMn) done.push('助記');
+      if(typeof window.__kinToast === 'function'){
+        window.__kinToast(done.length
+          ? ('「' + card.word + '」' + done.join('與') + '已完成')
+          : ('「' + card.word + '」補充失敗，請檢查 Gemini 金鑰'));
+      }
+
+      // 收藏清單與解說頁都要吃到新資料
+      try{ if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect(); }catch(e){}
       try{
         if(typeof currentList !== 'undefined' && currentList[currentIdx] &&
-           currentList[currentIdx].id === card.id && typeof showDetail === 'function'){
-          showDetail(currentIdx);
+           currentList[currentIdx].id === card.id){
+          if(typeof openDetail === 'function') openDetail(card.id);
+          else if(typeof showDetail === 'function') showDetail(currentIdx);
         }
       }catch(e){}
     });
@@ -5725,10 +5792,14 @@ body.theme-dark #nwBox .note{color:#6a6661}
 
   window.nwMode = mode;
   window.nwSetMode = function(m){
+    /* 切換模式等於中斷目前這輪朗讀。不先停掉的話，殘留的播放佇列
+       會在切回發音模式後接著跑完，與新按下的播放互相搶同一個播放器。 */
+    try{ if(typeof hardStopAllPlayback === 'function') hardStopAllPlayback(); }catch(e){}
     try{ localStorage.setItem(MODE_KEY, m === 'cap' ? 'cap' : 'speak'); }catch(e){}
     paintMode();
     if(typeof window.__kinToast === 'function'){
-      window.__kinToast(m === 'cap' ? '收藏模式：點英文加入閃卡' : '發音模式：點英文播放');
+      window.__kinToast(m === 'cap' ? '收藏模式：點英文加入閃卡　播放列仍可正常播放'
+                                    : '發音模式：點英文播放');
     }
   };
   window.nwToggleMode = function(){ window.nwSetMode(mode() === 'cap' ? 'speak' : 'cap'); };
@@ -6584,8 +6655,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
     ttsStop();
     var dbKey = ttsVoice() + '|' + String(text).toLowerCase().trim();
 
+    /* 世代編號：ttsStop() 已把 ttsGen 遞增，這裡記下當下的值。
+       之後只要有任何新的播放或停止（換字、換模式、按停止），ttsGen 就會再變，
+       此時這一批還在飛的非同步請求必須整個作廢。
+       少了這道關卡，上一個字的 TTS 回來時會直接搶走共用的播放元素，
+       於是聽到「這次的單字 + 上一個字的例句」這種錯亂組合。 */
+    var myGen = ttsGen;
+    function stale(){ return myGen !== ttsGen; }
+
     // L2：IndexedDB。沒有才真的去打 Google TTS。
     TTSDB.get(dbKey).then(function(rec){
+      if(stale()) return;
       if(rec && rec.b64){
         ttsCachePut(text, rec.b64);                       // 升到 L1
         TTSDB.put(dbKey, {b64:rec.b64, at:Date.now()});   // 更新使用時間
@@ -6605,11 +6685,14 @@ body.theme-dark #nwBox .note{color:#6a6661}
       .then(function(r){ return r.ok ? r.json() : r.text().then(function(t){ throw new Error('HTTP '+r.status+' '+t.slice(0,120)); }); })
       .then(function(j){
         if(!j.audioContent) throw new Error('回應沒有音訊內容');
+        // 音檔照存進快取，下次仍可重用；但已過期就不播出來。
         ttsCachePut(text, j.audioContent);
         TTSDB.put(dbKey, {b64:j.audioContent, at:Date.now(), text:String(text)});
+        if(stale()) return;
         ttsPlayB64(j.audioContent, onend);
       })
       .catch(function(err){
+        if(stale()) return;
         console.warn('Cloud TTS 失敗，改用系統語音：', err.message);
         if(typeof window.__kinToast === 'function') window.__kinToast('雲端語音失敗，改用系統語音');
         speakSystem(text, onend);
