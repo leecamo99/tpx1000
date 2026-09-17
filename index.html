@@ -2762,14 +2762,10 @@ function setPlayerButtonState(state){
 }
 
 function togglePlay(){
-  /* 收藏字卡走語音合成，用的是 #kinTtsAudio 而不是 #audioEl。
-     只看 #audioEl 的話，語音正在播時仍會被判定為「已暫停」，
-     於是再按一次不是暫停而是重新開始，兩輪朗讀就疊在一起。 */
-  var t = document.getElementById('kinTtsAudio');
-  var ttsPlaying = !!(t && t.src && !t.paused && !t.ended);
-  var speaking = false;
-  try{ speaking = !!(window.speechSynthesis && window.speechSynthesis.speaking); }catch(e){}
-  if(ttsPlaying || speaking){
+  /* iOS Safari 在 speechSynthesis.cancel() 後，speaking 偶爾仍保持 true。
+     若拿 speaking 直接判斷，播放鍵每次都只會走「停止」分支，看起來像失效。
+     改用 App 自己維護的 _kinTtsActive 狀態。 */
+  if(window._kinTtsActive){
     if(typeof hardStopAllPlayback === 'function') hardStopAllPlayback();
     setPlayerButtonState('play');
     return;
@@ -2777,10 +2773,16 @@ function togglePlay(){
 
   const a = ensureAudio();
   if(a.paused){
-    if(currentClip) a.play();
-    else playCurrent();
-    setPlayerButtonState('pause');
-  } else {
+    if(currentClip){
+      a.play().then(function(){ setPlayerButtonState('pause'); })
+        .catch(function(err){
+          console.warn('[播放] 音檔播放失敗：', err && err.name);
+          setPlayerButtonState('play');
+        });
+    }else{
+      playCurrent();
+    }
+  }else{
     a.pause();
     setPlayerButtonState('play');
   }
@@ -6548,6 +6550,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
       ttsBusy = false;
       // 保留 ttsAudio 參照，播放權才不會在換卡後失效
     }
+    window._kinTtsActive = false;
     try{ window.speechSynthesis.cancel(); }catch(e){}
     ttsGen++;
     // 清掉看門狗，避免它在下一輪播放中途誤觸發前進
@@ -6629,9 +6632,11 @@ body.theme-dark #nwBox .note{color:#6a6661}
       // 這裡若默默吞掉，朗讀佇列會永久卡住，導致後續順序錯亂。
       if(fired) return;
       fired = true;
+      window._kinTtsActive = false;
       if(typeof onend === 'function') onend();
     }
-    ttsBusy = true;               // 佔用元素，擋掉解鎖程序的清理動作
+    ttsBusy = true;
+    window._kinTtsActive = true;               // 佔用元素，擋掉解鎖程序的清理動作
     a.muted = false;              // 解鎖若剛靜音過，這裡要還原
     a.onended = function(){ ttsBusy = false; done(); };
     a.onerror = function(){ ttsBusy = false; done(); };
@@ -12605,7 +12610,6 @@ window.IX_ROTATE={install:install,capture:capture,restore:restore};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
 })();
 </script>
- <script src="tpx1000-patch-v7.js"></script> 
 <script>
 /* ===== 舊款 iPad（A9X / A10X）三欄渲染降級 =====
    A10X 上最貴的是 backdrop-filter，每一幀都要重新合成整層背景，
@@ -12790,7 +12794,8 @@ window.tpxFps=function(sec){
   bottom: calc(var(--tpx-nav-h) + var(--tpx-player-h) + env(safe-area-inset-bottom, 0px));
   width: 100%;
   max-width: 480px;
-  z-index: 9998;                 /* 播放列是 9999，維持在它下方一層 */
+  z-index: 9990;                 /* 明確低於播放列 */
+  pointer-events: none;          /* 背景不攔截播放列點擊 */
   margin: 0;
   padding: 8px 10px;
   gap: 6px;
@@ -12802,6 +12807,7 @@ window.tpxFps=function(sec){
 }
 
 #screen-detail .detail-actions button{
+  pointer-events: auto;
   flex: 1 1 0;
   min-width: 0;
   padding: 11px 2px;
@@ -12877,6 +12883,16 @@ body.theme-dark #screen-detail .detail-actions{
     transform: translateX(-50%) !important;
   }
 }
+
+/* 播放列永遠位於學習操作列上方，並確保可接收觸控 */
+#playerBar, .player-bar{
+  z-index: 10001 !important;
+  pointer-events: auto !important;
+}
+.bottom-nav{
+  z-index: 10002 !important;
+  pointer-events: auto !important;
+}
 </style>
 
 <script>
@@ -12910,13 +12926,17 @@ body.theme-dark #screen-detail .detail-actions{
     // 操作列本身是 fixed，量它的高度時不受父層 padding 影響
     var acH  = act ? (act.offsetHeight || 0) : 0;
 
-    var root = document.documentElement;
-    if(navH) root.style.setProperty('--tpx-nav-h', navH + 'px');
-    if(plH)  root.style.setProperty('--tpx-player-h', plH + 'px');
-    if(acH)  root.style.setProperty('--tpx-act-h', acH + 'px');
+    // 初次載入時播放列可能尚未顯示；0 代表尚未量到，不代表不存在。
+    if(!navH) navH = 56;
+    if(!plH) plH = 62;
 
-    // 播放列被隱藏時讓操作列下移，不要懸空
-    document.body.classList.toggle('tpx-player-hidden', plH === 0);
+    var root = document.documentElement;
+    root.style.setProperty('--tpx-nav-h', navH + 'px');
+    root.style.setProperty('--tpx-player-h', plH + 'px');
+    if(acH) root.style.setProperty('--tpx-act-h', acH + 'px');
+
+    // 不讓操作列因暫時量到 0 而下移蓋住播放列
+    document.body.classList.remove('tpx-player-hidden');
   }
 
   function schedule(){
