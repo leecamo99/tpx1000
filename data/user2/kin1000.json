@@ -2,14 +2,18 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-18T01:01:23.816Z",
+  "updatedAt": "2026-09-18T08:25:49.362Z",
   "deviceId": "dev-9acdvv",
   "keys": {
+    "book:kin1000:user2:status": "{\"033\":\"review\"}",
+    "book:kin1000:user2:srs": "{\"cards\":{\"033\":{\"ease\":2.3,\"ivl\":1,\"reps\":0,\"lapses\":1,\"due\":\"2026-09-19\",\"last\":\"2026-09-18\"}},\"log\":{\"2026-09-18\":1},\"v\":1}",
     "kinAch:user2": "{\"first\":\"2026-09-18\"}",
-    "kinTime:user2": "{\"2026-09-18\":270}",
+    "kinTime:user2": "{\"2026-09-18\":660}",
     "kinSense:user2": "{}",
     "kinLevels:kin1000": "[\"all\"]",
-    "kinSpeed": "1.25",
-    "kinReturnContext": "{\"id\":\"010\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789693276759}"
+    "kinPlayMode": "once",
+    "kinSpeed": "1.5",
+    "kin_phrase_times": "2",
+    "kinReturnContext": "{\"id\":\"001\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789719573787}"
   }
 }
