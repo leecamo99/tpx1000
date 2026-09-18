@@ -2,11 +2,11 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-18T00:45:21.053Z",
+  "updatedAt": "2026-09-18T00:45:51.257Z",
   "deviceId": "dev-9acdvv",
   "keys": {
     "kinAch:user2": "{\"first\":\"2026-09-18\"}",
-    "kinTime:user2": "{\"2026-09-17\":30,\"2026-09-18\":8175}",
+    "kinTime:user2": "{\"2026-09-17\":30,\"2026-09-18\":8190}",
     "kinGoalDays:user2": "{\"2026-09-18\":1}",
     "kinSense:user2": "{}",
     "kinLevels:kin1000": "[\"all\"]",
