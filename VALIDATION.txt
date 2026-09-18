@@ -1,18 +1,17 @@
-TPX1000 GitHub 資料編輯器 v1.1 驗證
+TPX1000 GitHub 題庫編輯器 v1.2 驗證
 ==================================
 驗證日期：2026-09-18
 
 PASS  43 段 inline JavaScript、books.js、shiko600.js、sw.js、books/kin1000.js 全部通過 node --check。
-PASS  file:// 瀏覽器測試明確載入 books/kin1000.js?v=<timestamp>，共 1,817 筆，無 console error / page error。
-PASS  編輯模式入口仍位於右下角「工具」中的「資料編輯」。
-PASS  無多義資料的條目 001：主要英文例句與繁體中文翻譯均可編輯、寫回及立即重繪。
-PASS  多義條目 S6-2（account）：編輯器正確顯示 3 個 sense 的獨立詞性、意思、英文例句與繁中翻譯欄位。
-PASS  S6-2 的主要 en / ja 與 3 組 senses[n].en / senses[n].zh 均正確序列化回 books/kin1000.js。
-PASS  GitHub Contents API 流程維持 GET 最新內容與 SHA → 合併欄位 → PUT 同一路徑。
-PASS  條目層的額外巢狀 metadata 在儲存後完整保留。
-PASS  每個 sense 內額外加入的 audioRef、usageTags、reviewWeight 均完整保留。
-PASS  相鄰條目 S6-3 在儲存 S6-2 後保持完全相同。
-PASS  產生後的 books/kin1000.js 再次通過 node --check。
-PASS  編輯器畫面截圖：sentence-editor-verified.png（720 × 1000）。
+PASS  GitHub 寫回改為只替換指定 id 的單一 data 物件，不再重新序列化整個 data 陣列。
+PASS  install 第 078 筆：編輯單字、釋義、主例句與繁中翻譯後，PUT 內容只有 078 物件的位元範圍改變；之前與之後的 books/kin1000.js 內容完全相同。
+PASS  install 第 078 筆原本高亮：英文 install 與中文 安裝均為 rgb(196, 92, 26)。
+PASS  儲存後立即重繪：英文 install 與中文 安裝仍為 rgb(196, 92, 26)。
+PASS  將 GitHub PUT 產生的 books/kin1000.js 寫入全新副本，關閉並重新啟動瀏覽器載入後：英文 install 與中文 安裝仍為 rgb(196, 92, 26)。
+PASS  078 的 level、level_label、source 等未編輯欄位完整保留。
+PASS  多詞義條目 S6-2 的主例句及 3 組 senses[n].en / senses[n].zh 仍可正確儲存。
+PASS  條目與 sense 的額外 metadata 保留，相鄰條目保持不變。
+PASS  所有瀏覽器驗證均無 console error / page error。
+PASS  install 驗證截圖：install-078-highlight-verified.png（430 × 920）。
 
-衝突保護：若 GitHub 遠端的 sense 數量在編輯期間發生變化，儲存會中止，要求重新開啟編輯器，避免把例句寫入錯誤義項。
+保護規則：高亮依賴的 word、mean、en、ja 及 senses[n].pos/mean/en/zh 在寫入前必須維持既有字串／陣列／物件結構；不符時中止寫入，不會覆蓋 GitHub。
