@@ -1,16 +1,18 @@
-TPX1000 資料編輯功能驗證
-========================
+TPX1000 GitHub 資料編輯器 v1.1 驗證
+==================================
 驗證日期：2026-09-18
 
-PASS  以最新的「index 39.html」為基礎整合，保留其既有功能。
-PASS  43 段 inline JavaScript 全部通過 node --check。
-PASS  file:// 瀏覽器測試：明確載入 books/kin1000.js?v=<timestamp>，共 1,817 筆。
-PASS  頁面無 console error / page error。
-PASS  右下角「工具」可啟用資料編輯模式；解說頁會顯示「編輯這筆資料」。
-PASS  編輯視窗可修改英文、音標、詞性、中文、解說、例句、繁中翻譯與多義 JSON。
-PASS  模擬 GitHub Contents API：先 GET 最新檔案與 SHA，再 PUT books/kin1000.js；只更新指定 id。
-PASS  GitHub 寫回後的 kin1000.js 再次通過 node --check，畫面也立即顯示新翻譯。
-PASS  「我的收藏」測試：readership 可改為「讀者群」、詞性「名」，並同步至 GitHub 學習資料。
-PASS  編輯器畫面截圖：editor-verified.png（430 × 920）。
+PASS  43 段 inline JavaScript、books.js、shiko600.js、sw.js、books/kin1000.js 全部通過 node --check。
+PASS  file:// 瀏覽器測試明確載入 books/kin1000.js?v=<timestamp>，共 1,817 筆，無 console error / page error。
+PASS  編輯模式入口仍位於右下角「工具」中的「資料編輯」。
+PASS  無多義資料的條目 001：主要英文例句與繁體中文翻譯均可編輯、寫回及立即重繪。
+PASS  多義條目 S6-2（account）：編輯器正確顯示 3 個 sense 的獨立詞性、意思、英文例句與繁中翻譯欄位。
+PASS  S6-2 的主要 en / ja 與 3 組 senses[n].en / senses[n].zh 均正確序列化回 books/kin1000.js。
+PASS  GitHub Contents API 流程維持 GET 最新內容與 SHA → 合併欄位 → PUT 同一路徑。
+PASS  條目層的額外巢狀 metadata 在儲存後完整保留。
+PASS  每個 sense 內額外加入的 audioRef、usageTags、reviewWeight 均完整保留。
+PASS  相鄰條目 S6-3 在儲存 S6-2 後保持完全相同。
+PASS  產生後的 books/kin1000.js 再次通過 node --check。
+PASS  編輯器畫面截圖：sentence-editor-verified.png（720 × 1000）。
 
-注意：實際 GitHub 寫入需在 App 雲朵設定中填入 repository owner、name、branch，以及具 Contents: Read and write 權限的 fine-grained token。
+衝突保護：若 GitHub 遠端的 sense 數量在編輯期間發生變化，儲存會中止，要求重新開啟編輯器，避免把例句寫入錯誤義項。

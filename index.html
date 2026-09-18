@@ -25792,7 +25792,24 @@ body.theme-dark #keEntryBtn{background:#2a1c10;border-color:#ff9142;color:#ffb27
 #kePanel input:focus,#kePanel textarea:focus{border-color:#c45c1a;box-shadow:0 0 0 3px rgba(196,92,26,.12)}
 #kePanel input[readonly]{background:#efede9;color:#77716a}
 #kePanel textarea{min-height:76px;resize:vertical}
-#kePanel #keSenses{min-height:130px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+#kePanel .ke-sentence-section{grid-column:1/-1;border-top:1px solid #e2ddd6;padding-top:13px;margin-top:2px}
+#kePanel .ke-section-title{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 9px}
+#kePanel .ke-section-title b{font-size:13px;color:#3b3733}
+#kePanel .ke-section-title small{font-size:10px;color:#8b847d;text-align:right}
+#keSenseList{display:grid;gap:10px}
+#keSenseList .ke-empty-senses{border:1px dashed #cec7bf;border-radius:10px;padding:12px;color:#7b746d;background:#fff;font-size:12px;line-height:1.55}
+#keSenseList .ke-sense{border:1px solid #d9d3cb;border-radius:12px;background:#fff;padding:12px}
+#keSenseList .ke-sense-hd{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+#keSenseList .ke-sense-no{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#c45c1a;color:#fff;font-size:11px;font-weight:900;flex:0 0 auto}
+#keSenseList .ke-sense-hd b{font-size:12px;color:#443f3a}
+#keSenseList .ke-sense-grid{display:grid;grid-template-columns:120px 1fr;gap:9px}
+#keSenseList .ke-sense-grid .full{grid-column:1/-1}
+#keSenseList textarea{min-height:64px}
+body.theme-dark #kePanel .ke-sentence-section{border-top-color:#303033}
+body.theme-dark #kePanel .ke-section-title b,body.theme-dark #keSenseList .ke-sense-hd b{color:#e8e4df}
+body.theme-dark #kePanel .ke-section-title small{color:#928d87}
+body.theme-dark #keSenseList .ke-empty-senses{border-color:#454548;background:#1b1b1d;color:#aaa59f}
+body.theme-dark #keSenseList .ke-sense{border-color:#3b3b3e;background:#19191b}
 #kePanel .ke-actions{position:sticky;bottom:0;display:flex;gap:8px;margin:16px -18px -18px;padding:12px 18px;background:#f8f7f4;border-top:1px solid #e4dfd8}
 #kePanel .ke-actions button{flex:1;min-height:42px;border:1.5px solid #cbc5bd;border-radius:10px;background:#fff;color:#4f4943;font-weight:800;cursor:pointer}
 #kePanel .ke-actions .primary{flex:1.7;border-color:#c45c1a;background:#c45c1a;color:#fff}
@@ -25808,7 +25825,7 @@ body.theme-dark #kePanel input[readonly]{background:#252527;color:#8e8983}
 body.theme-dark #kePanel .ke-x,body.theme-dark #kePanel .ke-actions button{background:#242426;border-color:#454548;color:#ddd8d2}
 body.theme-dark #kePanel .ke-actions .primary{background:#d46722;border-color:#d46722;color:#fff}
 body.theme-dark #keMsg.ok{color:#67c982}body.theme-dark #keMsg.err{color:#ff8181}
-@media(max-width:560px){#kePanel{width:100%;max-height:92vh;top:auto;bottom:0;transform:translateX(-50%);border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0}#kePanel .ke-grid{grid-template-columns:1fr}#kePanel .ke-field.full{grid-column:auto}#kePanel .ke-bd{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}}
+@media(max-width:560px){#kePanel{width:100%;max-height:92vh;top:auto;bottom:0;transform:translateX(-50%);border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0}#kePanel .ke-grid{grid-template-columns:1fr}#kePanel .ke-field.full,#kePanel .ke-sentence-section{grid-column:auto}#keSenseList .ke-sense-grid{grid-template-columns:1fr}#keSenseList .ke-sense-grid .full{grid-column:auto}#kePanel .ke-bd{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}}
 </style>
 
 <div id="keMask" aria-hidden="true"></div>
@@ -25827,9 +25844,17 @@ body.theme-dark #keMsg.ok{color:#67c982}body.theme-dark #keMsg.err{color:#ff8181
       <div class="ke-field"><label for="kePos">詞性</label><input id="kePos" autocomplete="off"></div>
       <div class="ke-field"><label for="keMean">中文意思</label><input id="keMean" autocomplete="off"></div>
       <div class="ke-field full"><label for="keNote">解說／補充</label><textarea id="keNote"></textarea></div>
-      <div class="ke-field full"><label for="keEn">英文例句</label><textarea id="keEn" spellcheck="false"></textarea></div>
-      <div class="ke-field full"><label for="keJa">繁中翻譯</label><textarea id="keJa"></textarea></div>
-      <div class="ke-field full"><label for="keSenses">多義資料（JSON，可留空）</label><textarea id="keSenses" spellcheck="false" placeholder='[{"pos":"名","mean":"…","en":"…","zh":"…"}]'></textarea></div>
+      <div class="ke-sentence-section">
+        <div class="ke-section-title"><b>主要例句</b><small>寫回條目的 en / ja 欄位</small></div>
+        <div class="ke-grid">
+          <div class="ke-field full"><label for="keEn">英文例句</label><textarea id="keEn" spellcheck="false"></textarea></div>
+          <div class="ke-field full"><label for="keJa">繁體中文翻譯</label><textarea id="keJa"></textarea></div>
+        </div>
+      </div>
+      <div class="ke-sentence-section">
+        <div class="ke-section-title"><b>多義例句</b><small>每個義項的英文與繁中翻譯會個別寫回</small></div>
+        <div id="keSenseList"></div>
+      </div>
     </div>
     <div id="keMsg" role="status" aria-live="polite"></div>
     <div class="ke-actions"><button type="button" id="keCancel">取消</button><button type="button" class="primary" id="keSave">儲存並覆寫 GitHub</button></div>
@@ -25839,7 +25864,7 @@ body.theme-dark #keMsg.ok{color:#67c982}body.theme-dark #keMsg.err{color:#ff8181
 <script>
 (function(){
 'use strict';
-var MODE_KEY='kinDataEditModeV1', openEntry=null, busy=false;
+var MODE_KEY='kinDataEditModeV1', openEntry=null, busy=false, senseDrafts=[];
 function $(id){return document.getElementById(id)}
 function escPath(p){return String(p||'').replace(/^\.\//,'').split('/').filter(Boolean).map(encodeURIComponent).join('/')}
 function uid(){try{return window.KIN_USER&&KIN_USER.id?KIN_USER.id():'paul'}catch(e){return'paul'}}
@@ -25858,9 +25883,11 @@ function filePath(){var b=currentBook();return b&&b.file?String(b.file).replace(
 function paintMode(){var on=isOn(),b=$('keModeBtn'),st=$('keModeSt');if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');b.textContent=on?'已啟用':'啟用'}if(st)st.textContent=on?'點單字後可編輯':'關閉'}
 function paintEntryButton(){var host=$('detailBook'),old=$('keEntryBtn'),e=currentEntry();if(!host||!e||(!sourceEditable()&&!customEditable())){if(old)old.remove();return}if(!old){old=document.createElement('button');old.type='button';old.id='keEntryBtn';old.textContent='✎ 編輯這筆資料';old.addEventListener('click',openEditor);host.insertBefore(old,host.firstChild)}}
 function closeEditor(){if(busy)return;$('keMask').classList.remove('show');$('kePanel').classList.remove('show');openEntry=null;message('')}
-function openEditor(){var e=currentEntry(),b=currentBook();if(!e||!b){toast('請先開啟一筆資料');return}if(!sourceEditable()&&!customEditable()){toast('目前書籍不支援資料編輯');return}openEntry=e;$('keId').value=e.id||'';$('keLevel').value=e.level_label||e.level||'';$('keWord').value=e.word||'';$('kePhon').value=e.phon||'';$('kePos').value=e.pos||'';$('keMean').value=e.mean||'';$('keNote').value=e.note||'';$('keEn').value=e.en||'';$('keJa').value=e.ja||'';$('keSenses').value=e.senses&&e.senses.length?JSON.stringify(e.senses,null,2):'';$('kePath').textContent=customEditable()?'GitHub 學習資料 · 我的收藏':('GitHub · '+filePath());$('keSave').textContent=customEditable()?'儲存並同步 GitHub':'儲存並覆寫 GitHub';$('keBanner').textContent=customEditable()?'這張閃卡會更新本機收藏，並立即同步到既有 GitHub 學習資料。':'儲存時會先取得 GitHub 最新檔案與 SHA，只替換編號 '+String(e.id)+'，成功後畫面立即更新。';message(githubReady()?'':'尚未設定 GitHub。請先由上方雲朵完成 Repository 與 Token 設定。','err');$('keMask').classList.add('show');$('kePanel').classList.add('show');setTimeout(function(){$('keMean').focus()},40)}
-function formPatch(){var w=$('keWord').value.trim();if(!w)throw new Error('英文不可留空');var raw=$('keSenses').value.trim(),senses;if(raw){senses=JSON.parse(raw);if(!Array.isArray(senses))throw new Error('多義資料必須是 JSON 陣列')}return{word:w,phon:$('kePhon').value.trim(),pos:$('kePos').value.trim(),mean:$('keMean').value.trim(),note:$('keNote').value.trim(),en:$('keEn').value.trim(),ja:$('keJa').value.trim(),senses:senses}}
-function applyPatch(target,patch){['word','phon','pos','mean','note','en','ja'].forEach(function(k){target[k]=patch[k]});if(patch.senses&&patch.senses.length)target.senses=patch.senses;else delete target.senses;return target}
+function copy(v){return v==null?v:JSON.parse(JSON.stringify(v))}
+function renderSenseEditors(senses){var box=$('keSenseList');if(!box)return;senseDrafts=Array.isArray(senses)?senses.map(copy):[];box.innerHTML='';if(!senseDrafts.length){var empty=document.createElement('div');empty.className='ke-empty-senses';empty.textContent='這筆資料沒有多義義項；主要例句仍可在上方編輯。';box.appendChild(empty);return}senseDrafts.forEach(function(sense,i){var card=document.createElement('section');card.className='ke-sense';card.setAttribute('data-sense-index',String(i));card.innerHTML='<div class="ke-sense-hd"><span class="ke-sense-no">'+(i+1)+'</span><b>義項 '+(i+1)+'</b></div><div class="ke-sense-grid"><div class="ke-field"><label>詞性</label><input data-k="pos" autocomplete="off"></div><div class="ke-field"><label>中文意思</label><input data-k="mean" autocomplete="off"></div><div class="ke-field full"><label>英文例句</label><textarea data-k="en" spellcheck="false"></textarea></div><div class="ke-field full"><label>繁體中文翻譯</label><textarea data-k="zh"></textarea></div></div>';['pos','mean','en','zh'].forEach(function(k){var field=card.querySelector('[data-k="'+k+'"]');field.value=sense&&sense[k]!=null?String(sense[k]):''});box.appendChild(card)})}
+function openEditor(){var e=currentEntry(),b=currentBook();if(!e||!b){toast('請先開啟一筆資料');return}if(!sourceEditable()&&!customEditable()){toast('目前書籍不支援資料編輯');return}openEntry=e;$('keId').value=e.id||'';$('keLevel').value=e.level_label||e.level||'';$('keWord').value=e.word||'';$('kePhon').value=e.phon||'';$('kePos').value=e.pos||'';$('keMean').value=e.mean||'';$('keNote').value=e.note||'';$('keEn').value=e.en||'';$('keJa').value=e.ja||'';renderSenseEditors(e.senses||[]);$('kePath').textContent=customEditable()?'GitHub 學習資料 · 我的收藏':('GitHub · '+filePath());$('keSave').textContent=customEditable()?'儲存並同步 GitHub':'儲存並覆寫 GitHub';$('keBanner').textContent=customEditable()?'這張閃卡會更新本機收藏，並立即同步到既有 GitHub 學習資料。':'儲存時會先取得 GitHub 最新檔案與 SHA，只替換編號 '+String(e.id)+'，成功後畫面立即更新。';message(githubReady()?'':'尚未設定 GitHub。請先由上方雲朵完成 Repository 與 Token 設定。','err');$('keMask').classList.add('show');$('kePanel').classList.add('show');setTimeout(function(){$('keMean').focus()},40)}
+function formPatch(){var w=$('keWord').value.trim();if(!w)throw new Error('英文不可留空');var senses=senseDrafts.map(function(base,i){var card=document.querySelector('#keSenseList .ke-sense[data-sense-index="'+i+'"]');if(!card)throw new Error('找不到義項 '+(i+1)+' 的編輯欄位');var out={index:i};['pos','mean','en','zh'].forEach(function(k){out[k]=card.querySelector('[data-k="'+k+'"]').value.trim()});return out});return{word:w,phon:$('kePhon').value.trim(),pos:$('kePos').value.trim(),mean:$('keMean').value.trim(),note:$('keNote').value.trim(),en:$('keEn').value.trim(),ja:$('keJa').value.trim(),senses:senses}}
+function applyPatch(target,patch){['word','phon','pos','mean','note','en','ja'].forEach(function(k){target[k]=patch[k]});if(patch.senses&&patch.senses.length){if(!Array.isArray(target.senses)||target.senses.length!==patch.senses.length)throw new Error('GitHub 上的多義義項數量已變更，請重新開啟編輯器後再試');patch.senses.forEach(function(change){var sense=target.senses[change.index];if(!sense)throw new Error('GitHub 上找不到義項 '+(change.index+1));['pos','mean','en','zh'].forEach(function(k){sense[k]=change[k]})})}return target}
 function decode64(b64){var bin=atob(String(b64||'').replace(/\s/g,'')),a=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new TextDecoder().decode(a)}
 function encode64(text){var a=new TextEncoder().encode(text),out='',step=32768;for(var i=0;i<a.length;i+=step){var end=Math.min(a.length,i+step);for(var j=i;j<end;j++)out+=String.fromCharCode(a[j])}return btoa(out)}
 function dataArrayBounds(src){var m=/\bdata\s*:\s*\[/.exec(src);if(!m)throw new Error('GitHub 檔案找不到 data 陣列');var start=src.indexOf('[',m.index),depth=0,quote='',esc=false;for(var i=start;i<src.length;i++){var ch=src[i];if(quote){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch===quote)quote='';continue}if(ch==='"'||ch==="'"){quote=ch;continue}if(ch==='[')depth++;else if(ch===']'){depth--;if(depth===0)return[start,i]}}throw new Error('GitHub data 陣列格式不完整')}
