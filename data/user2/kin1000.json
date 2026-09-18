@@ -2,15 +2,14 @@
   "version": 1,
   "userId": "user2",
   "userName": "黃詩涵",
-  "updatedAt": "2026-09-18T00:47:46.458Z",
+  "updatedAt": "2026-09-18T01:01:23.816Z",
   "deviceId": "dev-9acdvv",
   "keys": {
     "kinAch:user2": "{\"first\":\"2026-09-18\"}",
-    "kinTime:user2": "{\"2026-09-17\":30,\"2026-09-18\":8235}",
-    "kinGoalDays:user2": "{\"2026-09-18\":1}",
+    "kinTime:user2": "{\"2026-09-18\":270}",
     "kinSense:user2": "{}",
     "kinLevels:kin1000": "[\"all\"]",
     "kinSpeed": "1.25",
-    "kinReturnContext": "{\"id\":\"100\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789675852210}"
+    "kinReturnContext": "{\"id\":\"010\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789693276759}"
   }
 }
