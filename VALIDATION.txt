@@ -1,17 +1,38 @@
-TPX1000 GitHub 題庫編輯器 v1.2 驗證
-==================================
+TPX1000 GitHub 題庫編輯器 v1.3／v62 驗證
+=======================================
 驗證日期：2026-09-18
 
-PASS  43 段 inline JavaScript、books.js、shiko600.js、sw.js、books/kin1000.js 全部通過 node --check。
-PASS  GitHub 寫回改為只替換指定 id 的單一 data 物件，不再重新序列化整個 data 陣列。
-PASS  install 第 078 筆：編輯單字、釋義、主例句與繁中翻譯後，PUT 內容只有 078 物件的位元範圍改變；之前與之後的 books/kin1000.js 內容完全相同。
-PASS  install 第 078 筆原本高亮：英文 install 與中文 安裝均為 rgb(196, 92, 26)。
-PASS  儲存後立即重繪：英文 install 與中文 安裝仍為 rgb(196, 92, 26)。
-PASS  將 GitHub PUT 產生的 books/kin1000.js 寫入全新副本，關閉並重新啟動瀏覽器載入後：英文 install 與中文 安裝仍為 rgb(196, 92, 26)。
-PASS  078 的 level、level_label、source 等未編輯欄位完整保留。
-PASS  多詞義條目 S6-2 的主例句及 3 組 senses[n].en / senses[n].zh 仍可正確儲存。
-PASS  條目與 sense 的額外 metadata 保留，相鄰條目保持不變。
-PASS  所有瀏覽器驗證均無 console error / page error。
-PASS  install 驗證截圖：install-078-highlight-verified.png（430 × 920）。
+本版不是只保護序列化，而是追查並修正實際高亮流程：
+showDetail → exWordsHtml / highlightZhMeaning → __kinPaintNoteWords → 編輯儲存後重新建立 currentList → showDetail → 延遲 UI wrapper。
 
-保護規則：高亮依賴的 word、mean、en、ja 及 senses[n].pos/mean/en/zh 在寫入前必須維持既有字串／陣列／物件結構；不符時中止寫入，不會覆蓋 GitHub。
+PASS  43 段 inline JavaScript、books.js、shiko600.js、sw.js、books/kin1000.js 全部通過 node --check。
+PASS  英文高亮改用詞形集合；install 可匹配 install、installs、installed、installing。
+PASS  英文目標字節點帶 data-target-word="1"；中文對應詞義帶 data-target-meaning="1"。
+PASS  每次 showDetail 都會從目前 entry 重新計算高亮。
+PASS  GitHub PUT 成功後會從 DATA 重新定位該 id、重畫解說，並在同步、0ms 與 180ms 三個時點重算高亮，以涵蓋後續 wrapper。
+PASS  熟悉度／收藏重新套用 class 後，語意高亮仍以 !important 保持橘色。
+PASS  GitHub 寫回只替換指定 id 的單一物件，不重新序列化整個 data 陣列。
+
+install 第 078 筆必過案例（1180 × 820 寬版）：
+- 修改英文例句為：The technician installed the air-conditioning equipment.
+- 修改繁中翻譯為：安裝空調設備
+- 儲存後等待 1.2 秒（涵蓋延遲 wrapper）：installed 與「安裝」均為 rgb(196, 92, 26)。
+- 把 GitHub PUT 產生的內容寫成新的 books/kin1000.js，關閉瀏覽器並以全新瀏覽器載入：installed 與「安裝」仍為 rgb(196, 92, 26)。
+- 英文 HTML 保留 class="nw hl" 並有 data-target-word="1"。
+- 中文 HTML 保留 class="zh-hl" 並有 data-target-meaning="1"。
+- 全程無 console error / page error。
+
+PASS  多詞義條目 S6-2 的主例句與 3 組 senses[n].en / senses[n].zh 仍可正確寫回，metadata 與相鄰條目均保留。
+PASS  驗證截圖：install-078-highlight-runtime-v62.png（1180 × 820）。
+
+TPX1000 v63 additional validation
+----------------------------------
+PASS  index.html: all 43 inline scripts pass node --check.
+PASS  books/kin1000.js: node --check passes; 1,817 records load.
+PASS  Entries 077 and 078 contain no escaped or decoded NUL characters.
+PASS  Latest edits retained for entries 077, 078, 079, and 146.
+PASS  Browser file:// test: 1,817 list items rendered; entry 078 detail rendered.
+PASS  Runtime highlight test: "install" received data-target-word and remained highlighted.
+PASS  Editor rewrite test: recursive NUL removal and CRLF normalization succeeded.
+PASS  Browser console errors: 0; failed requests: 0.
+PASS  Screenshot: verification-v63.png (1180 × 820).

@@ -1371,19 +1371,49 @@ function noteWordsHtml(text){
   return out+escapeHtml(raw.slice(last));
 }
 /* 例句中的英文可點擊。依需求只辨識單字，不整句捕獲。 */
+function englishHeadwordBases(word){
+  var raw=String(word||'').toLowerCase().replace(/[’]/g,"'");
+  var parts=raw.split(/\s*(?:\/|,|;|\bor\b)\s*/).map(function(v){
+    return v.replace(/\([^)]*\)/g,'').trim();
+  }).filter(Boolean);
+  if(!parts.length&&raw.trim())parts=[raw.trim()];
+  return parts;
+}
+function englishTargetForms(word){
+  var forms={};
+  englishHeadwordBases(word).forEach(function(base){
+    if(!/^[a-z][a-z'\-]*$/.test(base))return;
+    forms[base]=1;
+    if(base.endsWith('e')){
+      forms[base+'d']=1;
+      forms[base.slice(0,-1)+'ing']=1;
+    }else{
+      forms[base+'ed']=1;
+      forms[base+'ing']=1;
+    }
+    forms[base+'s']=1;
+    if(/(?:s|x|z|ch|sh)$/.test(base))forms[base+'es']=1;
+    if(/[^aeiou]y$/.test(base)){forms[base.slice(0,-1)+'ies']=1;forms[base.slice(0,-1)+'ied']=1}
+    // install → installed / installing：一般規則以外，保留雙寫尾子音型。
+    if(/[^aeiou][aeiou][^aeiouwxy]$/.test(base)){var c=base.slice(-1);forms[base+c+'ed']=1;forms[base+c+'ing']=1}
+  });
+  return forms;
+}
+function isEnglishTargetToken(token,word){
+  var t=String(token||'').toLowerCase().replace(/[’]/g,"'");
+  return !!englishTargetForms(word)[t];
+}
 function exWordsHtml(en, word){
   var raw = String(en || '');
   if(!raw) return '';
-  var hw = String(word || '').trim().toLowerCase();
   var out = '', last = 0, re = /[A-Za-z][A-Za-z'\-]*/g, m;
   while((m = re.exec(raw))){
     var w = m[0];
     out += escapeHtml(raw.slice(last, m.index));
     if(w.replace(/[^A-Za-z]/g,'').length >= 3){
-      var lw = w.toLowerCase();
-      var isHw = hw && (lw === hw || lw.indexOf(hw) === 0 || hw.indexOf(lw) === 0);
+      var isHw=isEnglishTargetToken(w,word);
       out += '<button type="button" class="nw' + (isHw ? ' hl' : '') +
-             '" data-w="' + escapeHtml(w) + '">' + escapeHtml(w) + '</button>';
+             '" data-w="' + escapeHtml(w) + '"' + (isHw?' data-target-word="1"':'') + '>' + escapeHtml(w) + '</button>';
     }else{
       out += escapeHtml(w);
     }
@@ -1455,9 +1485,37 @@ function highlightZhMeaning(zh, meaning, headword){
   // 每張卡只標示最具體、最長的對應詞，避免同一句多處誤染。
   var target = matched[0];
   var at = text.indexOf(target);
-  return escapeHtml(text.slice(0,at)) + '<span class="zh-hl">' +
+  return escapeHtml(text.slice(0,at)) + '<span class="zh-hl" data-target-meaning="1">' +
          escapeHtml(target) + '</span>' + escapeHtml(text.slice(at+target.length));
 }
+
+// 每次解說重繪後都從目前資料重新計算高亮，不依賴舊 DOM 或編輯前留下的 class。
+function reapplyEntryHighlights(entry){
+  var host=document.getElementById('detailBook');
+  if(!host||!entry)return false;
+  host.querySelectorAll('.db-ex-en .nw[data-w]').forEach(function(el){
+    var on=isEnglishTargetToken(el.getAttribute('data-w'),entry.word);
+    el.classList.toggle('hl',on);
+    if(on)el.setAttribute('data-target-word','1');else el.removeAttribute('data-target-word');
+  });
+  var senses=Array.isArray(entry.senses)?entry.senses:[];
+  if(senses.length){
+    host.querySelectorAll('.db-sense').forEach(function(box,i){
+      var sense=senses[i];if(!sense)return;
+      var zh=box.querySelector('.db-ex-zh');if(!zh)return;
+      zh.innerHTML=(sense.pos?'<span class="db-pos">'+escapeHtml(sense.pos)+'</span> ':'')+
+        (sense.mean?'<span style="color:#c45c1a">'+escapeHtml(sense.mean)+'</span>　':'')+
+        highlightZhMeaning(sense.zh||'',sense.mean||entry.mean||'',entry.word||'');
+    });
+  }else{
+    var zh=document.getElementById('dbExZh');
+    if(zh)zh.innerHTML=highlightZhMeaning(entry.ja||'',entry.mean||'',entry.word||'');
+  }
+  if(typeof window.__kinPaintNoteWords==='function')window.__kinPaintNoteWords();
+  return !!host.querySelector('.db-ex-en .nw[data-target-word="1"]');
+}
+window.__kinReapplyEntryHighlights=reapplyEntryHighlights;
+
 
 
 // browse=一覽, study=習得
@@ -2056,6 +2114,7 @@ function showDetail(){
     if(txt.length < 8) c.style.display = 'none';
   });
 
+  if(typeof window.__kinReapplyEntryHighlights==='function') window.__kinReapplyEntryHighlights(e);
   updateDetailMarkUI(e.id);
 }
 
@@ -5332,9 +5391,12 @@ body.theme-dark #detailBook .nw.cap-3{color:#b8b4af}
 body.theme-dark #detailBook .nw.cap-2{color:#dcd9d5}
 body.theme-dark #detailBook .nw.cap-1{color:#fff;font-weight:800}
 /* 例句裡的標題字維持橘色，不被熟悉度色階蓋掉 */
-#detailBook .db-ex-en .nw.hl{color:#c45c1a}
-#detailBook .db-ex-zh .zh-hl{color:#c45c1a;font-weight:700}
-body.theme-dark #detailBook .db-ex-en .nw.hl{color:#ff9142}
+#detailBook .db-ex-en .nw.hl,
+#detailBook .db-ex-en .nw[data-target-word="1"]{color:#c45c1a !important;font-weight:700}
+#detailBook .db-ex-zh .zh-hl,
+#detailBook .db-ex-zh [data-target-meaning="1"]{color:#c45c1a !important;font-weight:700}
+body.theme-dark #detailBook .db-ex-en .nw.hl,
+body.theme-dark #detailBook .db-ex-en .nw[data-target-word="1"]{color:#ff9142 !important}
 /* 捕獲模式下，未捕獲的英文用細虛線提示可點 */
 body.cap-mode #detailBook .nw:not(.cap):not(.inbook){
   box-shadow:inset 0 -1px 0 rgba(0,0,0,.22);
@@ -25892,12 +25954,13 @@ function decode64(b64){var bin=atob(String(b64||'').replace(/\s/g,'')),a=new Uin
 function encode64(text){var a=new TextEncoder().encode(text),out='',step=32768;for(var i=0;i<a.length;i+=step){var end=Math.min(a.length,i+step);for(var j=i;j<end;j++)out+=String.fromCharCode(a[j])}return btoa(out)}
 function dataArrayBounds(src){var m=/\bdata\s*:\s*\[/.exec(src);if(!m)throw new Error('GitHub 檔案找不到 data 陣列');var start=src.indexOf('[',m.index),depth=0,quote='',esc=false;for(var i=start;i<src.length;i++){var ch=src[i];if(quote){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch===quote)quote='';continue}if(ch==='"'||ch==="'"){quote=ch;continue}if(ch==='[')depth++;else if(ch===']'){depth--;if(depth===0)return[start,i]}}throw new Error('GitHub data 陣列格式不完整')}
 function topLevelDataObjects(src,bounds){var out=[],start=-1,depth=0,quote='',esc=false;for(var i=bounds[0]+1;i<bounds[1];i++){var ch=src[i];if(quote){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch===quote)quote='';continue}if(ch==='"'||ch==="'"){quote=ch;continue}if(ch==='{'){if(depth===0)start=i;depth++}else if(ch==='}'){depth--;if(depth<0)throw new Error('data 物件括號不正確');if(depth===0&&start>=0){out.push([start,i]);start=-1}}}if(depth!==0||start>=0)throw new Error('data 物件格式不完整');return out}
+function sanitizeEditorData(value){if(typeof value==='string')return value.replace(/\u0000/g,'').replace(/\r\n?/g,'\n');if(Array.isArray(value))return value.map(sanitizeEditorData);if(value&&typeof value==='object'){Object.keys(value).forEach(function(k){value[k]=sanitizeEditorData(value[k])})}return value}
 function validateHighlightShape(before,after){if(String(before.id)!==String(after.id))throw new Error('編號不可變更');['word','mean','en','ja'].forEach(function(k){if(typeof after[k]!=='string')throw new Error('高亮依賴欄位 '+k+' 必須維持字串格式')});var bs=Array.isArray(before.senses)?before.senses:[],as=Array.isArray(after.senses)?after.senses:[];if(bs.length!==as.length)throw new Error('多義資料數量不可在儲存時改變');as.forEach(function(s,i){if(!s||typeof s!=='object'||Array.isArray(s))throw new Error('義項 '+(i+1)+' 必須維持物件格式');['pos','mean','en','zh'].forEach(function(k){if(typeof s[k]!=='string')throw new Error('義項 '+(i+1)+' 的 '+k+' 必須維持字串格式')})})}
-function replaceRemoteEntry(src,id,patch){var b=dataArrayBounds(src),spans=topLevelDataObjects(src,b),hit=null,obj=null;for(var i=0;i<spans.length;i++){var span=spans[i],candidate;try{candidate=JSON.parse(src.slice(span[0],span[1]+1))}catch(e){throw new Error('第 '+(i+1)+' 筆 data 物件無法安全解析：'+e.message)}if(String(candidate&&candidate.id)===String(id)){hit=span;obj=candidate;break}}if(!hit||!obj)throw new Error('GitHub 最新檔案中找不到編號 '+id);var before=copy(obj);applyPatch(obj,patch);validateHighlightShape(before,obj);var replacement=JSON.stringify(obj);return src.slice(0,hit[0])+replacement+src.slice(hit[1]+1)}
+function replaceRemoteEntry(src,id,patch){var b=dataArrayBounds(src),spans=topLevelDataObjects(src,b),hit=null,obj=null;for(var i=0;i<spans.length;i++){var span=spans[i],candidate;try{candidate=JSON.parse(src.slice(span[0],span[1]+1))}catch(e){throw new Error('第 '+(i+1)+' 筆 data 物件無法安全解析：'+e.message)}if(String(candidate&&candidate.id)===String(id)){hit=span;obj=candidate;break}}if(!hit||!obj)throw new Error('GitHub 最新檔案中找不到編號 '+id);var before=copy(obj);applyPatch(obj,patch);sanitizeEditorData(obj);validateHighlightShape(before,obj);var replacement=JSON.stringify(obj);return src.slice(0,hit[0])+replacement+src.slice(hit[1]+1)}
 function apiInfo(){var c=config(),p=filePath();if(!c.owner||!c.repo||!c.token)throw new Error('尚未設定 GitHub Repository 或 Token');if(!p||/^https?:/i.test(p)||p.indexOf('..')>=0)throw new Error('書籍資料路徑不安全或無法更新');var base='https://api.github.com/repos/'+encodeURIComponent(c.owner)+'/'+encodeURIComponent(c.repo)+'/contents/'+escPath(p);return{cfg:c,path:p,url:base+'?ref='+encodeURIComponent(c.branch||'main'),put:base,headers:{'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}}}
 function updateCollectedSource(id,patch){try{if(!window.KIN_COLLECT)return 0;var b=currentBook(),list=KIN_COLLECT.load(),n=0;list.forEach(function(c){if(String(c.srcBook||'kin1000')===String(b.id)&&String(c.srcId||'')===String(id)){c.srcWord=patch.word;c.srcNote=patch.note;c.srcEx=patch.en;c.srcExZh=patch.ja;n++}});if(n)KIN_COLLECT.save(list);return n}catch(e){return 0}}
 function clearBookCache(path){try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage({type:'invalidate-book',path:path})}catch(e){}try{if('caches'in window)caches.keys().then(function(ns){return Promise.all(ns.map(function(n){return caches.open(n).then(function(c){return c.keys().then(function(rs){return Promise.all(rs.filter(function(r){try{return new URL(r.url).pathname.endsWith('/'+path)}catch(e){return false}}).map(function(r){return c.delete(r)}))})})}))})}catch(e){}}
-async function saveSource(patch){var info=apiInfo(),e=openEntry;if(!confirm('確定要用這次修改覆寫 GitHub 的「'+info.path+'」中編號 '+e.id+' 嗎？'))return false;message('正在取得 GitHub 最新版本…');var get=await fetch(info.url,{headers:info.headers,cache:'no-store'});if(!get.ok)throw new Error('讀取 GitHub 失敗：HTTP '+get.status);var remote=await get.json();if(!remote.sha||!remote.content)throw new Error('GitHub 沒有回傳檔案內容或 SHA');var next=replaceRemoteEntry(decode64(remote.content),e.id,patch);message('正在寫入 GitHub…');var body={message:'Edit '+e.id+' '+patch.word+' via TPX1000 editor',content:encode64(next),sha:remote.sha,branch:info.cfg.branch||'main'};var put=await fetch(info.put,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},info.headers),body:JSON.stringify(body)});if(!put.ok){var detail=(await put.text()).slice(0,240);if(put.status===409)throw new Error('GitHub 檔案剛被其他人更新，請關閉後重試。');throw new Error('寫入 GitHub 失敗：HTTP '+put.status+' '+detail)}applyPatch(e,patch);var synced=updateCollectedSource(e.id,patch);clearBookCache(info.path);try{currentList=filtered();currentIdx=currentList.findIndex(function(x){return String(x.id)===String(e.id)});showDetail();renderList()}catch(x){}message('已更新 GitHub，畫面也已套用。'+(synced?' 同步更新 '+synced+' 張來源閃卡。':''),'ok');toast('GitHub 資料已更新');return true}
+async function saveSource(patch){patch=sanitizeEditorData(copy(patch));var info=apiInfo(),e=openEntry;if(!confirm('確定要用這次修改覆寫 GitHub 的「'+info.path+'」中編號 '+e.id+' 嗎？'))return false;message('正在取得 GitHub 最新版本…');var get=await fetch(info.url,{headers:info.headers,cache:'no-store'});if(!get.ok)throw new Error('讀取 GitHub 失敗：HTTP '+get.status);var remote=await get.json();if(!remote.sha||!remote.content)throw new Error('GitHub 沒有回傳檔案內容或 SHA');var next=replaceRemoteEntry(decode64(remote.content),e.id,patch);message('正在寫入 GitHub…');var body={message:'Edit '+e.id+' '+patch.word+' via TPX1000 editor',content:encode64(next),sha:remote.sha,branch:info.cfg.branch||'main'};var put=await fetch(info.put,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},info.headers),body:JSON.stringify(body)});if(!put.ok){var detail=(await put.text()).slice(0,240);if(put.status===409)throw new Error('GitHub 檔案剛被其他人更新，請關閉後重試。');throw new Error('寫入 GitHub 失敗：HTTP '+put.status+' '+detail)}applyPatch(e,patch);var synced=updateCollectedSource(e.id,patch);clearBookCache(info.path);try{var fresh=DATA.find(function(x){return String(x.id)===String(e.id)})||e;currentList=filtered();currentIdx=currentList.findIndex(function(x){return String(x.id)===String(fresh.id)});showDetail();if(typeof window.__kinReapplyEntryHighlights==='function')window.__kinReapplyEntryHighlights(fresh);setTimeout(function(){if(typeof window.__kinReapplyEntryHighlights==='function')window.__kinReapplyEntryHighlights(fresh)},0);setTimeout(function(){if(typeof window.__kinReapplyEntryHighlights==='function')window.__kinReapplyEntryHighlights(fresh)},180);renderList()}catch(x){console.warn('編輯後高亮刷新失敗',x)}message('已更新 GitHub，畫面也已套用。'+(synced?' 同步更新 '+synced+' 張來源閃卡。':''),'ok');toast('GitHub 資料已更新');return true}
 async function saveCustom(patch){var e=openEntry,list=KIN_COLLECT.load(),card=list.find(function(c){return String(c.id)===String(e.id)});if(!card)throw new Error('找不到這張收藏閃卡');var gm=Object.assign({},card.gm||{});gm.phon=patch.phon;gm.pos=patch.pos;gm.mean=patch.mean;gm.ex=patch.en;gm.exZh=patch.ja;gm.at=new Date().toISOString();card.word=patch.word;card.mean=patch.mean;card.srcNote=patch.note;card.gm=gm;KIN_COLLECT.save(list);window.__kinPendingOpen=e.id;if(typeof window.__kinReloadCollect==='function')window.__kinReloadCollect();var pushed=false;if(githubReady()&&typeof window.gsSyncNow==='function')pushed=await window.gsSyncNow();message(pushed?'已更新收藏並同步到 GitHub。':(githubReady()?'收藏已更新；GitHub 同步失敗，請點雲朵查看原因。':'收藏已更新於本機；設定 GitHub 後可同步。'),pushed?'ok':(githubReady()?'err':'ok'));toast(pushed?'收藏與 GitHub 已更新':'收藏資料已更新');return true}
 async function save(){if(busy||!openEntry)return;var patch;try{patch=formPatch()}catch(e){message('請修正：'+e.message,'err');return}busy=true;$('keSave').disabled=true;$('keCancel').disabled=true;try{var ok=customEditable()?await saveCustom(patch):await saveSource(patch);if(ok)setTimeout(function(){busy=false;$('keSave').disabled=false;$('keCancel').disabled=false;closeEditor()},900)}catch(e){message(e.message||String(e),'err');busy=false;$('keSave').disabled=false;$('keCancel').disabled=false}}
 function init(){var btn=$('keModeBtn');if(btn)btn.addEventListener('click',function(){setOn(!isOn())});$('keMask').addEventListener('click',closeEditor);$('keClose').addEventListener('click',closeEditor);$('keCancel').addEventListener('click',closeEditor);$('keSave').addEventListener('click',save);$('kePanel').addEventListener('keydown',function(ev){ev.stopPropagation();if(ev.key==='Escape')closeEditor();if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='s'){ev.preventDefault();save()}},true);setOn(isOn());var oldShow=window.showDetail;if(typeof oldShow==='function')window.showDetail=function(){var r=oldShow.apply(this,arguments);setTimeout(paintEntryButton,0);return r};setInterval(function(){if(isOn())paintEntryButton()},700)}
