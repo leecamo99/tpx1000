@@ -991,9 +991,6 @@ body:not(.kin-gestures-on) #gestureGuide{display:none!important}
 body.theme-dark #screen-detail .cx-return-sticky{background:rgba(42,29,18,.97);border-color:#ff9142;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 </style>
 
-  <!-- Local ZIP question-bank importer dependencies. ZIP content stays in this browser. -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs" type="module"></script>
 </head>
 <body class="mode-study">
 <script>
@@ -1060,7 +1057,8 @@ body.theme-dark #screen-detail .cx-return-sticky{background:rgba(42,29,18,.97);b
 <!-- LIST -->
 <div id="screen-list" class="screen active">
   <div class="topbar">
-    <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
+    <button type="button" id="mobileMenuBtn" onclick="tpxMobileMenuOpen()" title="開啟選單" aria-label="開啟選單"><span></span><span></span><span></span></button>
+    <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步" hidden>☁</button>
     <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
     <button type="button" id="deckBtn" onclick="deckOpen()" title="我的閃卡" aria-label="我的閃卡"><span class="ic"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span><span class="ct" id="deckCount">0</span></button>
     <button type="button" id="userChip" onclick="usOpen()" title="使用者專區"><span class="av">P</span><span class="nm">Paul</span></button>
@@ -4244,6 +4242,7 @@ body.theme-dark .rm-msg{color:#8a8680}
     <button onclick="usClose()" aria-label="關閉">×</button>
   </div>
   <div class="bd">
+    <button type="button" id="settingsCloudSyncBtn" onclick="usClose();gsOpen()"><span class="cloudIcon" aria-hidden="true"></span><span><b>雲端同步</b><small>設定與管理 GitHub 同步</small></span><i>›</i></button>
     <div class="who">
       <div class="big" id="usAvatar">P</div>
       <div class="txt">
@@ -7915,30 +7914,26 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     var q = it.items[qi];
     var box = document.querySelector('.rd-q[data-q="' + qi + '"]');
     if(!box) return;
-    var graded = (typeof q.answer === 'number' && q.answer >= 0 && q.answer < (q.options||[]).length);
     Array.prototype.forEach.call(box.querySelectorAll('.op'), function(b, i){
-      if(!graded && i === oi) b.classList.add('ok');
-      else if(graded && i === q.answer) b.classList.add('ok');
-      else if(graded && i === oi) b.classList.add('no');
+      if(i === q.answer) b.classList.add('ok');
+      else if(i === oi) b.classList.add('no');
     });
     var ex = box.querySelector('.ex');
-    if(ex){ if(!graded) ex.textContent='尚未匯入答案，本次只記錄選項。'; ex.classList.add('show'); }
+    if(ex) ex.classList.add('show');
 
     if(Object.keys(answers).length !== it.items.length) return;
-    var gradable = it.items.filter(function(x){return typeof x.answer==='number'&&x.answer>=0&&x.answer<(x.options||[]).length;});
-    if(!gradable.length){ var sc0=$('rdScore'); if(sc0){sc0.style.display='';sc0.innerHTML='<div class="k">作答完成。本題庫尚未匯入答案，因此不計分。</div>';} return; }
 
     var right = 0;
     it.items.forEach(function(x, i){ if(answers[i] === x.answer) right++; });
     var sc = $('rdScore');
     if(sc){
       sc.style.display = '';
-      sc.innerHTML = '<div class="n">' + right + ' / ' + gradable.length + '</div>' +
-        '<div class="k">' + (right === gradable.length ? '全對，這批單字掌握得很好' : '答錯的字已排進複習') + '</div>';
+      sc.innerHTML = '<div class="n">' + right + ' / ' + it.items.length + '</div>' +
+        '<div class="k">' + (right === it.items.length ? '全對，這批單字掌握得很好' : '答錯的字已排進複習') + '</div>';
     }
     // 答錯的字自動標記要複習，並更新 SM-2
     it.items.forEach(function(x, i){
-      if(!(typeof x.answer==='number'&&x.answer>=0&&x.answer<(x.options||[]).length) || answers[i] === x.answer) return;
+      if(answers[i] === x.answer) return;
       var w = (x.options && x.options[x.answer]) || '';
       try{
         var card = window.KIN_COLLECT && window.KIN_COLLECT.find(w);
@@ -7972,8 +7967,6 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         '<button type="button" class="go" onclick="rdGenPassage()">生成閱讀／聽力情境</button>' +
         '<button type="button" class="go alt" onclick="rdGenQuiz()">生成 TOEIC 模擬測驗</button>' +
         '<button type="button" class="go alt" onclick="rdImportBank()">匯入 JSON 題庫</button><input id="rdBankFile" type="file" accept=".json,application/json" style="display:none" onchange="rdReadBank(this)">' +
-        '<button type="button" class="go alt" onclick="kinZipChoose()">匯入本機 ZIP（英文題目＋音檔）</button><input id="kinZipFile" type="file" accept=".zip,application/zip" style="display:none" onchange="kinZipImport(this)">' +
-        '<div class="rd-note">ZIP 只在此裝置的瀏覽器內解析，不會傳送到伺服器。第一階段匯入 PDF 可讀取的英文選擇題與 MP3；日文解析暫不處理。</div>' +
         '<div class="rd-msg" id="rdMsg"></div>' +
         '<div class="rd-note">目前收藏 ' + n + ' 個單字。系統會優先挑還沒複習過、或曾經答錯的字。短文裡的英文一樣可以點，發音或再加入閃卡。</div>' +
         '</div>' +
@@ -8046,8 +8039,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       '<div class="rd-score" id="rdScore" style="display:none"></div>' +
       (it.items||[]).map(function(q, i){
         return '<div class="rd-q" data-q="' + i + '">' +
-          '<div class="qn">第 ' + (q.number || (i+1)) + ' 題 / 共 ' + it.items.length + ' 題</div>' +
-          (q.audioKey ? ('<button type="button" class="go alt" style="margin:0 0 10px;width:auto;padding:8px 12px" onclick="kinZipPlayAudio(\'' + esc(q.audioKey) + '\',this)">▶ 播放原始音檔</button>') : '') +
+          '<div class="qn">第 ' + (i+1) + ' 題 / ' + it.items.length + '</div>' +
           '<div class="qt">' + esc(q.q || '') + '</div>' +
           (q.options||[]).map(function(o, oi){
             return '<button type="button" class="op" onclick="rdAnswer(' + i + ',' + oi + ')">' +
@@ -11781,107 +11773,7 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
    - 撞到 429 自動換下一支，全部用完才回報失敗
    - 每支金鑰各自記錄冷卻時間，到點自動解除
    - 相容 V3.2 的 KIN_GM 傳輸層；舊的 kinGeminiKey 會自動匯入
-   貼在 
-<script>
-/* ===== Local ZIP English-question + MP3 importer v1 ===== */
-(function(){
-  'use strict';
-  var DB_NAME='kinLocalQuestionBanks', DB_VER=1, STORE='audio';
-  var activeUrl=null, activeAudio=null;
-  function setMsg(t,err){var m=document.getElementById('rdMsg');if(m){m.textContent=t||'';m.className='rd-msg'+(err?' err':'');}}
-  function openDb(){return new Promise(function(resolve,reject){var r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=function(){if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE);};r.onsuccess=function(){resolve(r.result)};r.onerror=function(){reject(r.error)};});}
-  async function putAudio(key,blob){var db=await openDb();return new Promise(function(resolve,reject){var tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(blob,key);tx.oncomplete=function(){db.close();resolve()};tx.onerror=function(){db.close();reject(tx.error)};});}
-  async function getAudio(key){var db=await openDb();return new Promise(function(resolve,reject){var r=db.transaction(STORE).objectStore(STORE).get(key);r.onsuccess=function(){db.close();resolve(r.result)};r.onerror=function(){db.close();reject(r.error)};});}
-  function base(path){return String(path||'').split('/').pop();}
-  function parseAudio(path){var f=base(path),m=f.match(/^(\d+)_T([123])_(\d+)(?:-(\d+))?\.mp3$/i);if(!m)return null;return{test:+m[2],start:+m[3],end:+(m[4]||m[3]),file:f,path:path};}
-  function normalizeText(t){return String(t||'').replace(/[\u00a0\u2000-\u200b]/g,' ').replace(/\s+/g,' ').replace(/\s+([.,?!:;])/g,'$1').trim();}
-  function parseBlocks(pages){
-    var out={1:[],2:[],3:[]},test=1,last=0,seen={};
-    pages.forEach(function(page){
-      var text=normalizeText(page);
-      var re=/(?:^|\s)(\d{1,3})\.\s+(.+?)(?=(?:\s+\d{1,3}\.\s+)|$)/g, m;
-      while((m=re.exec(text))){
-        var n=+m[1],block=m[2];
-        if(n<1||n>200)continue;
-        if(last>=150&&n<=40)test=Math.min(3,test+1);
-        last=n;
-        var ops=[],om,ore=/\(([A-D])\)\s*(.+?)(?=\s*\([A-D]\)|$)/g;
-        while((om=ore.exec(block)))ops.push(normalizeText(om[2]));
-        if(ops.length<3)continue;
-        var first=block.search(/\([A-D]\)/);if(first<0)continue;
-        var q=normalizeText(block.slice(0,first));
-        if(!q||q.length<4)continue;
-        var key=test+'-'+n;if(seen[key])continue;seen[key]=1;
-        out[test].push({q:q,options:ops.slice(0,4),answer:-1,zh:'',tip:'',number:n,test:test});
-      }
-    });
-    Object.keys(out).forEach(function(k){out[k].sort(function(a,b){return a.number-b.number;});});
-    return out;
-  }
-  async function loadPdfJs(){
-    if(window.pdfjsLib)return window.pdfjsLib;
-    var mod=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');
-    mod.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
-    return mod;
-  }
-  async function extractPages(entry){
-    var pdfjs=await loadPdfJs(),buf=await entry.async('arraybuffer'),doc=await pdfjs.getDocument({data:buf}).promise,pages=[];
-    for(var i=1;i<=doc.numPages;i++){
-      setMsg('正在解析英文題目：PDF 第 '+i+' / '+doc.numPages+' 頁…');
-      var pg=await doc.getPage(i),tc=await pg.getTextContent();
-      pages.push(tc.items.map(function(x){return x.str||'';}).join(' '));
-      if(i%8===0)await new Promise(function(r){setTimeout(r,0)});
-    }
-    return pages;
-  }
-  function bankLoad(){try{return JSON.parse(localStorage.getItem('kinReadCoachV4')||'[]')}catch(e){return[]}}
-  function bankSave(a){localStorage.setItem('kinReadCoachV4',JSON.stringify(a));}
-  function findBankKey(){var keys=['kinReadCoachV4','kinReadCoach','rdHistory'];for(var i=0;i<keys.length;i++){try{var x=JSON.parse(localStorage.getItem(keys[i])||'null');if(Array.isArray(x))return keys[i]}catch(e){}}return'kinReadCoachV4';}
-  function saveBanks(items){var key=findBankKey(),a=[];try{a=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(a))a=[]}catch(e){a=[]}items.slice().reverse().forEach(function(x){a.unshift(x)});localStorage.setItem(key,JSON.stringify(a));return key;}
-  window.kinZipChoose=function(){var f=document.getElementById('kinZipFile');if(f)f.click();};
-  window.kinZipPlayAudio=async function(key,btn){
-    try{
-      var blob=await getAudio(key);if(!blob)throw new Error('找不到本機音檔，請重新匯入 ZIP');
-      if(activeAudio){activeAudio.pause();activeAudio=null}if(activeUrl){URL.revokeObjectURL(activeUrl);activeUrl=null}
-      activeUrl=URL.createObjectURL(blob);activeAudio=new Audio(activeUrl);activeAudio.preload='metadata';
-      if(btn)btn.textContent='⏸ 播放中';activeAudio.onended=function(){if(btn)btn.textContent='▶ 播放原始音檔';};
-      await activeAudio.play();
-    }catch(e){setMsg('音檔播放失敗：'+e.message,true);}
-  };
-  window.kinZipImport=async function(inp){
-    var file=inp.files&&inp.files[0];if(!file)return;
-    try{
-      if(!window.JSZip)throw new Error('JSZip 尚未載入，請確認網路後重試');
-      setMsg('正在本機開啟 ZIP，不會上傳…');
-      var zip=await JSZip.loadAsync(file),entries=Object.keys(zip.files).map(function(k){return zip.files[k]}).filter(function(e){return !e.dir});
-      var mp3=entries.filter(function(e){return /\.mp3$/i.test(e.name)}),pdfs=entries.filter(function(e){return /\.pdf$/i.test(e.name)&&!/答题纸|答案紙|answer.?sheet/i.test(e.name)});
-      if(!pdfs.length)throw new Error('ZIP 內找不到可解析的 PDF');
-      var audioMap={1:{},2:{},3:{}},saved=0;
-      for(var i=0;i<mp3.length;i++){
-        var info=parseAudio(mp3[i].name);if(!info)continue;
-        var key='zip:'+file.name+':'+info.path,blob=await mp3[i].async('blob');await putAudio(key,blob);saved++;
-        for(var q=info.start;q<=info.end;q++)audioMap[info.test][q]=key;
-        if(i%10===0)setMsg('正在儲存音檔：'+(i+1)+' / '+mp3.length+'…');
-      }
-      var candidates=pdfs.filter(function(e){return !/解答|解説|別冊|answer|answers/i.test(e.name)});if(!candidates.length)candidates=pdfs;
-      candidates.sort(function(a,b){return (b._data&&b._data.uncompressedSize||0)-(a._data&&a._data.uncompressedSize||0)});
-      var pages=await extractPages(candidates[0]),parsed=parseBlocks(pages),now=new Date().toISOString(),banks=[];
-      [1,2,3].forEach(function(t){
-        var items=parsed[t];items.forEach(function(x){x.audioKey=audioMap[t][x.number]||'';});
-        if(items.length)banks.push({id:'ZIP-'+Date.now().toString(36)+'-T'+t,kind:'quiz',title:'至高600問 TEST '+t,scene:'本機 ZIP 匯入｜英文題目＋MP3',items:items,used:[],article:'',at:now,imported:true,localZip:true});
-      });
-      if(!banks.length)throw new Error('PDF 文字層中沒有辨識到英文選擇題。此 PDF 可能是掃描圖片版');
-      saveBanks(banks);
-      var total=banks.reduce(function(n,b){return n+b.items.length},0),linked=banks.reduce(function(n,b){return n+b.items.filter(function(x){return x.audioKey}).length},0);
-      setMsg('匯入完成：'+banks.length+' 套、'+total+' 題、'+saved+' 個音檔；'+linked+' 題已掛上音檔。請回到題庫清單查看。');
-      if(typeof rdBack==='function')rdBack();
-    }catch(e){setMsg('ZIP 匯入失敗：'+e.message,true);}
-    inp.value='';
-  };
-})();
-</script>
-
-</body> 之前，且必須放在 V3.2 的 KIN_GM 那段 script「之後」
+   貼在 </body> 之前，且必須放在 V3.2 的 KIN_GM 那段 script「之後」
    ========================================================================== */
 (function(){
   'use strict';
@@ -12330,7 +12222,7 @@ setInterval(paintReturn,500);
 }
 </style>
 <div id="ixTop"><div class="ix-title" id="ixPageTitle">學習首頁</div><div class="ix-tabs" id="ixModeTabs"></div><div class="ix-context" id="ixContextLabel">首頁</div></div>
-<aside id="ixLeft"><div class="ix-brand"><b>TPX1000</b><small>TOEIC Vocabulary System</small></div><div id="ixLeftBody"></div><div class="ix-bottom"><button class="ix-action" onclick="IX.openSettings()"><span class="ix-mark"></span>介面與設定</button></div></aside>
+<div id="ixMobileMask" onclick="tpxMobileMenuClose()"></div><aside id="ixLeft"><div class="ix-brand"><b>TPX1000</b><button type="button" class="ix-mobile-close" onclick="tpxMobileMenuClose()" aria-label="關閉選單">×</button><small>TOEIC Vocabulary System</small></div><div id="ixLeftBody"></div><div class="ix-bottom"><button class="ix-action" onclick="IX.openSettings()"><span class="ix-mark"></span>介面與設定</button></div></aside>
 <aside id="ixRight"><div class="ix-brand"><b id="ixRightTitle">學習工具</b><small id="ixRightSub">依目前工作內容更新</small></div><div id="ixRightBody"></div></aside>
 <script>
 (function(){
@@ -13094,6 +12986,55 @@ body.theme-dark #screen-detail .detail-actions{
 
   // 開頭幾秒版面還在組裝，連續校正幾次
   [0, 120, 400, 900, 1800].forEach(function(ms){ setTimeout(schedule, ms); });
+})();
+</script>
+
+
+<style id="tpxResponsiveHeaderFix">
+/* Square menu button: CSS lines only, no emoji. */
+#mobileMenuBtn{display:none;width:38px;height:38px;flex:0 0 38px;padding:0;border:1px solid #cfcfcf;border-radius:8px;background:#fff;align-items:center;justify-content:center;flex-direction:column;gap:4px;box-sizing:border-box}
+#mobileMenuBtn span{display:block;width:17px;height:2px;border-radius:2px;background:#272727}
+body.theme-dark #mobileMenuBtn{background:#171719;border-color:#3a3a3c}
+body.theme-dark #mobileMenuBtn span{background:#f1efeb}
+#settingsCloudSyncBtn{width:100%;display:flex;align-items:center;gap:11px;padding:12px;margin:0 0 14px;border:1px solid #ddd;border-radius:11px;background:#fff;color:#222;text-align:left;box-sizing:border-box}
+#settingsCloudSyncBtn .cloudIcon{width:28px;height:20px;position:relative;flex:0 0 28px;border:2px solid #c45c1a;border-radius:12px;box-sizing:border-box}
+#settingsCloudSyncBtn .cloudIcon:before,#settingsCloudSyncBtn .cloudIcon:after{content:"";position:absolute;background:#fff;border:2px solid #c45c1a;border-bottom:0;border-radius:50% 50% 0 0}
+#settingsCloudSyncBtn .cloudIcon:before{width:12px;height:9px;left:3px;top:-8px}
+#settingsCloudSyncBtn .cloudIcon:after{width:9px;height:7px;right:2px;top:-5px}
+#settingsCloudSyncBtn span:nth-child(2){min-width:0;flex:1}
+#settingsCloudSyncBtn b,#settingsCloudSyncBtn small{display:block}
+#settingsCloudSyncBtn b{font-size:14px}.settingsCloudSyncBtn small{font-size:11px}
+#settingsCloudSyncBtn small{font-size:11px;color:#888;margin-top:2px}
+#settingsCloudSyncBtn i{font-style:normal;font-size:22px;color:#999}
+body.theme-dark #settingsCloudSyncBtn{background:#111113;border-color:#303034;color:#eee}
+body.theme-dark #settingsCloudSyncBtn .cloudIcon:before,body.theme-dark #settingsCloudSyncBtn .cloudIcon:after{background:#111113}
+#ixMobileMask,.ix-mobile-close{display:none}
+@media (min-width:1024px){
+  /* Fixed desktop header is 54px high. Keep the native Sync/User/Range bar below it. */
+  body.ix-enabled #screen-list,body.ix-enabled #screen-detail{padding-top:54px!important;box-sizing:border-box!important}
+  body.ix-enabled #screen-list>.topbar,body.ix-enabled #screen-detail>.topbar{top:54px!important}
+}
+@media (max-width:767px){
+  #mobileMenuBtn{display:flex}
+  #ixTop,#ixRight{display:none!important}
+  #ixLeft{display:flex!important;position:fixed!important;left:0!important;top:0!important;bottom:0!important;width:min(84vw,320px)!important;z-index:13020!important;background:#0d0d0d!important;border-right:1px solid #303030!important;color:#f4f4f4!important;flex-direction:column!important;overflow-y:auto!important;transform:translateX(-102%)!important;transition:transform .2s ease!important;box-sizing:border-box!important}
+  body.ix-mobile-menu-open #ixLeft{transform:translateX(0)!important}
+  #ixMobileMask{display:block;position:fixed;inset:0;z-index:13010;background:rgba(0,0,0,.5);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease}
+  body.ix-mobile-menu-open #ixMobileMask{opacity:1;visibility:visible;pointer-events:auto}
+  #ixLeft .ix-brand{position:relative;padding-right:56px}
+  .ix-mobile-close{display:flex;position:absolute;right:12px;top:12px;width:34px;height:34px;border:1px solid #444;border-radius:8px;background:#171717;color:#fff;font-size:22px;align-items:center;justify-content:center}
+  body.ix-mobile-menu-open{overflow:hidden}
+}
+</style>
+<script>
+(function(){
+  window.tpxMobileMenuOpen=function(){document.body.classList.add('ix-mobile-menu-open');};
+  window.tpxMobileMenuClose=function(){document.body.classList.remove('ix-mobile-menu-open');};
+  document.addEventListener('click',function(ev){
+    var b=ev.target&&ev.target.closest&&ev.target.closest('#ixLeft .ix-item,#ixLeft .ix-action');
+    if(b&&window.innerWidth<768)setTimeout(window.tpxMobileMenuClose,60);
+  });
+  document.addEventListener('keydown',function(ev){if(ev.key==='Escape')window.tpxMobileMenuClose();});
 })();
 </script>
 
