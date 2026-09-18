@@ -7343,7 +7343,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   window.rdReadBank=function(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var it=normalizeBank(JSON.parse(r.result));var a=load();a.unshift(it);save(a);msg('已匯入 '+it.items.length+' 題');openId=it.id;view='quiz';render();window.scrollTo(0,0);}catch(e){msg('匯入失敗：'+e.message,true);}inp.value='';};r.readAsText(f);};
 
   /* Local ZIP import: ZIP never leaves this browser. */
-  var RD_ZIP_DB='kinQuestionZipV1', RD_ZIP_STORE='audio', rdZipAudio=null, rdZipUrl='';
+  var RD_ZIP_DB='kinQuestionZipV1', RD_ZIP_STORE='audio', rdZipAudio=null, rdZipUrl='', rdZipPdfUrl='';
   function rdZipDb(){return new Promise(function(ok,no){var r=indexedDB.open(RD_ZIP_DB,1);r.onupgradeneeded=function(){if(!r.result.objectStoreNames.contains(RD_ZIP_STORE))r.result.createObjectStore(RD_ZIP_STORE);};r.onsuccess=function(){ok(r.result)};r.onerror=function(){no(r.error||new Error('IndexedDB 無法開啟'))};});}
   async function rdZipPut(k,b){var d=await rdZipDb();return new Promise(function(ok,no){var t=d.transaction(RD_ZIP_STORE,'readwrite');t.objectStore(RD_ZIP_STORE).put(b,k);t.oncomplete=function(){d.close();ok()};t.onerror=function(){d.close();no(t.error)}});}
   async function rdZipGet(k){var d=await rdZipDb();return new Promise(function(ok,no){var r=d.transaction(RD_ZIP_STORE).objectStore(RD_ZIP_STORE).get(k);r.onsuccess=function(){d.close();ok(r.result)};r.onerror=function(){d.close();no(r.error)}});}
@@ -7373,6 +7373,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     }return p;}
   window.rdImportZip=function(){var x=document.getElementById('rdZipFile');if(x)x.click();};
   window.rdPlayZipAudio=async function(key,btn){try{var b=await rdZipGet(key);if(!b)throw new Error('找不到已儲存的音檔，請重新匯入 ZIP');if(rdZipAudio)rdZipAudio.pause();if(rdZipUrl)URL.revokeObjectURL(rdZipUrl);rdZipUrl=URL.createObjectURL(b);rdZipAudio=new Audio(rdZipUrl);if(btn)btn.textContent='播放中…';rdZipAudio.onended=function(){if(btn)btn.textContent='播放音檔'};await rdZipAudio.play();}catch(e){msg('播放失敗：'+e.message,true);}};
+  window.rdZipPdfOpen=async function(key){try{var b=await rdZipGet(key);if(!b)throw new Error('找不到 PDF，請重新匯入 ZIP');if(rdZipPdfUrl)URL.revokeObjectURL(rdZipPdfUrl);rdZipPdfUrl=URL.createObjectURL(b);var f=document.getElementById('rdZipPdfFrame');if(f)f.src=rdZipPdfUrl;}catch(e){msg('PDF 開啟失敗：'+e.message,true);}};
+  window.rdZipTrackPlay=function(sel){var v=sel&&sel.value;if(v)rdPlayZipAudio(v,document.getElementById('rdZipTrackBtn'));};
   window.rdReadZip=async function(inp){var file=inp.files&&inp.files[0];if(!file)return;try{
       if(!window.JSZip)throw new Error('ZIP 元件尚未載入，請保持網路連線並重新整理後再試');msg('正在本機解壓 ZIP…');
       var z=await JSZip.loadAsync(file),all=Object.keys(z.files).map(function(k){return z.files[k]}).filter(function(e){return !e.dir});
@@ -7380,12 +7382,17 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       if(!pdf.length)throw new Error('ZIP 裡找不到試題 PDF');
       var amap={1:{},2:{},3:{}},saved=0;
       for(var i=0;i<mp3.length;i++){var inf=rdZipAudioInfo(mp3[i].name);if(!inf)continue;var key='zip:'+file.name+':'+inf.path;await rdZipPut(key,await mp3[i].async('blob'));for(var n=inf.from;n<=inf.to;n++)amap[inf.test][n]=key;saved++;if(saved%8===0)msg('正在儲存音檔：'+saved+' 個');}
-      var byTest={1:[],2:[],3:[]},pageCount=0,textChars=0;
-      for(var pi=0;pi<pdf.length;pi++){var hint=rdZipTestNo(pdf[pi].name,Math.min(3,pi+1)),pages=await rdZipPdfPages(pdf[pi]);pageCount+=pages.length;pages.forEach(function(x){textChars+=x.replace(/\s/g,'').length});var got=rdZipParseQuestions(pages,hint);byTest[hint]=byTest[hint].concat(got);}
+      var byTest={1:[],2:[],3:[]},pageCount=0,textChars=0,pdfSaved=[];
+      for(var pi=0;pi<pdf.length;pi++){
+        var hint=rdZipTestNo(pdf[pi].name,Math.min(3,pi+1)),pdfKey='pdf:'+file.name+':'+pdf[pi].name;
+        await rdZipPut(pdfKey,await pdf[pi].async('blob'));pdfSaved.push({key:pdfKey,name:rdZipBase(pdf[pi].name),test:hint});
+        var pages=await rdZipPdfPages(pdf[pi]);pageCount+=pages.length;pages.forEach(function(x){textChars+=x.replace(/\s/g,'').length});var got=rdZipParseQuestions(pages,hint);byTest[hint]=byTest[hint].concat(got);
+      }
       var banks=[],stamp=Date.now();[1,2,3].forEach(function(t){var seen={},items=byTest[t].filter(function(q){if(seen[q.number])return false;seen[q.number]=1;return true}).sort(function(a,b){return a.number-b.number});items.forEach(function(q){q.audioKey=amap[t][q.number]||''});if(items.length)banks.push({id:'ZIP-'+stamp+'-T'+t,kind:'quiz',title:'ZIP 題庫 TEST '+t,scene:'本機 ZIP',items:items,used:[],article:'',at:new Date().toISOString(),imported:true});});
-      if(!banks.length){var reason=textChars<100?'PDF 幾乎沒有文字層，應是掃描圖片版':'PDF 有文字，但題號／選項格式仍未匹配';throw new Error(reason+'（PDF '+pdf.length+' 份、'+pageCount+' 頁、文字 '+textChars+' 字；辨識到 MP3 '+saved+' 個）');}
-      var a=load();for(var j=banks.length-1;j>=0;j--)a.unshift(banks[j]);save(a);var total=banks.reduce(function(v,b){return v+b.items.length},0),linked=banks.reduce(function(v,b){return v+b.items.filter(function(q){return q.audioKey}).length},0);
-      msg('匯入完成：'+total+' 題、'+saved+' 個音檔；'+linked+' 題已配對音檔。');view='list';openId='';render();window.scrollTo(0,0);
+      var fallback=false;
+      if(!banks.length){fallback=true;pdfSaved.forEach(function(pd,idx){var tracks=[];mp3.forEach(function(e){var inf=rdZipAudioInfo(e.name);if(inf&&inf.test===pd.test)tracks.push({label:rdZipBase(e.name),key:'zip:'+file.name+':'+inf.path,from:inf.from,to:inf.to});});tracks.sort(function(a,b){return a.from-b.from});banks.push({id:'PDF-'+stamp+'-'+idx,kind:'pdfbank',title:'原始 PDF 題庫 '+pd.test,scene:pd.name,pdfKey:pd.key,audioTracks:tracks,items:[],used:[],article:'',at:new Date().toISOString(),imported:true});});}
+      var a=load();for(var j=banks.length-1;j>=0;j--)a.unshift(banks[j]);save(a);var total=banks.reduce(function(v,b){return v+(b.items||[]).length},0),linked=banks.reduce(function(v,b){return v+(b.items||[]).filter(function(q){return q.audioKey}).length},0);
+      msg(fallback?('已改用原始 PDF 模式匯入：'+pdfSaved.length+' 份 PDF、'+saved+' 個音檔。可直接看試卷並選擇音軌播放。'):('匯入完成：'+total+' 題、'+saved+' 個音檔；'+linked+' 題已配對音檔。'));view='list';openId='';render();window.scrollTo(0,0);
     }catch(e){msg('ZIP 匯入失敗：'+e.message,true);}finally{inp.value='';}};
   window.KIN_BANK_SCHEMA={title:'題庫名稱',source:'來源',article:'選填文章',questions:[{q:'題目',options:['A','B','C','D'],answer:0,zh:'選填翻譯',explain:'解析'}]};
 
@@ -7945,7 +7952,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(!it) return;
     if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
     rdIdx = 0; rdA = rdB = null;
-    openId = id; view = (it.kind === 'quiz') ? 'quiz' : 'doc';
+    openId = id; view = (it.kind === 'pdfbank') ? 'pdfbank' : ((it.kind === 'quiz') ? 'quiz' : 'doc');
     render(); window.scrollTo(0,0);
   };
 
@@ -8024,12 +8031,10 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         (all.length
           ? all.map(function(it){
               var d = new Date(it.at), dt = (d.getMonth()+1) + '/' + d.getDate();
-              var pv = it.kind === 'quiz'
-                ? ((it.items && it.items[0] && it.items[0].q) || '')
-                : (it.en || '');
+              var pv = it.kind === 'pdfbank' ? (it.scene||'原始 PDF 試卷') : (it.kind === 'quiz' ? ((it.items && it.items[0] && it.items[0].q) || '') : (it.en || ''));
               return '<button type="button" class="rd-item" onclick="rdView(\'' + it.id + '\')">' +
                 '<div class="hd"><span class="kind' + (it.kind === 'quiz' ? ' q' : '') + '">' +
-                (it.kind === 'quiz' ? '測驗' : '短文') + '</span><span class="dt">' + dt + '</span></div>' +
+                (it.kind === 'pdfbank' ? 'PDF 題庫' : (it.kind === 'quiz' ? '測驗' : '短文')) + '</span><span class="dt">' + dt + '</span></div>' +
                 '<div class="ti">' + esc(it.title) + '</div>' +
                 '<div class="pv">' + esc(pv) + '</div>' +
                 '<div class="wc">' + ((it.used||[]).length) + ' 個單字</div></button>';
@@ -8040,6 +8045,17 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
     var it = all.filter(function(x){ return x.id === openId; })[0];
     if(!it){ view = 'list'; render(); return; }
+
+    if(view === 'pdfbank'){
+      if(title) title.textContent='原始 PDF 題庫';
+      var tracks=it.audioTracks||[];
+      body.innerHTML='<div class="rd-tools"><button type="button" onclick="rdBack()">‹ 回到清單</button><button type="button" class="warn" onclick="rdDelete(\''+it.id+'\')">刪除</button></div>'+
+        '<div class="rd-gen"><h3>'+esc(it.title||'原始 PDF 題庫')+'</h3><div class="rd-note">'+esc(it.scene||'')+'</div>'+
+        (tracks.length?('<select id="rdZipTrackSel" style="width:100%;padding:11px;border-radius:8px;margin:10px 0;background:#111;color:#fff;border:1px solid #555">'+tracks.map(function(t){return '<option value="'+esc(t.key)+'">'+esc(t.label)+'</option>'}).join('')+'</select><button id="rdZipTrackBtn" class="go alt" onclick="rdZipTrackPlay(document.getElementById(\'rdZipTrackSel\'))">播放所選音檔</button>'):'<div class="rd-note">此 PDF 沒有找到可配對的音檔。</div>')+
+        '<div class="rd-note">此模式保留原始 PDF 排版，不再強制拆題。可縮放、翻頁並搭配上方音軌使用。</div></div>'+
+        '<iframe id="rdZipPdfFrame" title="原始試題 PDF" style="display:block;width:100%;height:72vh;border:1px solid #333;border-radius:10px;background:#fff"></iframe>';
+      setTimeout(function(){rdZipPdfOpen(it.pdfKey)},30);return;
+    }
 
     if(view === 'doc'){
       if(title) title.textContent = '短文';
@@ -8116,7 +8132,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(sc) sc.classList.add('show');
 
     openId = id;
-    view = (it.kind === 'quiz') ? 'quiz' : 'doc';
+    view = (it.kind === 'pdfbank') ? 'pdfbank' : ((it.kind === 'quiz') ? 'quiz' : 'doc');
     rdA = rdB = null;
     rdIdx = (si != null && si >= 0) ? si : 0;
     render();
