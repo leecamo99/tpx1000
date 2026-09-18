@@ -31,3 +31,11 @@
 
 - 可直接以 `file://` 開啟 `index.html`；Shiko600 題庫與作答介面可正常使用。
 - 若要使用 Service Worker、離線快取與 MP3 Range 請求，請透過 HTTP/HTTPS 靜態伺服器開啟。
+
+## 資料編輯模式
+
+- 從右下角「工具」啟用「資料編輯」，進入單字解說頁後按「編輯這筆資料」。
+- 一般書籍會先讀取 GitHub 最新檔案與 SHA，只替換該筆 `data`，再提交到 `books/kin1000.js` 等對應來源檔。
+- 「我的收藏」可直接修正中文、詞性、音標與例句，並沿用既有 GitHub 學習紀錄同步。
+- GitHub Fine-grained Token 需有該 repository 的 **Contents: Read and write** 權限；Token 仍只儲存在目前瀏覽器的 localStorage。
+- 書籍資料改為 network-first 並在載入時加版本參數，修正更新 `kin1000.js` 後仍看到舊快取的問題。

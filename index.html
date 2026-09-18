@@ -3987,7 +3987,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     renderStat();
   };
 
-  window.gsSyncNow=function(){ push(false); };
+  window.gsSyncNow=function(){ return push(false); };
 
   window.gsPullNow=async function(){
     if(!confirm('確定要用 GitHub 上的紀錄覆蓋這台裝置的本機紀錄嗎？此動作無法復原。')) return;
@@ -8406,7 +8406,7 @@ window.BOOKS = [
     id: 'kin1000',
     title: '金のフレーズ',
     subtitle: 'TOEIC L&R TEST 出る単特急',
-    file: '',
+    file: 'books/kin1000.js',
     global: 'KIN1000_DATA',
     audioBase: 'audio/kin1000/CLIPS/',
     count: 1817
@@ -21049,7 +21049,9 @@ window.registerBook({
       applyBook(book, loadedFiles[book.id]);
       return;
     }
-    var preloaded = payloadForBook(book);
+    // kin1000 以外部 books/kin1000.js 為唯一可編輯來源；內嵌資料只在離線失敗時備援。
+    var preferExternal = book.id === 'kin1000' && !!book.file;
+    var preloaded = preferExternal ? null : payloadForBook(book);
     if(preloaded){
       loadedFiles[book.id] = preloaded;
       applyBook(book, preloaded);
@@ -21057,9 +21059,14 @@ window.registerBook({
     }
 
     var sc = document.createElement('script');
-    sc.src = book.file;
+    sc.src = book.file + (book.file.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
     sc.onerror = function(){
-      if(loading) loading.textContent = '載入失敗：' + book.file + '（請確認檔案已上傳）';
+      var fallback = preferExternal ? payloadForBook(book) : null;
+      if(fallback){
+        loadedFiles[book.id] = fallback;
+        applyBook(book, fallback);
+        if(window.UX && UX.toast) UX.toast('無法取得最新 kin1000.js，已使用內嵌備援資料', 3200);
+      }else if(loading){ loading.textContent = '載入失敗：' + book.file + '（請確認檔案已上傳）'; }
     };
     sc.onload = function(){
       var loaded = payloadForBook(book, pending);
@@ -21768,6 +21775,8 @@ body.theme-dark .ux-set .st{color:#a8a49f}
     <div class="ux-seg" id="uxGapSeg"><button data-v="0" class="on">0秒</button><button data-v="1">1秒</button><button data-v="2">2秒</button><button data-v="3">3秒</button><button data-v="5">5秒</button></div></div>
   <div class="row"><div class="lb">字體大小</div>
     <div class="fs"><button type="button" id="uxFsDn">A−</button><span id="uxFsVal">100%</span><button type="button" id="uxFsUp">A+</button></div></div>
+  <div class="row ke-tools-row"><div class="lb">資料編輯<small id="keModeSt">關閉</small></div>
+    <button type="button" id="keModeBtn" class="ke-mode-btn" aria-pressed="false">啟用</button></div>
 </div>
 
 <script>
@@ -21800,7 +21809,7 @@ window.UX = window.UX || {};
   function isTyping(el){ if(!el) return false; var t=(el.tagName||'').toLowerCase(); return t==='input'||t==='textarea'||t==='select'||el.isContentEditable; }
   function panelOpen(){
     var b=$('screen-books'); if(b && !b.classList.contains('hide') && b.style.display!=='none') return true;
-    return ['pinBox','usPanel','gsPanel','nwBox','uxCoach','uxTools'].some(function(id){ var el=$(id); return el && el.classList.contains('show'); })
+    return ['pinBox','usPanel','gsPanel','nwBox','uxCoach','uxTools','kePanel'].some(function(id){ var el=$(id); return el && el.classList.contains('show'); })
       || (($('filterModal')||{}).classList||{contains:function(){return false;}}).contains('open')
       || document.body.classList.contains('rd-open') || document.body.classList.contains('ux-quiz-open');
   }
@@ -25753,6 +25762,121 @@ function init(){installMenu();patchIX();setTimeout(function(){installMenu();patc
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
+
+
+<!-- ===== 資料編輯模式 v1.0：右下角「工具」啟用，儲存時直接更新 GitHub ===== -->
+<style id="kinEditorStyle">
+.ke-tools-row .ke-mode-btn{min-width:82px;height:32px;border:1.5px solid #d4cec6;border-radius:999px;background:#fff;color:#5f5953;font:700 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;padding:0 13px;cursor:pointer}
+.ke-tools-row .ke-mode-btn.on{border-color:#c45c1a;background:#fff4e9;color:#a9470d}
+body.theme-dark .ke-tools-row .ke-mode-btn{background:#1c1c1e;border-color:#48484a;color:#d8d5d1}
+body.theme-dark .ke-tools-row .ke-mode-btn.on{background:#2a1c10;border-color:#ff9142;color:#ffb278}
+#keEntryBtn{display:none;width:100%;margin:0 0 12px;padding:10px 14px;border:1.5px solid #c45c1a;border-radius:10px;background:#fff7ef;color:#9f430d;font:800 13px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer}
+body.kin-edit-mode #keEntryBtn{display:block}
+body.theme-dark #keEntryBtn{background:#2a1c10;border-color:#ff9142;color:#ffb278}
+#keMask{position:fixed;inset:0;z-index:12990;background:rgba(0,0,0,.56);display:none;backdrop-filter:blur(2px)}
+#keMask.show{display:block}
+#kePanel{position:fixed;left:50%;top:50%;z-index:13000;display:none;transform:translate(-50%,-50%);width:min(94vw,720px);max-height:90vh;overflow:auto;background:#f8f7f4;color:#26231f;border:1px solid #dad5ce;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.34);font-family:system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif}
+#kePanel.show{display:block}
+#kePanel .ke-hd{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:12px;padding:15px 18px;background:#f8f7f4;border-bottom:1px solid #e4dfd8}
+#kePanel .ke-title{min-width:0;flex:1}
+#kePanel .ke-title b{display:block;font-size:16px;line-height:1.25}
+#kePanel .ke-title small{display:block;margin-top:3px;color:#746e67;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kePanel .ke-x{width:34px;height:34px;border:0;border-radius:50%;background:#e9e5df;color:#514c47;font-size:21px;line-height:1;cursor:pointer}
+#kePanel .ke-bd{padding:16px 18px 18px}
+#kePanel .ke-banner{margin-bottom:14px;padding:11px 13px;border-left:4px solid #c45c1a;border-radius:8px;background:#fff4e9;color:#594b3f;font-size:12px;line-height:1.6}
+#kePanel .ke-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#kePanel .ke-field{min-width:0}
+#kePanel .ke-field.full{grid-column:1/-1}
+#kePanel label{display:block;margin:0 0 5px;color:#5f5953;font-size:12px;font-weight:800}
+#kePanel input,#kePanel textarea{width:100%;box-sizing:border-box;border:1.5px solid #d2ccc4;border-radius:9px;background:#fff;color:#1f1d1a;padding:10px 11px;font:14px/1.5 system-ui,-apple-system,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;outline:none}
+#kePanel input:focus,#kePanel textarea:focus{border-color:#c45c1a;box-shadow:0 0 0 3px rgba(196,92,26,.12)}
+#kePanel input[readonly]{background:#efede9;color:#77716a}
+#kePanel textarea{min-height:76px;resize:vertical}
+#kePanel #keSenses{min-height:130px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+#kePanel .ke-actions{position:sticky;bottom:0;display:flex;gap:8px;margin:16px -18px -18px;padding:12px 18px;background:#f8f7f4;border-top:1px solid #e4dfd8}
+#kePanel .ke-actions button{flex:1;min-height:42px;border:1.5px solid #cbc5bd;border-radius:10px;background:#fff;color:#4f4943;font-weight:800;cursor:pointer}
+#kePanel .ke-actions .primary{flex:1.7;border-color:#c45c1a;background:#c45c1a;color:#fff}
+#kePanel .ke-actions button:disabled{opacity:.52;cursor:wait}
+#keMsg{min-height:19px;margin-top:12px;font-size:12px;line-height:1.55;color:#6d665f;white-space:pre-wrap}
+#keMsg.ok{color:#23763d}#keMsg.err{color:#bd3434}
+body.theme-dark #kePanel,body.theme-dark #kePanel .ke-hd,body.theme-dark #kePanel .ke-actions{background:#151517;color:#ece9e5;border-color:#303033}
+body.theme-dark #kePanel .ke-title small,body.theme-dark #keMsg{color:#aaa59f}
+body.theme-dark #kePanel .ke-banner{background:#2a1c10;color:#e7d5c3;border-left-color:#ff9142}
+body.theme-dark #kePanel label{color:#c9c4be}
+body.theme-dark #kePanel input,body.theme-dark #kePanel textarea{background:#1e1e20;border-color:#454548;color:#f2efeb}
+body.theme-dark #kePanel input[readonly]{background:#252527;color:#8e8983}
+body.theme-dark #kePanel .ke-x,body.theme-dark #kePanel .ke-actions button{background:#242426;border-color:#454548;color:#ddd8d2}
+body.theme-dark #kePanel .ke-actions .primary{background:#d46722;border-color:#d46722;color:#fff}
+body.theme-dark #keMsg.ok{color:#67c982}body.theme-dark #keMsg.err{color:#ff8181}
+@media(max-width:560px){#kePanel{width:100%;max-height:92vh;top:auto;bottom:0;transform:translateX(-50%);border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0}#kePanel .ke-grid{grid-template-columns:1fr}#kePanel .ke-field.full{grid-column:auto}#kePanel .ke-bd{padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}}
+</style>
+
+<div id="keMask" aria-hidden="true"></div>
+<section id="kePanel" role="dialog" aria-modal="true" aria-labelledby="keTitle">
+  <div class="ke-hd">
+    <div class="ke-title"><b id="keTitle">編輯資料</b><small id="kePath">—</small></div>
+    <button type="button" class="ke-x" id="keClose" aria-label="關閉">×</button>
+  </div>
+  <div class="ke-bd">
+    <div class="ke-banner" id="keBanner">儲存後會先抓取 GitHub 最新版本，再以檔案 SHA 安全覆寫；畫面會立即更新。</div>
+    <div class="ke-grid">
+      <div class="ke-field"><label for="keId">編號</label><input id="keId" readonly></div>
+      <div class="ke-field"><label for="keLevel">級別</label><input id="keLevel" readonly></div>
+      <div class="ke-field"><label for="keWord">英文</label><input id="keWord" autocomplete="off" spellcheck="false"></div>
+      <div class="ke-field"><label for="kePhon">音標</label><input id="kePhon" autocomplete="off" spellcheck="false"></div>
+      <div class="ke-field"><label for="kePos">詞性</label><input id="kePos" autocomplete="off"></div>
+      <div class="ke-field"><label for="keMean">中文意思</label><input id="keMean" autocomplete="off"></div>
+      <div class="ke-field full"><label for="keNote">解說／補充</label><textarea id="keNote"></textarea></div>
+      <div class="ke-field full"><label for="keEn">英文例句</label><textarea id="keEn" spellcheck="false"></textarea></div>
+      <div class="ke-field full"><label for="keJa">繁中翻譯</label><textarea id="keJa"></textarea></div>
+      <div class="ke-field full"><label for="keSenses">多義資料（JSON，可留空）</label><textarea id="keSenses" spellcheck="false" placeholder='[{"pos":"名","mean":"…","en":"…","zh":"…"}]'></textarea></div>
+    </div>
+    <div id="keMsg" role="status" aria-live="polite"></div>
+    <div class="ke-actions"><button type="button" id="keCancel">取消</button><button type="button" class="primary" id="keSave">儲存並覆寫 GitHub</button></div>
+  </div>
+</section>
+
+<script>
+(function(){
+'use strict';
+var MODE_KEY='kinDataEditModeV1', openEntry=null, busy=false;
+function $(id){return document.getElementById(id)}
+function escPath(p){return String(p||'').replace(/^\.\//,'').split('/').filter(Boolean).map(encodeURIComponent).join('/')}
+function uid(){try{return window.KIN_USER&&KIN_USER.id?KIN_USER.id():'paul'}catch(e){return'paul'}}
+function currentBook(){return window.CURRENT_BOOK||null}
+function currentPayload(){return window.CURRENT_BOOK_PAYLOAD||null}
+function currentEntry(){try{return currentList&&currentList[currentIdx]||null}catch(e){return null}}
+function sourceEditable(){var b=currentBook(),p=currentPayload();return !!(b&&b.file&&!b.virtual&&p&&p.kind!=='questionBank'&&Array.isArray(p.data))}
+function customEditable(){var b=currentBook();return !!(b&&b.id==='custom'&&window.KIN_COLLECT)}
+function isOn(){try{return localStorage.getItem(MODE_KEY)==='1'}catch(e){return false}}
+function setOn(v){try{localStorage.setItem(MODE_KEY,v?'1':'0')}catch(e){}document.body.classList.toggle('kin-edit-mode',!!v);paintMode();paintEntryButton()}
+function message(t,cls){var m=$('keMsg');if(m){m.textContent=t||'';m.className=cls||''}}
+function toast(t){try{if(window.UX&&UX.toast)UX.toast(t,2200);else alert(t)}catch(e){}}
+function config(){try{return JSON.parse(localStorage.getItem('gsConfig')||'{}')||{}}catch(e){return{}}}
+function githubReady(){var c=config();return !!(c.owner&&c.repo&&c.token)}
+function filePath(){var b=currentBook();return b&&b.file?String(b.file).replace(/^\.\//,'').split('?')[0]:''}
+function paintMode(){var on=isOn(),b=$('keModeBtn'),st=$('keModeSt');if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');b.textContent=on?'已啟用':'啟用'}if(st)st.textContent=on?'點單字後可編輯':'關閉'}
+function paintEntryButton(){var host=$('detailBook'),old=$('keEntryBtn'),e=currentEntry();if(!host||!e||(!sourceEditable()&&!customEditable())){if(old)old.remove();return}if(!old){old=document.createElement('button');old.type='button';old.id='keEntryBtn';old.textContent='✎ 編輯這筆資料';old.addEventListener('click',openEditor);host.insertBefore(old,host.firstChild)}}
+function closeEditor(){if(busy)return;$('keMask').classList.remove('show');$('kePanel').classList.remove('show');openEntry=null;message('')}
+function openEditor(){var e=currentEntry(),b=currentBook();if(!e||!b){toast('請先開啟一筆資料');return}if(!sourceEditable()&&!customEditable()){toast('目前書籍不支援資料編輯');return}openEntry=e;$('keId').value=e.id||'';$('keLevel').value=e.level_label||e.level||'';$('keWord').value=e.word||'';$('kePhon').value=e.phon||'';$('kePos').value=e.pos||'';$('keMean').value=e.mean||'';$('keNote').value=e.note||'';$('keEn').value=e.en||'';$('keJa').value=e.ja||'';$('keSenses').value=e.senses&&e.senses.length?JSON.stringify(e.senses,null,2):'';$('kePath').textContent=customEditable()?'GitHub 學習資料 · 我的收藏':('GitHub · '+filePath());$('keSave').textContent=customEditable()?'儲存並同步 GitHub':'儲存並覆寫 GitHub';$('keBanner').textContent=customEditable()?'這張閃卡會更新本機收藏，並立即同步到既有 GitHub 學習資料。':'儲存時會先取得 GitHub 最新檔案與 SHA，只替換編號 '+String(e.id)+'，成功後畫面立即更新。';message(githubReady()?'':'尚未設定 GitHub。請先由上方雲朵完成 Repository 與 Token 設定。','err');$('keMask').classList.add('show');$('kePanel').classList.add('show');setTimeout(function(){$('keMean').focus()},40)}
+function formPatch(){var w=$('keWord').value.trim();if(!w)throw new Error('英文不可留空');var raw=$('keSenses').value.trim(),senses;if(raw){senses=JSON.parse(raw);if(!Array.isArray(senses))throw new Error('多義資料必須是 JSON 陣列')}return{word:w,phon:$('kePhon').value.trim(),pos:$('kePos').value.trim(),mean:$('keMean').value.trim(),note:$('keNote').value.trim(),en:$('keEn').value.trim(),ja:$('keJa').value.trim(),senses:senses}}
+function applyPatch(target,patch){['word','phon','pos','mean','note','en','ja'].forEach(function(k){target[k]=patch[k]});if(patch.senses&&patch.senses.length)target.senses=patch.senses;else delete target.senses;return target}
+function decode64(b64){var bin=atob(String(b64||'').replace(/\s/g,'')),a=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new TextDecoder().decode(a)}
+function encode64(text){var a=new TextEncoder().encode(text),out='',step=32768;for(var i=0;i<a.length;i+=step){var end=Math.min(a.length,i+step);for(var j=i;j<end;j++)out+=String.fromCharCode(a[j])}return btoa(out)}
+function dataArrayBounds(src){var m=/\bdata\s*:\s*\[/.exec(src);if(!m)throw new Error('GitHub 檔案找不到 data 陣列');var start=src.indexOf('[',m.index),depth=0,quote='',esc=false;for(var i=start;i<src.length;i++){var ch=src[i];if(quote){if(esc)esc=false;else if(ch==='\\')esc=true;else if(ch===quote)quote='';continue}if(ch==='"'||ch==="'"){quote=ch;continue}if(ch==='[')depth++;else if(ch===']'){depth--;if(depth===0)return[start,i]}}throw new Error('GitHub data 陣列格式不完整')}
+function replaceRemoteEntry(src,id,patch){var b=dataArrayBounds(src),raw=src.slice(b[0],b[1]+1),arr;try{arr=JSON.parse(raw)}catch(e){throw new Error('data 陣列不是可安全更新的 JSON：'+e.message)}var n=arr.findIndex(function(x){return String(x&&x.id)===String(id)});if(n<0)throw new Error('GitHub 最新檔案中找不到編號 '+id);applyPatch(arr[n],patch);return src.slice(0,b[0])+JSON.stringify(arr)+src.slice(b[1]+1)}
+function apiInfo(){var c=config(),p=filePath();if(!c.owner||!c.repo||!c.token)throw new Error('尚未設定 GitHub Repository 或 Token');if(!p||/^https?:/i.test(p)||p.indexOf('..')>=0)throw new Error('書籍資料路徑不安全或無法更新');var base='https://api.github.com/repos/'+encodeURIComponent(c.owner)+'/'+encodeURIComponent(c.repo)+'/contents/'+escPath(p);return{cfg:c,path:p,url:base+'?ref='+encodeURIComponent(c.branch||'main'),put:base,headers:{'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}}}
+function updateCollectedSource(id,patch){try{if(!window.KIN_COLLECT)return 0;var b=currentBook(),list=KIN_COLLECT.load(),n=0;list.forEach(function(c){if(String(c.srcBook||'kin1000')===String(b.id)&&String(c.srcId||'')===String(id)){c.srcWord=patch.word;c.srcNote=patch.note;c.srcEx=patch.en;c.srcExZh=patch.ja;n++}});if(n)KIN_COLLECT.save(list);return n}catch(e){return 0}}
+function clearBookCache(path){try{if(navigator.serviceWorker&&navigator.serviceWorker.controller)navigator.serviceWorker.controller.postMessage({type:'invalidate-book',path:path})}catch(e){}try{if('caches'in window)caches.keys().then(function(ns){return Promise.all(ns.map(function(n){return caches.open(n).then(function(c){return c.keys().then(function(rs){return Promise.all(rs.filter(function(r){try{return new URL(r.url).pathname.endsWith('/'+path)}catch(e){return false}}).map(function(r){return c.delete(r)}))})})}))})}catch(e){}}
+async function saveSource(patch){var info=apiInfo(),e=openEntry;if(!confirm('確定要用這次修改覆寫 GitHub 的「'+info.path+'」中編號 '+e.id+' 嗎？'))return false;message('正在取得 GitHub 最新版本…');var get=await fetch(info.url,{headers:info.headers,cache:'no-store'});if(!get.ok)throw new Error('讀取 GitHub 失敗：HTTP '+get.status);var remote=await get.json();if(!remote.sha||!remote.content)throw new Error('GitHub 沒有回傳檔案內容或 SHA');var next=replaceRemoteEntry(decode64(remote.content),e.id,patch);message('正在寫入 GitHub…');var body={message:'Edit '+e.id+' '+patch.word+' via TPX1000 editor',content:encode64(next),sha:remote.sha,branch:info.cfg.branch||'main'};var put=await fetch(info.put,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},info.headers),body:JSON.stringify(body)});if(!put.ok){var detail=(await put.text()).slice(0,240);if(put.status===409)throw new Error('GitHub 檔案剛被其他人更新，請關閉後重試。');throw new Error('寫入 GitHub 失敗：HTTP '+put.status+' '+detail)}applyPatch(e,patch);var synced=updateCollectedSource(e.id,patch);clearBookCache(info.path);try{currentList=filtered();currentIdx=currentList.findIndex(function(x){return String(x.id)===String(e.id)});showDetail();renderList()}catch(x){}message('已更新 GitHub，畫面也已套用。'+(synced?' 同步更新 '+synced+' 張來源閃卡。':''),'ok');toast('GitHub 資料已更新');return true}
+async function saveCustom(patch){var e=openEntry,list=KIN_COLLECT.load(),card=list.find(function(c){return String(c.id)===String(e.id)});if(!card)throw new Error('找不到這張收藏閃卡');var gm=Object.assign({},card.gm||{});gm.phon=patch.phon;gm.pos=patch.pos;gm.mean=patch.mean;gm.ex=patch.en;gm.exZh=patch.ja;gm.at=new Date().toISOString();card.word=patch.word;card.mean=patch.mean;card.srcNote=patch.note;card.gm=gm;KIN_COLLECT.save(list);window.__kinPendingOpen=e.id;if(typeof window.__kinReloadCollect==='function')window.__kinReloadCollect();var pushed=false;if(githubReady()&&typeof window.gsSyncNow==='function')pushed=await window.gsSyncNow();message(pushed?'已更新收藏並同步到 GitHub。':(githubReady()?'收藏已更新；GitHub 同步失敗，請點雲朵查看原因。':'收藏已更新於本機；設定 GitHub 後可同步。'),pushed?'ok':(githubReady()?'err':'ok'));toast(pushed?'收藏與 GitHub 已更新':'收藏資料已更新');return true}
+async function save(){if(busy||!openEntry)return;var patch;try{patch=formPatch()}catch(e){message('請修正：'+e.message,'err');return}busy=true;$('keSave').disabled=true;$('keCancel').disabled=true;try{var ok=customEditable()?await saveCustom(patch):await saveSource(patch);if(ok)setTimeout(function(){busy=false;$('keSave').disabled=false;$('keCancel').disabled=false;closeEditor()},900)}catch(e){message(e.message||String(e),'err');busy=false;$('keSave').disabled=false;$('keCancel').disabled=false}}
+function init(){var btn=$('keModeBtn');if(btn)btn.addEventListener('click',function(){setOn(!isOn())});$('keMask').addEventListener('click',closeEditor);$('keClose').addEventListener('click',closeEditor);$('keCancel').addEventListener('click',closeEditor);$('keSave').addEventListener('click',save);$('kePanel').addEventListener('keydown',function(ev){ev.stopPropagation();if(ev.key==='Escape')closeEditor();if((ev.ctrlKey||ev.metaKey)&&ev.key.toLowerCase()==='s'){ev.preventDefault();save()}},true);setOn(isOn());var oldShow=window.showDetail;if(typeof oldShow==='function')window.showDetail=function(){var r=oldShow.apply(this,arguments);setTimeout(paintEntryButton,0);return r};setInterval(function(){if(isOn())paintEntryButton()},700)}
+window.KIN_EDITOR={open:openEditor,close:closeEditor,toggle:function(){setOn(!isOn())},replaceRemoteEntry:replaceRemoteEntry};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+
 
 </body>
 </html>

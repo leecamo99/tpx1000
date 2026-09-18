@@ -1,17 +1,12 @@
 {
-  "name": "金のフレーズ 繁中版",
-  "short_name": "金フレ",
-  "description": "TOEIC L&R 出る単特急 金のフレーズ 單字學習 App（繁體中文）",
-  "lang": "zh-Hant",
+  "name": "TPX1000 TOEIC Vocabulary System",
+  "short_name": "TPX1000",
   "start_url": "./index.html",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#ffffff",
+  "background_color": "#0d0d0d",
   "theme_color": "#c45c1a",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {"src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
   ]
 }

@@ -1,5 +1,5 @@
 /* ===== 金のフレーズ 單字 App - Service Worker ===== */
-var VER = 'kin-shell-v57-shiko600';
+var VER = 'kin-shell-v58-data-editor';
 var AUDIO = 'kin-audio-v1';
 var CORE = ['./', './index.html', './books.js', './shiko600.js', './books/kin1000.js', './manifest.webmanifest', './roadmap.html', './roadmap.json', './devtools.html'];
 
@@ -54,7 +54,18 @@ self.addEventListener('fetch', function(ev){
     }).catch(function(){return caches.match('./index.html').then(function(r){return r||new Response('離線中，且尚未快取頁面。',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});});}));
     return;
   }
-  if(isBookData(url)||/\.(js|css|webmanifest|png|jpe?g|webp|gif|svg|json)(\?.*)?$/i.test(url.pathname)){
+  if(isBookData(url)){
+    // 可編輯的書籍資料採 network-first，避免 GitHub 更新後仍讀到舊快取。
+    ev.respondWith(caches.open(VER).then(function(cache){
+      var canonical=new Request(url.origin+url.pathname);
+      return fetch(new Request(req,{cache:'no-store'})).then(function(res){
+        if(res&&res.ok)cache.put(canonical,res.clone()).catch(function(){});
+        return res;
+      }).catch(function(){return cache.match(canonical).then(function(hit){return hit||new Response('',{status:504});});});
+    }));
+    return;
+  }
+  if(/\.(js|css|webmanifest|png|jpe?g|webp|gif|svg|json)$/i.test(url.pathname)){
     ev.respondWith(caches.open(VER).then(function(cache){
       return cache.match(req).then(function(hit){
         var net=fetch(req).then(function(res){if(res&&res.ok)cache.put(req,res.clone()).catch(function(){});return res;}).catch(function(){return hit;});
@@ -63,4 +74,12 @@ self.addEventListener('fetch', function(ev){
     }));
   }
 });
-self.addEventListener('message', function(ev){ if(ev.data==='skipWaiting') self.skipWaiting(); });
+self.addEventListener('message', function(ev){
+  if(ev.data==='skipWaiting'){ self.skipWaiting(); return; }
+  if(ev.data&&ev.data.type==='invalidate-book'&&ev.data.path){
+    var suffix='/'+String(ev.data.path).replace(/^\.\//,'');
+    ev.waitUntil(caches.keys().then(function(names){
+      return Promise.all(names.map(function(name){return caches.open(name).then(function(cache){return cache.keys().then(function(reqs){return Promise.all(reqs.filter(function(r){try{return new URL(r.url).pathname.endsWith(suffix);}catch(e){return false;}}).map(function(r){return cache.delete(r);}));});});}));
+    }));
+  }
+});

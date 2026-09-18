@@ -1,17 +1,16 @@
-Shiko600 整合驗證
-=================
+TPX1000 資料編輯功能驗證
+========================
 驗證日期：2026-09-18
 
-PASS  JavaScript 語法：index.html 內 37 段 inline script、books.js、shiko600.js、sw.js 均通過語法檢查。
-PASS  TEST 1：200 題，T1-Q001～T1-Q200。
-PASS  TEST 2：200 題，T2-Q001～T2-Q200。
-PASS  TEST 3：200 題，T3-Q001～T3-Q200。
-PASS  全 600 題均有有效選項、答案索引與 A/B/C/D 答案標籤。
-PASS  瀏覽器 HTTP 測試：三回各開啟一題、選項可點選、可檢查答案，主控台無錯誤。
-PASS  file:// 測試：可直接載入 Shiko600，TEST 2 Q100 可正常開啟，主控台無錯誤。
-PASS  Service Worker：已控制頁面，核心快取包含 index.html、books.js、shiko600.js 與 books/kin1000.js。
-PASS  離線測試：斷網重新載入後仍可開啟 Shiko600 的 600 題。
-PASS  圖示圖片：4 個 PNG 均可解碼（180、192、512、512 px）。
-PASS  既有 MP3：3,267 個檔案全部通過 ffprobe 解碼；Range 請求回傳 HTTP 206、audio/mpeg。
-INFO  Shiko600 視覺題：共 34 題標示 requiresVisual，但來源資料沒有圖片路徑或圖片檔。
-INFO  Shiko600 音訊：來源資料沒有 MP3 路徑或 MP3 檔；介面會顯示缺少媒體，並提供系統語音朗讀。
+PASS  以最新的「index 39.html」為基礎整合，保留其既有功能。
+PASS  43 段 inline JavaScript 全部通過 node --check。
+PASS  file:// 瀏覽器測試：明確載入 books/kin1000.js?v=<timestamp>，共 1,817 筆。
+PASS  頁面無 console error / page error。
+PASS  右下角「工具」可啟用資料編輯模式；解說頁會顯示「編輯這筆資料」。
+PASS  編輯視窗可修改英文、音標、詞性、中文、解說、例句、繁中翻譯與多義 JSON。
+PASS  模擬 GitHub Contents API：先 GET 最新檔案與 SHA，再 PUT books/kin1000.js；只更新指定 id。
+PASS  GitHub 寫回後的 kin1000.js 再次通過 node --check，畫面也立即顯示新翻譯。
+PASS  「我的收藏」測試：readership 可改為「讀者群」、詞性「名」，並同步至 GitHub 學習資料。
+PASS  編輯器畫面截圖：editor-verified.png（430 × 920）。
+
+注意：實際 GitHub 寫入需在 App 雲朵設定中填入 repository owner、name、branch，以及具 Contents: Read and write 權限的 fine-grained token。
