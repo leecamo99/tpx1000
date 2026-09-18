@@ -479,18 +479,17 @@ body.theme-dark .sn-weak b{color:#e5e0da}
 }
 .db-idbar .note-tts-btn{
   display:inline-flex;align-items:center;justify-content:center;
-  width:24px;height:24px;padding:0;border-radius:50%;flex:0 0 auto;
-  background:transparent;border:1.5px solid #c45c1a;color:#c45c1a;
+  width:28px;height:24px;padding:0;flex:0 0 auto;
+  background:transparent;border:0;border-radius:0;color:#fff;
   cursor:pointer;-webkit-tap-highlight-color:transparent;
-  transition:transform .12s,border-color .15s,color .15s
+  transition:transform .12s,opacity .15s
 }
-.db-idbar .note-tts-btn svg{width:13px;height:13px;display:block}
-.db-idbar .note-tts-btn:active{transform:scale(.90)}
-.db-idbar .note-tts-btn.speaking{background:#c45c1a;color:#fff;animation:noteTtsPulse 1s ease-in-out infinite}
-.db-idbar .note-tts-btn[disabled]{opacity:.35;border-color:#888;color:#888;cursor:default}
-@keyframes noteTtsPulse{0%,100%{box-shadow:0 0 0 0 rgba(196,92,26,.45)}50%{box-shadow:0 0 0 5px rgba(196,92,26,0)}}
-body.theme-dark .db-idbar .note-tts-btn{border-color:#ff9142;color:#ff9142}
-body.theme-dark .db-idbar .note-tts-btn.speaking{background:#ff9142;color:#241a10}
+.db-idbar .note-tts-btn svg{width:16px;height:16px;display:block}
+.db-idbar .note-tts-btn:active{transform:scale(.90);opacity:.72}
+.db-idbar .note-tts-btn.speaking{background:transparent;color:#fff;opacity:.78}
+.db-idbar .note-tts-btn[disabled]{opacity:.28;color:#fff;cursor:default}
+body.theme-dark .db-idbar .note-tts-btn,
+body.theme-dark .db-idbar .note-tts-btn.speaking{background:transparent;color:#fff}
 .senses-block{margin:0!important;padding:0!important}
 .senses-block.show{display:block}
 .sense-card{
@@ -1660,79 +1659,41 @@ function hardStopAllPlayback(){
   document.querySelectorAll('#itemList .item').forEach(function(el){el.classList.remove('is-playing');});
 }
 
-/* ===== 唸註解 TTS（解說頁 ◎ 註解區塊朗讀） =====
-   註解為中文夾雜英文單字/例句，走系統語音並優先挑選中文（zh-TW）發音，
-   與既有雲端 TTS（英文單字/例句）分開，避免互相干擾。 */
+/* ===== Cloud TTS 唸註解（解說頁 ◎ 註解區塊朗讀） =====
+   強制沿用既有 Cloud TTS API Key 與音訊播放器，中文使用台灣國語 WaveNet。 */
 (function(){
   'use strict';
   var noteSpeaking = false;
-
-  function pickZhVoice(){
-    try{
-      var vs = window.speechSynthesis.getVoices() || [];
-      for(var i=0;i<vs.length;i++){ if(/^zh[-_]?(TW|HK)/i.test(vs[i].lang)) return vs[i]; }
-      for(var j=0;j<vs.length;j++){ if(/^zh/i.test(vs[j].lang)) return vs[j]; }
-    }catch(e){}
-    return null;
-  }
-
   var ICON_SPEAK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   var ICON_STOP  = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
-
   function syncBtn(){
-    var b = document.getElementById('dbNoteTts');
-    if(!b) return;
-    b.classList.toggle('speaking', noteSpeaking);
-    b.innerHTML = noteSpeaking ? ICON_STOP : ICON_SPEAK;
-    b.title = noteSpeaking ? '停止播放註解語音' : '播放註解語音（TTS）';
+    var b=document.getElementById('dbNoteTts'); if(!b)return;
+    b.classList.toggle('speaking',noteSpeaking);
+    b.innerHTML=noteSpeaking?ICON_STOP:ICON_SPEAK;
+    b.title=noteSpeaking?'停止播放註解語音':'播放註解語音（Cloud TTS）';
   }
-  window.__kinNoteTtsSyncBtn = syncBtn;
-
+  window.__kinNoteTtsSyncBtn=syncBtn;
   function stopNoteTts(){
-    if(!noteSpeaking) return;
-    noteSpeaking = false;
-    try{ window.speechSynthesis.cancel(); }catch(e){}
+    if(!noteSpeaking)return;
+    noteSpeaking=false;
+    try{if(typeof window.__kinTtsStop==='function')window.__kinTtsStop()}catch(e){}
+    try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}
     syncBtn();
   }
-  window.__kinNoteTtsStop = stopNoteTts;
-
-  // 供遙控器／實體按鈕與畫面上的按鈕共用；再按一次＝停止（toggle）
-  window.kinPlayNoteTts = function(){
-    if(noteSpeaking){ stopNoteTts(); return; }
-    if(!currentList || !currentList.length || currentIdx == null || currentIdx < 0){
-      if(typeof window.__kinToast === 'function') window.__kinToast('沒有目前單字');
-      return;
-    }
-    var e = currentList[currentIdx];
-    var note = e ? String(e.note || '').trim() : '';
-    if(!note){
-      if(typeof window.__kinToast === 'function') window.__kinToast('這筆沒有可播放的註解');
-      return;
-    }
-    if(!('speechSynthesis' in window)){
-      if(typeof window.__kinToast === 'function') window.__kinToast('此瀏覽器不支援語音朗讀');
-      return;
-    }
-    try{ hardStopAllPlayback(); }catch(err){}
-    try{ window.speechSynthesis.cancel(); }catch(err){}
-    var u = new SpeechSynthesisUtterance(note);
-    u.lang = 'zh-TW';
-    u.rate = 1;
-    var v = pickZhVoice();
-    if(v) u.voice = v;
-    var done = false;
-    function finish(){
-      if(done) return;
-      done = true;
-      noteSpeaking = false;
-      syncBtn();
-    }
-    u.onend = finish;
-    u.onerror = finish;
-    noteSpeaking = true;
-    syncBtn();
-    try{ window.speechSynthesis.speak(u); }
-    catch(e2){ finish(); }
+  window.__kinNoteTtsStop=stopNoteTts;
+  window.kinPlayNoteTts=function(){
+    if(noteSpeaking){stopNoteTts();return}
+    if(!currentList||!currentList.length||currentIdx==null||currentIdx<0){if(typeof window.__kinToast==='function')window.__kinToast('沒有目前單字');return}
+    var e=currentList[currentIdx];
+    var note=e?String(e.note||'').replace(/\s+/g,' ').trim():'';
+    if(!note){if(typeof window.__kinToast==='function')window.__kinToast('這筆沒有可播放的註解');return}
+    if(typeof window.kinSpeakNoteCloud!=='function'){if(typeof window.__kinToast==='function')window.__kinToast('Cloud TTS 尚未就緒');return}
+    try{hardStopAllPlayback()}catch(err){}
+    var done=false;
+    function finish(){if(done)return;done=true;noteSpeaking=false;syncBtn()}
+    noteSpeaking=true;syncBtn();
+    var handled=window.kinSpeakNoteCloud(note,finish);
+    if(!handled)finish();
   };
 })();
 
@@ -6986,6 +6947,32 @@ body.theme-dark #nwBox .note{color:#6a6661}
         if(typeof window.__kinToast === 'function') window.__kinToast('雲端語音失敗，改用系統語音');
         speakSystem(text, onend);
       });
+    });
+    return true;
+  };
+
+  /* 註解專用 Cloud TTS：沿用相同 API Key、IndexedDB 快取與持久 audio 元素。 */
+  window.kinSpeakNoteCloud=function(text,onend){
+    text=String(text||'').trim();
+    if(!text)return false;
+    var key=ttsKey();
+    if(!key){if(typeof window.__kinToast==='function')window.__kinToast('請先到使用者專區設定 Cloud TTS API Key');return false}
+    var voiceName='cmn-TW-Wavenet-A';
+    var dbKey=voiceName+'|'+text.toLowerCase();
+    ttsStop();
+    var myGen=ttsGen;
+    function stale(){return myGen!==ttsGen}
+    function release(){if(typeof onend==='function')onend()}
+    TTSDB.get(dbKey).then(function(rec){
+      if(stale()){release();return}
+      if(rec&&rec.b64){TTSDB.put(dbKey,{b64:rec.b64,at:Date.now(),text:text,voice:voiceName});ttsPlayB64(rec.b64,onend);return}
+      fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key),{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({input:{text:text},voice:{languageCode:'cmn-TW',name:voiceName},audioConfig:{audioEncoding:'MP3',speakingRate:1.0}})
+      })
+      .then(function(r){return r.ok?r.json():r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t.slice(0,120))})})
+      .then(function(j){if(!j.audioContent)throw new Error('回應沒有音訊內容');TTSDB.put(dbKey,{b64:j.audioContent,at:Date.now(),text:text,voice:voiceName});if(stale()){release();return}ttsPlayB64(j.audioContent,onend)})
+      .catch(function(err){if(stale()){release();return}console.warn('註解 Cloud TTS 失敗：',err.message);if(typeof window.__kinToast==='function')window.__kinToast('註解 Cloud TTS 失敗');release()});
     });
     return true;
   };
