@@ -1,5 +1,5 @@
 /* ===== 金のフレーズ 單字 App - Service Worker ===== */
-var VER = 'kin-shell-v65-note-tts-github-fix';
+var VER = 'kin-shell-v66-note-tts-safari-fix';
 var AUDIO = 'kin-audio-v1';
 var CORE = ['./', './index.html', './books.js', './shiko600.js', './books/kin1000.js', './manifest.webmanifest', './roadmap.html', './roadmap.json', './devtools.html'];
 
