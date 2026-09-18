@@ -7349,34 +7349,44 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   async function rdZipGet(k){var d=await rdZipDb();return new Promise(function(ok,no){var r=d.transaction(RD_ZIP_STORE).objectStore(RD_ZIP_STORE).get(k);r.onsuccess=function(){d.close();ok(r.result)};r.onerror=function(){d.close();no(r.error)}});}
   function rdZipBase(p){return String(p||'').split('/').pop();}
   function rdZipAudioInfo(path){var f=rdZipBase(path),m=f.match(/^(\d+)_T([123])_(\d+)(?:-(\d+))?\.mp3$/i);return m?{test:+m[2],from:+m[3],to:+(m[4]||m[3]),path:path}:null;}
-  function rdZipClean(x){return String(x||'').replace(/[\u00a0\u2000-\u200b]/g,' ').replace(/\s+/g,' ').replace(/\s+([,.;:?!])/g,'$1').trim();}
-  function rdZipParseQuestions(pages){var out={1:[],2:[],3:[]},seen={},test=1,last=0;
-    pages.forEach(function(raw){var text=rdZipClean(raw),re=/(?:^|\s)(\d{1,3})[.．]\s+(.+?)(?=(?:\s+\d{1,3}[.．]\s+)|$)/g,m;
-      while((m=re.exec(text))){var n=+m[1],b=m[2];if(n<1||n>200)continue;if(last>150&&n<40)test=Math.min(3,test+1);last=n;
-        var options=[],om,ore=/\(([A-D])\)\s*(.+?)(?=\s*\([A-D]\)|$)/g;while((om=ore.exec(b)))options.push(rdZipClean(om[2]));
-        if(options.length<3)continue;var cut=b.search(/\([A-D]\)/),q=cut>=0?rdZipClean(b.slice(0,cut)):'';if(!q)continue;var k=test+'-'+n;if(seen[k])continue;seen[k]=1;
-        out[test].push({q:q,options:options.slice(0,4),answer:-1,zh:'',tip:'',number:n,test:test,audioKey:''});
-      }});
-    Object.keys(out).forEach(function(k){out[k].sort(function(a,b){return a.number-b.number;});});return out;}
+  function rdZipClean(x){return String(x||'').replace(/[\u00a0\u2000-\u200b]/g,' ').replace(/[ \t]+/g,' ').replace(/\s+([,.;:?!])/g,'$1').trim();}
+  function rdZipTestNo(path,fallback){var x=String(path||'');var m=x.match(/(?:^|[^A-Z0-9])T(?:EST)?[ _-]*([123])(?:[^0-9]|$)/i)||x.match(/(?:模試|模擬|第)[ _-]*([一二三123])/);if(!m)return fallback||1;var v=m[1];return v==='一'?1:v==='二'?2:v==='三'?3:+v;}
+  function rdZipChoiceParts(block){
+    var mark=/(?:\(|（)?([A-D])(?:\)|）|[.．、:：])\s*/g,hits=[],m;
+    while((m=mark.exec(block)))hits.push({letter:m[1],at:m.index,end:mark.lastIndex});
+    if(hits.length<3)return null;
+    var options=[];for(var i=0;i<hits.length&&i<4;i++){var stop=(i+1<hits.length?hits[i+1].at:block.length);options.push(rdZipClean(block.slice(hits[i].end,stop)));}
+    return {first:hits[0].at,options:options};
+  }
+  function rdZipParseQuestions(pages,testHint){var out=[],seen={};
+    pages.forEach(function(raw){
+      var text=String(raw||'').replace(/\r/g,'\n').replace(/\n{3,}/g,'\n\n');
+      var re=/(?:^|\n|\s)(\d{1,3})(?:\s*[.．、:]|\s{1,3})([\s\S]+?)(?=(?:\n|\s)\d{1,3}(?:\s*[.．、:]|\s{1,3})|$)/g,m;
+      while((m=re.exec(text))){var n=+m[1],b=m[2];if(n<1||n>200||seen[n])continue;var cp=rdZipChoiceParts(b);if(!cp)continue;var q=rdZipClean(b.slice(0,cp.first));if(!q||q.length<2)continue;seen[n]=1;out.push({q:q,options:cp.options,answer:-1,zh:'',tip:'',number:n,test:testHint,audioKey:''});}
+    });out.sort(function(a,b){return a.number-b.number;});return out;}
   async function rdZipPdfModule(){try{return await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');}catch(e){throw new Error('PDF 解析元件載入失敗，請確認網路連線後重試');}}
-  async function rdZipPdfPages(entry){var lib=await rdZipPdfModule();lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';var ab=await entry.async('arraybuffer'),doc=await lib.getDocument({data:ab}).promise,p=[];for(var i=1;i<=doc.numPages;i++){msg('正在讀取 PDF：'+i+' / '+doc.numPages+' 頁');var pg=await doc.getPage(i),tc=await pg.getTextContent();p.push(tc.items.map(function(v){return v.str||''}).join(' '));if(i%6===0)await new Promise(function(r){setTimeout(r,0)});}return p;}
+  async function rdZipPdfPages(entry){var lib=await rdZipPdfModule();lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';var ab=await entry.async('arraybuffer'),doc=await lib.getDocument({data:ab}).promise,p=[];
+    for(var i=1;i<=doc.numPages;i++){msg('正在讀取 '+rdZipBase(entry.name)+'：'+i+' / '+doc.numPages+' 頁');var pg=await doc.getPage(i),tc=await pg.getTextContent(),rows={};
+      tc.items.forEach(function(v){var y=Math.round((v.transform&&v.transform[5])||0);(rows[y]||(rows[y]=[])).push(v);});
+      var lines=Object.keys(rows).map(Number).sort(function(a,b){return b-a}).map(function(y){return rows[y].sort(function(a,b){return ((a.transform&&a.transform[4])||0)-((b.transform&&b.transform[4])||0)}).map(function(v){return v.str||''}).join(' ')});
+      p.push(lines.join('\n'));if(i%5===0)await new Promise(function(r){setTimeout(r,0)});
+    }return p;}
   window.rdImportZip=function(){var x=document.getElementById('rdZipFile');if(x)x.click();};
   window.rdPlayZipAudio=async function(key,btn){try{var b=await rdZipGet(key);if(!b)throw new Error('找不到已儲存的音檔，請重新匯入 ZIP');if(rdZipAudio)rdZipAudio.pause();if(rdZipUrl)URL.revokeObjectURL(rdZipUrl);rdZipUrl=URL.createObjectURL(b);rdZipAudio=new Audio(rdZipUrl);if(btn)btn.textContent='播放中…';rdZipAudio.onended=function(){if(btn)btn.textContent='播放音檔'};await rdZipAudio.play();}catch(e){msg('播放失敗：'+e.message,true);}};
   window.rdReadZip=async function(inp){var file=inp.files&&inp.files[0];if(!file)return;try{
       if(!window.JSZip)throw new Error('ZIP 元件尚未載入，請保持網路連線並重新整理後再試');msg('正在本機解壓 ZIP…');
       var z=await JSZip.loadAsync(file),all=Object.keys(z.files).map(function(k){return z.files[k]}).filter(function(e){return !e.dir});
-      var mp3=all.filter(function(e){return /\.mp3$/i.test(e.name)}),pdf=all.filter(function(e){return /\.pdf$/i.test(e.name)&&!/解答|解説|答案|answer/i.test(e.name)});
+      var mp3=all.filter(function(e){return /\.mp3$/i.test(e.name)}),pdf=all.filter(function(e){return /\.pdf$/i.test(e.name)&&!/解答|解説|答案|答題|answer/i.test(e.name)});
       if(!pdf.length)throw new Error('ZIP 裡找不到試題 PDF');
       var amap={1:{},2:{},3:{}},saved=0;
       for(var i=0;i<mp3.length;i++){var inf=rdZipAudioInfo(mp3[i].name);if(!inf)continue;var key='zip:'+file.name+':'+inf.path;await rdZipPut(key,await mp3[i].async('blob'));for(var n=inf.from;n<=inf.to;n++)amap[inf.test][n]=key;saved++;if(saved%8===0)msg('正在儲存音檔：'+saved+' 個');}
-      pdf.sort(function(a,b){return ((b._data&&b._data.uncompressedSize)||0)-((a._data&&a._data.uncompressedSize)||0)});
-      var parsed=rdZipParseQuestions(await rdZipPdfPages(pdf[0])),banks=[],stamp=Date.now();
-      [1,2,3].forEach(function(t){var items=parsed[t];items.forEach(function(q){q.audioKey=amap[t][q.number]||''});if(items.length)banks.push({id:'ZIP-'+stamp+'-T'+t,kind:'quiz',title:'ZIP 題庫 TEST '+t,scene:'本機 ZIP',items:items,used:[],article:'',at:new Date().toISOString(),imported:true});});
-      if(!banks.length)throw new Error('PDF 沒有可讀取的文字層，或題目排版規則尚未匹配');var a=load();for(var j=banks.length-1;j>=0;j--)a.unshift(banks[j]);save(a);
-      var total=banks.reduce(function(v,b){return v+b.items.length},0),linked=banks.reduce(function(v,b){return v+b.items.filter(function(q){return q.audioKey}).length},0);
+      var byTest={1:[],2:[],3:[]},pageCount=0,textChars=0;
+      for(var pi=0;pi<pdf.length;pi++){var hint=rdZipTestNo(pdf[pi].name,Math.min(3,pi+1)),pages=await rdZipPdfPages(pdf[pi]);pageCount+=pages.length;pages.forEach(function(x){textChars+=x.replace(/\s/g,'').length});var got=rdZipParseQuestions(pages,hint);byTest[hint]=byTest[hint].concat(got);}
+      var banks=[],stamp=Date.now();[1,2,3].forEach(function(t){var seen={},items=byTest[t].filter(function(q){if(seen[q.number])return false;seen[q.number]=1;return true}).sort(function(a,b){return a.number-b.number});items.forEach(function(q){q.audioKey=amap[t][q.number]||''});if(items.length)banks.push({id:'ZIP-'+stamp+'-T'+t,kind:'quiz',title:'ZIP 題庫 TEST '+t,scene:'本機 ZIP',items:items,used:[],article:'',at:new Date().toISOString(),imported:true});});
+      if(!banks.length){var reason=textChars<100?'PDF 幾乎沒有文字層，應是掃描圖片版':'PDF 有文字，但題號／選項格式仍未匹配';throw new Error(reason+'（PDF '+pdf.length+' 份、'+pageCount+' 頁、文字 '+textChars+' 字；辨識到 MP3 '+saved+' 個）');}
+      var a=load();for(var j=banks.length-1;j>=0;j--)a.unshift(banks[j]);save(a);var total=banks.reduce(function(v,b){return v+b.items.length},0),linked=banks.reduce(function(v,b){return v+b.items.filter(function(q){return q.audioKey}).length},0);
       msg('匯入完成：'+total+' 題、'+saved+' 個音檔；'+linked+' 題已配對音檔。');view='list';openId='';render();window.scrollTo(0,0);
     }catch(e){msg('ZIP 匯入失敗：'+e.message,true);}finally{inp.value='';}};
-
   window.KIN_BANK_SCHEMA={title:'題庫名稱',source:'來源',article:'選填文章',questions:[{q:'題目',options:['A','B','C','D'],answer:0,zh:'選填翻譯',explain:'解析'}]};
 
   window.rdGenPassage = function(){
@@ -13084,7 +13094,7 @@ body.theme-dark #settingsCloudSyncBtn .cloudIcon:before,body.theme-dark #setting
 <style id="tpxMobileMenuV2">
 /* 1. Left entry uses one plain outlined square, not a hamburger or emoji. */
 #mobileMenuBtn span{display:none!important}
-#mobileMenuBtn .squareMark{display:block!important;width:14px!important;height:14px!important;border:2px solid currentColor!important;border-radius:2px!important;background:transparent!important;box-sizing:border-box!important}
+#mobileMenuBtn .squareMark{display:block!important;width:14px!important;height:14px!important;border:2px solid #fff!important;border-radius:2px!important;background:transparent!important;box-sizing:border-box!important}
 /* Cloud sync now exists only inside Settings/User panel. */
 #gsFab{display:none!important}
 @media (max-width:767px){
