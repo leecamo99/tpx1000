@@ -24489,47 +24489,7 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
    - 撞到 429 自動換下一支，全部用完才回報失敗
    - 每支金鑰各自記錄冷卻時間，到點自動解除
    - 相容 V3.2 的 KIN_GM 傳輸層；舊的 kinGeminiKey 會自動匯入
-   貼在 
-<style id="noteTtsGithubStyle">
-.db-idbar{align-items:center;gap:8px}.db-idbar .note-tts-tools{margin-left:auto;display:flex;align-items:center;gap:6px}.db-idbar .note-tts-btn{width:38px;height:32px;border:1.5px solid #e86f00;border-radius:9px;background:transparent;color:#e86f00;display:flex;align-items:center;justify-content:center;padding:4px;touch-action:manipulation}.db-idbar .note-tts-btn svg{width:25px;height:25px;display:block}.db-idbar .note-tts-btn.regen{width:32px;color:#9a938c;border-color:#777}.db-idbar .note-tts-btn:active{transform:scale(.92)}.db-idbar .note-tts-btn.on{background:#e86f00;color:#fff}.db-idbar .note-tts-btn.busy{opacity:.55;pointer-events:none}body.theme-dark .db-idbar .note-tts-btn{border-color:#ff9142;color:#ff9142}body.theme-dark .db-idbar .note-tts-btn.regen{border-color:#666;color:#aaa}
-</style>
-<script>
-/* ===== TPX1000 GitHub 註解 TTS ===== */
-(function(){
-'use strict';
-if(window.KIN_NOTE_TTS)return;
-var audio=null,busy=false,playing=false;
-var FACE='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="1.5" fill="currentColor"/><path d="M8.8 3.2c1.5 2.2 2.7 4.4 2.7 6.1 0 1.4-1.1 2.2-2.5 2.2H7.6c-.9 0-1.5.7-1.5 1.5v2.1c0 .8-.6 1.4-1.4 1.4H2.8M14 8.2c1.2 1.1 1.2 2.5 0 3.6M17 6c2.7 2.4 2.7 5.6 0 8M20 3.7c4.2 3.8 4.2 8.8 0 12.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-var REGEN='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8a8 8 0 1 0 1 7M19 8V3m0 5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-function el(id){return document.getElementById(id)}
-function cfg(){try{return JSON.parse(localStorage.getItem('gsConfig')||'{}')||{}}catch(e){return{}}}
-function entry(){try{return currentList[currentIdx]||null}catch(e){return null}}
-function book(){try{return CURRENT_BOOK&&CURRENT_BOOK.id?String(CURRENT_BOOK.id):'kin1000'}catch(e){return'kin1000'}}
-function safe(v){return String(v||'').replace(/[^A-Za-z0-9._-]/g,'_')}
-function path(){var e=entry();return 'audio/notes/'+safe(book())+'/'+safe(e&&e.id)+'.mp3'}
-function url(bust){return './'+path()+(bust?'?v='+Date.now():'')}
-function note(){var e=entry();return String(e&&e.note||'').replace(/\s+/g,' ').trim()}
-function toast(t){var x=el('rcToast')||el('uxToast');if(x){x.textContent=t;x.classList.add('show');setTimeout(function(){x.classList.remove('show')},1800)}}
-function paint(){var p=el('noteTtsBtn'),r=el('noteTtsRegen');if(p){p.classList.toggle('on',playing);p.classList.toggle('busy',busy)}if(r)r.classList.toggle('busy',busy)}
-function stop(){if(audio){try{audio.pause();audio.currentTime=0}catch(e){}}playing=false;paint()}
-function playSrc(src){stop();audio=audio||new Audio();audio.src=src;audio.onplay=function(){playing=true;paint()};audio.onended=audio.onerror=function(){playing=false;paint()};return audio.play()}
-function ghInfo(){var c=cfg(),p=path(),br=c.branch||'main';if(!c.owner||!c.repo)throw Error('尚未設定 GitHub Repository');var base='https://api.github.com/repos/'+encodeURIComponent(c.owner)+'/'+encodeURIComponent(c.repo)+'/contents/'+p.split('/').map(encodeURIComponent).join('/');return{c:c,p:p,get:base+'?ref='+encodeURIComponent(br),put:base,raw:'https://raw.githubusercontent.com/'+encodeURIComponent(c.owner)+'/'+encodeURIComponent(c.repo)+'/'+encodeURIComponent(br)+'/'+p,h:{'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}}}
-function getExisting(){var g=ghInfo();return fetch(g.raw+'?v='+Date.now(),{cache:'no-store'}).then(function(r){if(r.ok)return r.blob();if(r.status===404)return null;throw Error('GitHub 音檔讀取失敗 '+r.status)})}
-function synth(){var text=note(),key='';try{key=localStorage.getItem('kinTtsKey')||''}catch(e){}if(!text)throw Error('這一筆沒有註解');if(!key)throw Error('尚未設定 Cloud TTS API Key');return fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:{text:text},voice:{languageCode:'cmn-TW',name:'cmn-TW-Wavenet-A'},audioConfig:{audioEncoding:'MP3',speakingRate:.94}})}).then(function(r){return r.json().then(function(j){if(!r.ok||!j.audioContent)throw Error(j&&j.error&&j.error.message||'TTS 生成失敗');return j.audioContent})})}
-function upload(b64){var g=ghInfo();if(!g.c.token)throw Error('尚未設定 GitHub Token，無法共用音檔');return fetch(g.get,{headers:g.h,cache:'no-store'}).then(function(r){if(r.status===404)return null;if(!r.ok)throw Error('GitHub 查詢失敗 '+r.status);return r.json()}).then(function(old){return fetch(g.put,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},g.h),body:JSON.stringify({message:'Update note TTS '+safe(entry().id),content:b64,branch:g.c.branch||'main',sha:old&&old.sha||undefined})})}).then(function(r){if(!r.ok)return r.json().then(function(j){throw Error(j.message||('GitHub 上傳失敗 '+r.status))});return r.json()})}
-function b64url(b64){return 'data:audio/mpeg;base64,'+b64}
-function generate(regen){busy=true;paint();toast(regen?'重新生成註解語音':'正在生成註解語音');return synth().then(function(b64){return upload(b64).then(function(){toast('註解語音已上傳 GitHub');return playSrc(b64url(b64))})}).catch(function(e){toast(e.message||String(e));throw e}).finally(function(){busy=false;paint()})}
-function play(){if(busy)return;if(playing){stop();return}busy=true;paint();getExisting().then(function(blob){if(blob){toast('播放 GitHub 註解語音');return playSrc(URL.createObjectURL(blob))}return generate(false)}).catch(function(e){toast(e.message||String(e))}).finally(function(){busy=false;paint()})}
-function regen(){if(busy)return;stop();generate(true)}
-function mount(){var bar=document.querySelector('#detailBook .db-idbar');if(!bar)return;var old=el('noteTtsTools');if(old)old.remove();var w=document.createElement('span');w.id='noteTtsTools';w.className='note-tts-tools';w.innerHTML='<button type="button" id="noteTtsBtn" class="note-tts-btn" aria-label="播放註解語音" title="播放註解語音">'+FACE+'</button><button type="button" id="noteTtsRegen" class="note-tts-btn regen" aria-label="重新生成註解語音" title="重新生成註解語音">'+REGEN+'</button>';bar.appendChild(w);el('noteTtsBtn').onclick=play;el('noteTtsRegen').onclick=regen;paint()}
-new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});
-window.addEventListener('keydown',function(ev){if(ev.ctrlKey||ev.metaKey||ev.altKey||ev.repeat)return;if(/input|textarea|select/i.test(ev.target&&ev.target.tagName||''))return;if(ev.key==='n'||ev.key==='N'){ev.preventDefault();ev.stopImmediatePropagation();play()}},true);
-var last=false;function pad(){requestAnimationFrame(pad);if(!navigator.getGamepads)return;var ps=navigator.getGamepads(),d=false;for(var i=0;ps&&i<ps.length;i++){var p=ps[i];if(p&&p.buttons&&p.buttons[4])d=d||p.buttons[4].pressed||p.buttons[4].value>.5}if(d&&!last)play();last=d}pad();
-window.KIN_NOTE_TTS={play:play,stop:stop,regenerate:regen,path:path};mount();
-})();
-</script>
-
-</body> 之前，且必須放在 V3.2 的 KIN_GM 那段 script「之後」
+   貼在 </body> 之前，且必須放在 V3.2 的 KIN_GM 那段 script「之後」
    ========================================================================== */
 (function(){
   'use strict';
@@ -26010,5 +25970,43 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
+<style id="noteTtsGithubStyle">
+.db-idbar{align-items:center;gap:8px}.db-idbar .note-tts-tools{margin-left:auto;display:flex;align-items:center;gap:6px}.db-idbar .note-tts-btn{width:38px;height:32px;border:1.5px solid #e86f00;border-radius:9px;background:transparent;color:#e86f00;display:flex;align-items:center;justify-content:center;padding:4px;touch-action:manipulation}.db-idbar .note-tts-btn svg{width:25px;height:25px;display:block}.db-idbar .note-tts-btn.regen{width:32px;color:#9a938c;border-color:#777}.db-idbar .note-tts-btn:active{transform:scale(.92)}.db-idbar .note-tts-btn.on{background:#e86f00;color:#fff}.db-idbar .note-tts-btn.busy{opacity:.55;pointer-events:none}body.theme-dark .db-idbar .note-tts-btn{border-color:#ff9142;color:#ff9142}body.theme-dark .db-idbar .note-tts-btn.regen{border-color:#666;color:#aaa}
+</style>
+<script>
+/* ===== TPX1000 GitHub 註解 TTS ===== */
+(function(){
+'use strict';
+if(window.KIN_NOTE_TTS)return;
+var audio=null,busy=false,playing=false;
+var FACE='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="5" r="1.5" fill="currentColor"/><path d="M8.8 3.2c1.5 2.2 2.7 4.4 2.7 6.1 0 1.4-1.1 2.2-2.5 2.2H7.6c-.9 0-1.5.7-1.5 1.5v2.1c0 .8-.6 1.4-1.4 1.4H2.8M14 8.2c1.2 1.1 1.2 2.5 0 3.6M17 6c2.7 2.4 2.7 5.6 0 8M20 3.7c4.2 3.8 4.2 8.8 0 12.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var REGEN='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8a8 8 0 1 0 1 7M19 8V3m0 5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function el(id){return document.getElementById(id)}
+function cfg(){try{return JSON.parse(localStorage.getItem('gsConfig')||'{}')||{}}catch(e){return{}}}
+function entry(){try{return currentList[currentIdx]||null}catch(e){return null}}
+function book(){try{return CURRENT_BOOK&&CURRENT_BOOK.id?String(CURRENT_BOOK.id):'kin1000'}catch(e){return'kin1000'}}
+function safe(v){return String(v||'').replace(/[^A-Za-z0-9._-]/g,'_')}
+function path(){var e=entry();return 'audio/notes/'+safe(book())+'/'+safe(e&&e.id)+'.mp3'}
+function url(bust){return './'+path()+(bust?'?v='+Date.now():'')}
+function note(){var e=entry();return String(e&&e.note||'').replace(/\s+/g,' ').trim()}
+function toast(t){var x=el('rcToast')||el('uxToast');if(x){x.textContent=t;x.classList.add('show');setTimeout(function(){x.classList.remove('show')},1800)}}
+function paint(){var p=el('noteTtsBtn'),r=el('noteTtsRegen');if(p){p.classList.toggle('on',playing);p.classList.toggle('busy',busy)}if(r)r.classList.toggle('busy',busy)}
+function stop(){if(audio){try{audio.pause();audio.currentTime=0}catch(e){}}playing=false;paint()}
+function playSrc(src){stop();audio=audio||new Audio();audio.src=src;audio.onplay=function(){playing=true;paint()};audio.onended=audio.onerror=function(){playing=false;paint()};return audio.play()}
+function ghInfo(){var c=cfg(),p=path(),br=c.branch||'main';if(!c.owner||!c.repo)throw Error('尚未設定 GitHub Repository');var base='https://api.github.com/repos/'+encodeURIComponent(c.owner)+'/'+encodeURIComponent(c.repo)+'/contents/'+p.split('/').map(encodeURIComponent).join('/');return{c:c,p:p,get:base+'?ref='+encodeURIComponent(br),put:base,raw:'https://raw.githubusercontent.com/'+encodeURIComponent(c.owner)+'/'+encodeURIComponent(c.repo)+'/'+encodeURIComponent(br)+'/'+p,h:{'Authorization':'Bearer '+c.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}}}
+function getExisting(){var g=ghInfo();return fetch(g.raw+'?v='+Date.now(),{cache:'no-store'}).then(function(r){if(r.ok)return r.blob();if(r.status===404)return null;throw Error('GitHub 音檔讀取失敗 '+r.status)})}
+function synth(){var text=note(),key='';try{key=localStorage.getItem('kinTtsKey')||''}catch(e){}if(!text)throw Error('這一筆沒有註解');if(!key)throw Error('尚未設定 Cloud TTS API Key');return fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({input:{text:text},voice:{languageCode:'cmn-TW',name:'cmn-TW-Wavenet-A'},audioConfig:{audioEncoding:'MP3',speakingRate:.94}})}).then(function(r){return r.json().then(function(j){if(!r.ok||!j.audioContent)throw Error(j&&j.error&&j.error.message||'TTS 生成失敗');return j.audioContent})})}
+function upload(b64){var g=ghInfo();if(!g.c.token)throw Error('尚未設定 GitHub Token，無法共用音檔');return fetch(g.get,{headers:g.h,cache:'no-store'}).then(function(r){if(r.status===404)return null;if(!r.ok)throw Error('GitHub 查詢失敗 '+r.status);return r.json()}).then(function(old){return fetch(g.put,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},g.h),body:JSON.stringify({message:'Update note TTS '+safe(entry().id),content:b64,branch:g.c.branch||'main',sha:old&&old.sha||undefined})})}).then(function(r){if(!r.ok)return r.json().then(function(j){throw Error(j.message||('GitHub 上傳失敗 '+r.status))});return r.json()})}
+function b64url(b64){return 'data:audio/mpeg;base64,'+b64}
+function generate(regen){busy=true;paint();toast(regen?'重新生成註解語音':'正在生成註解語音');return synth().then(function(b64){return upload(b64).then(function(){toast('註解語音已上傳 GitHub');return playSrc(b64url(b64))})}).catch(function(e){toast(e.message||String(e));throw e}).finally(function(){busy=false;paint()})}
+function play(){if(busy)return;if(playing){stop();return}busy=true;paint();getExisting().then(function(blob){if(blob){toast('播放 GitHub 註解語音');return playSrc(URL.createObjectURL(blob))}return generate(false)}).catch(function(e){toast(e.message||String(e))}).finally(function(){busy=false;paint()})}
+function regen(){if(busy)return;stop();generate(true)}
+function mount(){var bar=document.querySelector('#detailBook .db-idbar');if(!bar)return;var old=el('noteTtsTools');if(old)old.remove();var w=document.createElement('span');w.id='noteTtsTools';w.className='note-tts-tools';w.innerHTML='<button type="button" id="noteTtsBtn" class="note-tts-btn" aria-label="播放註解語音" title="播放註解語音">'+FACE+'</button><button type="button" id="noteTtsRegen" class="note-tts-btn regen" aria-label="重新生成註解語音" title="重新生成註解語音">'+REGEN+'</button>';bar.appendChild(w);el('noteTtsBtn').onclick=play;el('noteTtsRegen').onclick=regen;paint()}
+new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});
+window.addEventListener('keydown',function(ev){if(ev.ctrlKey||ev.metaKey||ev.altKey||ev.repeat)return;if(/input|textarea|select/i.test(ev.target&&ev.target.tagName||''))return;if(ev.key==='n'||ev.key==='N'){ev.preventDefault();ev.stopImmediatePropagation();play()}},true);
+var last=false;function pad(){requestAnimationFrame(pad);if(!navigator.getGamepads)return;var ps=navigator.getGamepads(),d=false;for(var i=0;ps&&i<ps.length;i++){var p=ps[i];if(p&&p.buttons&&p.buttons[4])d=d||p.buttons[4].pressed||p.buttons[4].value>.5}if(d&&!last)play();last=d}pad();
+window.KIN_NOTE_TTS={play:play,stop:stop,regenerate:regen,path:path};mount();
+})();
+</script>
 </body>
 </html>
