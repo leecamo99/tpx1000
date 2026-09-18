@@ -15,6 +15,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>金のフレーズ 繁中版</title>
 <style>
+/* 使用系統字型，避免離線時請求遠端字型。 */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:"Noto Sans TC",-apple-system,sans-serif;background:#f5f5f5;color:#222;max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow-x:hidden}
 button{font-family:inherit;border:none;background:none;cursor:pointer}
@@ -1752,7 +1753,7 @@ function rebuildLevelControls(){
     [{value:'all',label:'全部',count:(DATA||[]).length}].concat(meta).forEach(function(x){
       var lab=document.createElement('label'); lab.className='opt';
       var wrap=document.createElement('div'), title=document.createElement('div'), sub=document.createElement('div');
-      title.textContent=x.label; sub.className='sub'; sub.textContent=x.count+' 字';
+      title.textContent=x.label; sub.className='sub'; sub.textContent=x.count+' '+((window.CURRENT_BOOK&&window.CURRENT_BOOK.unit)||'字');
       wrap.appendChild(title); wrap.appendChild(sub);
       var cb=document.createElement('input'); cb.type='checkbox'; cb.name='fl'; cb.value=x.value;
       cb.checked=currentLevels.indexOf(x.value)>=0;
@@ -1869,6 +1870,60 @@ function openDetail(id){
   showDetail();
 }
 
+function renderShikoQuestion(host, e){
+  var q=e.question||{}, labels=['A','B','C','D'];
+  var html='<div class="shiko-question">';
+  html+='<div class="sq-kicker">TEST '+escapeHtml(q.test)+' · PART '+escapeHtml(q.part)+' · Q'+escapeHtml(String(q.number||'').padStart(3,'0'))+'</div>';
+  if(e.audioSrc){
+    html+='<audio class="sq-audio" controls preload="metadata" src="'+escapeHtml(e.audioSrc)+'"></audio>';
+  }else{
+    html+='<div class="sq-media-note" data-media="audio">本題資料未提供 MP3；仍可使用下方「朗讀題目」的系統語音。</div>';
+  }
+  if(e.imageSrc){
+    html+='<img class="sq-image" src="'+escapeHtml(e.imageSrc)+'" alt="Question '+escapeHtml(q.number)+' visual">';
+  }else if(q.requiresVisual){
+    html+='<div class="sq-visual" data-media="image">本題需要圖片，但 shiko600.js 未提供圖檔路徑。</div>';
+  }
+  if(q.context && !q.requiresVisual) html+='<div class="sq-context">'+escapeHtml(q.context)+'</div>';
+  html+='<h2 class="sq-title">'+escapeHtml(q.q||'')+'</h2>';
+  html+='<div class="sq-options">';
+  (q.options||[]).forEach(function(opt,i){
+    html+='<button type="button" class="sq-option" data-option="'+i+'"><span class="sq-letter">'+labels[i]+'</span><span>'+escapeHtml(opt)+'</span></button>';
+  });
+  html+='</div><div class="sq-actions"><button type="button" class="sq-check" disabled>檢查答案</button><button type="button" class="sq-speak">朗讀題目</button></div>';
+  html+='<div class="sq-result" role="status" aria-live="polite"></div>';
+  if(q.source){ html+='<div class="sq-source">來源頁 '+escapeHtml(q.source.pdfPage||'—')+' · 答案頁 '+escapeHtml(q.source.answerPage||'—')+'</div>'; }
+  html+='</div>';
+  host.innerHTML=html;
+  var selected=-1, buttons=host.querySelectorAll('.sq-option'), check=host.querySelector('.sq-check'), result=host.querySelector('.sq-result');
+  Array.prototype.forEach.call(buttons,function(btn){
+    btn.addEventListener('click',function(){
+      selected=parseInt(btn.getAttribute('data-option'),10);
+      Array.prototype.forEach.call(buttons,function(b){b.classList.remove('is-selected','is-correct','is-wrong');});
+      btn.classList.add('is-selected'); check.disabled=false; result.textContent='';
+    });
+  });
+  check.addEventListener('click',function(){
+    if(selected<0) return;
+    Array.prototype.forEach.call(buttons,function(b,i){b.classList.toggle('is-correct',i===q.answer);b.classList.toggle('is-wrong',i===selected&&i!==q.answer);});
+    result.textContent=selected===q.answer?'答對了：'+(q.answerLabel||labels[q.answer]):'答錯了；正確答案是 '+(q.answerLabel||labels[q.answer]);
+  });
+  var speak=host.querySelector('.sq-speak');
+  speak.addEventListener('click',function(){
+    if(!('speechSynthesis' in window)) { result.textContent='此瀏覽器不支援系統語音。'; return; }
+    speechSynthesis.cancel();
+    var text=[q.q].concat(q.options||[]).join('. '), u=new SpeechSynthesisUtterance(text); u.lang='en-US'; speechSynthesis.speak(u);
+  });
+  var audio=host.querySelector('.sq-audio');
+  if(audio) audio.addEventListener('error',function(){
+    var n=document.createElement('div'); n.className='sq-media-note'; n.dataset.media='audio-error'; n.textContent='MP3 載入失敗，請確認 '+e.audioSrc+' 已上傳。'; audio.replaceWith(n);
+  });
+  var image=host.querySelector('.sq-image');
+  if(image) image.addEventListener('error',function(){
+    var n=document.createElement('div'); n.className='sq-visual'; n.dataset.media='image-error'; n.textContent='圖片載入失敗，請確認 '+e.imageSrc+' 已上傳。'; image.replaceWith(n);
+  });
+}
+
 function showDetail(){
   const e = currentList[currentIdx];
   if(!e) return;
@@ -1902,6 +1957,12 @@ function showDetail(){
     var dp = document.getElementById('detailPlay');
     if(dp && dp.parentNode) dp.parentNode.insertBefore(host, dp);
     else document.getElementById('screen-detail').appendChild(host);
+  }
+
+  if(e.questionKind === 'toeic' && e.question){
+    renderShikoQuestion(host, e);
+    updateDetailMarkUI(e.id);
+    return;
   }
 
   var pos = e.pos || '';
@@ -7242,8 +7303,6 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   <div class="rd-body" id="rdBody"></div>
 </div>
 
-<script src="question-explanations.js"></script>
-
 <script>
 /* ===== AI 教練：用收藏的單字生成 TOEIC 短文與測驗 ===== */
 (function(){
@@ -7918,12 +7977,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       else if(i === oi) b.classList.add('no');
     });
     var ex = box.querySelector('.ex');
-    if(ex){
-      if(window.KIN_QUIZ_EXPLAIN){
-        ex.innerHTML = window.KIN_QUIZ_EXPLAIN.renderImported(q, oi);
-      }
-      ex.classList.add('show');
-    }
+    if(ex) ex.classList.add('show');
 
     if(Object.keys(answers).length !== it.items.length) return;
 
@@ -8317,7 +8371,35 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 })();
 </script>
 
+<style id="shiko600-integration-style">
+/* ===== Shiko600 題庫介面 ===== */
+.shiko-question{padding:16px;background:#fff;color:#1f1f1f}
+.shiko-question .sq-kicker{font-size:12px;font-weight:800;letter-spacing:.06em;color:#9a4a13;text-transform:uppercase;margin-bottom:8px}
+.shiko-question .sq-context{white-space:pre-wrap;line-height:1.65;padding:12px;border-radius:10px;background:#f7f4ef;border:1px solid #e8e0d5;margin:0 0 14px;font-size:14px}
+.shiko-question .sq-visual,.shiko-question .sq-media-note{padding:14px;border:1px dashed #c7b9a7;border-radius:10px;background:#fbfaf8;color:#625b52;text-align:center;margin-bottom:14px;font-size:13px}
+.shiko-question .sq-image{display:block;width:100%;max-height:420px;object-fit:contain;border-radius:10px;background:#f4f1ec;margin-bottom:14px}
+.shiko-question .sq-title{font-size:20px;line-height:1.45;font-weight:800;margin:0 0 14px}
+.shiko-question .sq-options{display:grid;gap:9px}
+.shiko-question .sq-option{width:100%;display:flex;gap:10px;align-items:flex-start;text-align:left;padding:12px;border:1.5px solid #d4cec6;border-radius:10px;background:#fff;color:#222;font-size:15px;line-height:1.4}
+.shiko-question .sq-option .sq-letter{flex:0 0 24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#efeae3;font-weight:800}
+.shiko-question .sq-option.is-selected{border-color:#b65a1d;background:#fff7ef}
+.shiko-question .sq-option.is-correct{border-color:#248245;background:#edf8f0}
+.shiko-question .sq-option.is-wrong{border-color:#c84242;background:#fff0f0}
+.shiko-question .sq-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.shiko-question .sq-actions button{border:0;border-radius:999px;padding:10px 15px;font-weight:800;background:#a84f16;color:#fff}
+.shiko-question .sq-actions button[disabled]{opacity:.45}
+.shiko-question .sq-result{min-height:24px;margin-top:10px;font-weight:800}
+.shiko-question .sq-source{margin-top:12px;color:#756d65;font-size:12px}
+.shiko-question audio{width:100%;margin:2px 0 12px}
+body.theme-dark .shiko-question{background:#111;color:#eee}
+body.theme-dark .shiko-question .sq-context,body.theme-dark .shiko-question .sq-visual,body.theme-dark .shiko-question .sq-media-note{background:#1c1c1e;border-color:#444;color:#ccc}
+body.theme-dark .shiko-question .sq-option{background:#18181a;border-color:#444;color:#eee}
+body.theme-dark .shiko-question .sq-option.is-selected{background:#302116;border-color:#df7b38}
+body.theme-dark .shiko-question .sq-option.is-correct{background:#14291a;border-color:#53bd70}
+body.theme-dark .shiko-question .sq-option.is-wrong{background:#301717;border-color:#ed6a6a}
+</style>
 <script src="books.js"></script>
+<script src="shiko600.js"></script>
 <script>
 /* ===== 書籍載入器 ===== */
 (function(){
@@ -8352,9 +8434,10 @@ body.theme-dark .rd-q .qn{color:#6a6661}
                '<div class="t">' + b.title + '</div><div class="s">' + b.subtitle + '</div>' +
                '<div class="m">' + (n ? ('已收藏 <b>' + n + '</b> 字') : '尚未收藏任何單字') + '</div></button>';
       }
+      var unit = b.unit || '字';
       var meta = learned
-        ? (b.count + ' 字 · 已標記 <b>' + learned + '</b>')
-        : (b.count + ' 字 · 尚未開始');
+        ? (b.count + ' ' + unit + ' · 已標記 <b>' + learned + '</b>')
+        : (b.count + ' ' + unit + ' · 尚未開始');
       var cur = (window.CURRENT_BOOK && window.CURRENT_BOOK.id === b.id) ? ' is-current' : '';
       return '<button type="button" class="bk-card' + cur + '" data-book="' + b.id + '">' +
              '<div class="t">' + b.title + '</div>' +
@@ -8403,6 +8486,54 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     }
   };
 
+  function shikoMediaPath(meta, q, kind){
+    var media = q && q.media && typeof q.media === 'object' ? q.media : {};
+    var raw = (q && (q[kind] || q[kind + 'Src'] || q[kind + 'File'])) || media[kind] || '';
+    raw = String(raw || '').trim();
+    if(!raw) return '';
+    if(/^(?:data:|blob:|https?:|\/)/i.test(raw)) return raw;
+    var base = kind === 'audio' ? (meta.audioBase || '') : (meta.imageBase || '');
+    return base + raw.replace(/^\.\//, '');
+  }
+
+  function adaptShiko600(meta, bank){
+    var questions = bank && Array.isArray(bank.questions) ? bank.questions : [];
+    return {
+      id: meta.id,
+      kind: 'questionBank',
+      bank: bank,
+      clipMap: {},
+      audioFix: function(){},
+      data: questions.map(function(q){
+        var n = String(q.number || '').padStart(3, '0');
+        return {
+          id: q.id,
+          word: q.q || ('Question ' + n),
+          mean: 'Part ' + q.part + ' · Q' + n,
+          pos: 'Part ' + q.part,
+          level: 'T' + q.test,
+          level_label: 'TEST ' + q.test,
+          note: q.context || '',
+          en: q.q || '',
+          ja: '',
+          questionKind: 'toeic',
+          question: q,
+          imageSrc: shikoMediaPath(meta, q, 'image'),
+          audioSrc: shikoMediaPath(meta, q, 'audio')
+        };
+      })
+    };
+  }
+
+  function payloadForBook(book, raw){
+    raw = raw || (book.global ? window[book.global] : null);
+    if(!raw) return null;
+    if(book.adapter === 'shiko600' || (raw.id === 'shiko600' && Array.isArray(raw.questions))){
+      return adaptShiko600(book, raw);
+    }
+    return raw;
+  }
+
   function loadBook(bookId){
     ensureCollectBook();
     var book = (window.BOOKS || []).filter(function(b){ return b.id === bookId; })[0];
@@ -8412,9 +8543,15 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     var loading = document.getElementById('bkLoading');
     if(loading){ loading.style.display = ''; loading.textContent = '載入「' + book.title + '」…'; }
 
-    // 已載入過就直接套用，不重新下載，也不會被 onload 時序影響。
+    // 已載入過，或資料檔已由 index.html 預載時，直接套用。
     if(loadedFiles[book.id]){
       applyBook(book, loadedFiles[book.id]);
+      return;
+    }
+    var preloaded = payloadForBook(book);
+    if(preloaded){
+      loadedFiles[book.id] = preloaded;
+      applyBook(book, preloaded);
       return;
     }
 
@@ -8424,12 +8561,13 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       if(loading) loading.textContent = '載入失敗：' + book.file + '（請確認檔案已上傳）';
     };
     sc.onload = function(){
-      if(!pending || pending.id !== book.id){
+      var loaded = payloadForBook(book, pending);
+      if(!loaded || loaded.id !== book.id){
         if(loading) loading.textContent = '書籍資料格式不正確：' + book.file;
         return;
       }
-      loadedFiles[book.id] = pending;
-      applyBook(book, pending);
+      loadedFiles[book.id] = loaded;
+      applyBook(book, loaded);
       pending = null;
     };
     document.head.appendChild(sc);
@@ -8457,6 +8595,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     // localStorage，若在這行之前呼叫 syncLevelUI()，會把新書的篩選值誤存回「舊書」的鍵，
     // 導致舊書的篩選設定被新書覆蓋（這是先前版本換書篩選失效的真正原因）。
     window.CURRENT_BOOK = meta;
+    window.CURRENT_BOOK_PAYLOAD = payload;
+    window.CURRENT_QUESTION_BANK = payload.bank || null;
     // 學習範圍篩選（currentLevels）依書籍各自獨立，換書時務必改讀該書自己的設定，
     // 不可沿用前一本書的範圍（例如 kin1000 選 730分級，切到別本書不該還停在 730分級）。
     try{
@@ -8486,7 +8626,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     try{ localStorage.setItem(LAST_KEY, meta.id); }catch(e){}
 
     var title = document.getElementById('bookTitle');
-    if(title) title.textContent = meta.title + ' 全集合';
+    if(title) title.textContent = meta.title + (meta.unit === '題' ? ' 題庫' : ' 全集合');
 
     pickerOpen = false;
     document.body.classList.remove('books-open');
@@ -10212,7 +10352,6 @@ window.UX = window.UX || {};
     if(Q.answered) return;
     var q=Q.qs[Q.i], x=q.opts[i], correct=(x.id===q.e.id);
     q.userAnswer=q.mode==='zh2en'?String(x.word||''):meanText(x);
-    q.selected=x;
     Q.answered=true;
     qsa('#uxQzChoices button').forEach(function(b,j){
       b.disabled=true;
@@ -10270,18 +10409,17 @@ window.UX = window.UX || {};
     var q=Q.qs[Q.i], e=q.e;
     if(correct) Q.ok++; else { Q.ng++; Q.wrong.push(e.id); }
     var ca=q.mode==='zh2en'?String(e.word||''):((q.mode==='spell'||q.mode==='cloze')?answerOf(q):meanText(e));
-    var qxData=window.KIN_QUIZ_EXPLAIN ? window.KIN_QUIZ_EXPLAIN.build({mode:q.mode,entry:e,question:q,correct:correct,userAnswer:q.userAnswer,answer:ca,selected:q.selected}) : null;
-    Q.history.push({n:Q.i+1,id:e.id,word:e.word||'',correct:!!correct,user:String(q.userAnswer||''),answer:String(ca||''),mean:meanText(e),explanation:qxData?qxData.plain:''});
+    Q.history.push({n:Q.i+1,id:e.id,word:e.word||'',correct:!!correct,user:String(q.userAnswer||''),answer:String(ca||''),mean:meanText(e)});
     if(applyResult(e, correct)) Q.graded++;
     haptic(correct?8:[20,40,20]);
     if(q.mode==='listen'){ var w=$('uxQzListenW'); if(w) w.textContent=e.word; }
     if(q.mode==='cloze'){ var bl=$('uxQzBlank'); if(bl) bl.textContent=q.cz.ans; }
     var fb=$('uxQzFb'); fb.className='ux-fb show';
     var note=String(e.note||''); if(note.length>90) note=note.slice(0,90)+'…';
-    var qxHtml=window.KIN_QUIZ_EXPLAIN ? window.KIN_QUIZ_EXPLAIN.render({mode:q.mode,entry:e,question:q,correct:correct,userAnswer:q.userAnswer,answer:ca,selected:q.selected}) : (note?'<div class="nt">◎ '+esc(note)+'</div>':'');
     fb.innerHTML='<div class="t '+(correct?'ok':'ng')+'">'+(correct?'✓ 正確':'✗ 答錯了')+' '+esc(extra||'')+'</div>'+
       '<div class="ex"><b>'+esc(e.word)+'</b>'+(e.phon?' <span style="color:#999;font-size:12px;font-family:Consolas,monospace">'+esc(e.phon)+'</span>':'')+'　'+meanHtml(e)+'</div>'+
-      qxHtml+
+      (e.en && q.mode!=='cloze' ? '<div class="ex" style="margin-top:6px">'+esc(e.en)+'</div><div class="exz">'+esc(e.ja||'')+'</div>' : (q.mode==='cloze'?'<div class="exz" style="margin-top:6px">'+esc(e.en)+'</div>':''))+
+      (note?'<div class="nt">◎ '+esc(note)+'</div>':'')+
       '<div class="row"><button type="button" id="uxQzSpk2">🔊 發音</button><button type="button" id="uxQzDetail">解說</button><button type="button" class="pri" id="uxQzNext">'+(Q.i+1>=Q.qs.length?'看結果':'下一題 →')+'</button></div>';
     $('uxQzSpk2').addEventListener('click', function(){ speak(e); });
     $('uxQzDetail').addEventListener('click', function(){ openQuizDetail(e.id,'uxQzPlay'); });
@@ -10340,7 +10478,7 @@ window.UX = window.UX || {};
   function renderReview(onlyWrong){
     var list=(Q&&Q.history||[]).filter(function(r){return !onlyWrong||!r.correct;});
     $('uxQzReviewCount').textContent='共 '+(Q&&Q.history?Q.history.length:0)+' 題';
-    $('uxQzReview').innerHTML=list.map(function(r){return '<div style="border:1px solid #e3ddd5;border-left:4px solid '+(r.correct?'#3a9d5d':'#d64b4b')+';border-radius:9px;padding:9px;margin:8px 0"><b>第 '+r.n+' 題　'+esc(r.word)+'　'+(r.correct?'✓':'✗')+'</b><div>你的答案：'+esc(r.user||'（未作答）')+'</div><div>正確答案：'+esc(r.answer)+'</div>'+(r.explanation?'<div class="kin-qx-review"><b>答案解析</b><br>'+esc(r.explanation)+'</div>':'')+'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><button type="button" class="ux-btn qrd" data-id="'+esc(r.id)+'">查看解說</button><button type="button" class="ux-btn qrtry" data-id="'+esc(r.id)+'">重做此題</button><button type="button" class="ux-btn qweak" data-id="'+esc(r.id)+'">加入弱點</button></div></div>';}).join('')||'<div>沒有符合的題目。</div>';
+    $('uxQzReview').innerHTML=list.map(function(r){return '<div style="border:1px solid #e3ddd5;border-left:4px solid '+(r.correct?'#3a9d5d':'#d64b4b')+';border-radius:9px;padding:9px;margin:8px 0"><b>第 '+r.n+' 題　'+esc(r.word)+'　'+(r.correct?'✓':'✗')+'</b><div>你的答案：'+esc(r.user||'（未作答）')+'</div><div>正確答案：'+esc(r.answer)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><button type="button" class="ux-btn qrd" data-id="'+esc(r.id)+'">查看解說</button><button type="button" class="ux-btn qrtry" data-id="'+esc(r.id)+'">重做此題</button><button type="button" class="ux-btn qweak" data-id="'+esc(r.id)+'">加入弱點</button></div></div>';}).join('')||'<div>沒有符合的題目。</div>';
     qsa('.qrd',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){openQuizDetail(b.getAttribute('data-id'),'uxQzResult');});});
     qsa('.qrtry',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id'),m=Q.mode;preset={ids:[id],label:'重做此題'};sel.mode=m;sel.n=0;start();});});
     qsa('.qweak',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id');statusMap[id]='review';try{saveStatus();updateStats();}catch(x){}b.textContent='已加入弱點';b.disabled=true;UX.toast('已加入弱點清單');});});
@@ -12474,7 +12612,7 @@ function text(j){var p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content
 window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);put(KEY_STORE,a);try{if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}},cooling:function(){return 0},models:FALLBACK,discoverModels:discover,clearModelCache:function(){try{localStorage.removeItem(CACHE)}catch(e){}},routeLog:function(){return get(LOG,[])}};
 function modelPanel(){var route=document.getElementById('gmRoutePanel');if(!route||document.getElementById('gmrModels'))return;var e=document.createElement('div');e.id='gmrModels';e.className='gmr-models';e.innerHTML='<b>動態模型探索</b><span id="gmrModelsText">尚未讀取模型清單</span><button type="button" onclick="gmDiscoverModels(true)">立即重新抓取模型</button>';route.insertBefore(e,route.querySelector('.gmr-list'))}
 window.gmDiscoverModels=function(force){modelPanel();var t=document.getElementById('gmrModelsText');if(t)t.textContent='正在向 Gemini models.list 查詢…';discover(!!force).then(function(c){if(t)t.textContent='目前排序：'+c.models.join(' → ');if(typeof gmRouteLogRefresh==='function')gmRouteLogRefresh()},function(e){if(t)t.textContent='模型探索失敗：'+e.message})};
-function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')},function(e){var t=document.getElementById('gmrModelsText');if(t)t.textContent='尚未設定 Gemini 金鑰';})}
+function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')},function(e){var t=document.getElementById('gmrModelsText');if(t)t.textContent=e&&e.message?e.message:'尚未設定 Gemini 金鑰'})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(hook,100)});else setTimeout(hook,100);
 })();
 </script>

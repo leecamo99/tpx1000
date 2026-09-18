@@ -1,0 +1,17 @@
+Shiko600 整合驗證
+=================
+驗證日期：2026-09-18
+
+PASS  JavaScript 語法：index.html 內 37 段 inline script、books.js、shiko600.js、sw.js 均通過語法檢查。
+PASS  TEST 1：200 題，T1-Q001～T1-Q200。
+PASS  TEST 2：200 題，T2-Q001～T2-Q200。
+PASS  TEST 3：200 題，T3-Q001～T3-Q200。
+PASS  全 600 題均有有效選項、答案索引與 A/B/C/D 答案標籤。
+PASS  瀏覽器 HTTP 測試：三回各開啟一題、選項可點選、可檢查答案，主控台無錯誤。
+PASS  file:// 測試：可直接載入 Shiko600，TEST 2 Q100 可正常開啟，主控台無錯誤。
+PASS  Service Worker：已控制頁面，核心快取包含 index.html、books.js、shiko600.js 與 books/kin1000.js。
+PASS  離線測試：斷網重新載入後仍可開啟 Shiko600 的 600 題。
+PASS  圖示圖片：4 個 PNG 均可解碼（180、192、512、512 px）。
+PASS  既有 MP3：3,267 個檔案全部通過 ffprobe 解碼；Range 請求回傳 HTTP 206、audio/mpeg。
+INFO  Shiko600 視覺題：共 34 題標示 requiresVisual，但來源資料沒有圖片路徑或圖片檔。
+INFO  Shiko600 音訊：來源資料沒有 MP3 路徑或 MP3 檔；介面會顯示缺少媒體，並提供系統語音朗讀。

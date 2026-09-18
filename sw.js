@@ -1,7 +1,7 @@
 /* ===== 金のフレーズ 單字 App - Service Worker ===== */
-var VER = 'kin-shell-v64';
+var VER = 'kin-shell-v57-shiko600';
 var AUDIO = 'kin-audio-v1';
-var CORE = ['./', './index.html', './books.js', './manifest.webmanifest', './roadmap.html', './roadmap.json', './devtools.html'];
+var CORE = ['./', './index.html', './books.js', './shiko600.js', './books/kin1000.js', './manifest.webmanifest', './roadmap.html', './roadmap.json', './devtools.html'];
 
 self.addEventListener('install', function(ev){
   ev.waitUntil(caches.open(VER).then(function(c){
@@ -14,7 +14,7 @@ self.addEventListener('activate', function(ev){
   }).then(function(){ return self.clients.claim(); }));
 });
 function isAudio(url){ return /\.mp3(\?.*)?$/i.test(url.pathname); }
-function isBookData(url){ return /\/books\/[^\/]+\.js$/i.test(url.pathname) || /\/books\.js$/i.test(url.pathname); }
+function isBookData(url){ return /\/books\/[^\/]+\.js$/i.test(url.pathname) || /\/(?:books|shiko600)\.js$/i.test(url.pathname); }
 function isPage(req, url){ return req.mode === 'navigate' || /\/(index\.html)?$/i.test(url.pathname) || (req.headers.get('accept')||'').indexOf('text/html') >= 0; }
 function rangeResponse(req, full){
   var range = req.headers.get('range');
@@ -54,7 +54,7 @@ self.addEventListener('fetch', function(ev){
     }).catch(function(){return caches.match('./index.html').then(function(r){return r||new Response('離線中，且尚未快取頁面。',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8'}});});}));
     return;
   }
-  if(isBookData(url)||/\.(js|css|webmanifest|png|svg|json)(\?.*)?$/i.test(url.pathname)){
+  if(isBookData(url)||/\.(js|css|webmanifest|png|jpe?g|webp|gif|svg|json)(\?.*)?$/i.test(url.pathname)){
     ev.respondWith(caches.open(VER).then(function(cache){
       return cache.match(req).then(function(hit){
         var net=fetch(req).then(function(res){if(res&&res.ok)cache.put(req,res.clone()).catch(function(){});return res;}).catch(function(){return hit;});
