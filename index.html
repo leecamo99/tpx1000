@@ -15,7 +15,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>金のフレーズ 繁中版</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:"Noto Sans TC",-apple-system,sans-serif;background:#f5f5f5;color:#222;max-width:480px;margin:0 auto;min-height:100vh;position:relative;overflow-x:hidden}
 button{font-family:inherit;border:none;background:none;cursor:pointer}
@@ -991,7 +990,6 @@ body:not(.kin-gestures-on) #gestureGuide{display:none!important}
 body.theme-dark #screen-detail .cx-return-sticky{background:rgba(42,29,18,.97);border-color:#ff9142;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 </head>
 <body class="mode-study">
 <script>
@@ -1058,8 +1056,7 @@ body.theme-dark #screen-detail .cx-return-sticky{background:rgba(42,29,18,.97);b
 <!-- LIST -->
 <div id="screen-list" class="screen active">
   <div class="topbar">
-    <button type="button" id="mobileMenuBtn" onclick="tpxMobileMenuOpen()" title="開啟選單" aria-label="開啟選單"><span class="squareMark" aria-hidden="true"></span></button>
-    <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步" hidden>☁</button>
+    <button type="button" id="gsFab" onclick="gsOpen()" title="GitHub 同步" aria-label="GitHub 同步">☁</button>
     <button type="button" class="book-switch" onclick="openBookPicker()" title="切換書籍"><span id="bookTitle">金のフレーズ 全集合</span><span class="chev">›</span></button>
     <button type="button" id="deckBtn" onclick="deckOpen()" title="我的閃卡" aria-label="我的閃卡"><span class="ic"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><rect x="3" y="6" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M7 3.5h11a2.5 2.5 0 0 1 2.5 2.5v9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></span><span class="ct" id="deckCount">0</span></button>
     <button type="button" id="userChip" onclick="usOpen()" title="使用者專區"><span class="av">P</span><span class="nm">Paul</span></button>
@@ -4243,7 +4240,6 @@ body.theme-dark .rm-msg{color:#8a8680}
     <button onclick="usClose()" aria-label="關閉">×</button>
   </div>
   <div class="bd">
-    <button type="button" id="settingsCloudSyncBtn" onclick="usClose();gsOpen()"><span class="cloudIcon" aria-hidden="true"></span><span><b>雲端同步</b><small>設定與管理 GitHub 同步</small></span><i>›</i></button>
     <div class="who">
       <div class="big" id="usAvatar">P</div>
       <div class="txt">
@@ -7246,6 +7242,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   <div class="rd-body" id="rdBody"></div>
 </div>
 
+<script src="question-explanations.js"></script>
+
 <script>
 /* ===== AI 教練：用收藏的單字生成 TOEIC 短文與測驗 ===== */
 (function(){
@@ -7341,99 +7339,6 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     return {id:'I-'+Date.now().toString(36),kind:'quiz',title:String(o.title||'匯入題庫'),scene:String(o.source||o.scene||'JSON 題庫'),items:items,used:Array.isArray(o.used)?o.used:[],article:String(o.article||o.passage||''),at:new Date().toISOString(),imported:true};
   }
   window.rdReadBank=function(inp){var f=inp.files&&inp.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var it=normalizeBank(JSON.parse(r.result));var a=load();a.unshift(it);save(a);msg('已匯入 '+it.items.length+' 題');openId=it.id;view='quiz';render();window.scrollTo(0,0);}catch(e){msg('匯入失敗：'+e.message,true);}inp.value='';};r.readAsText(f);};
-
-  /* Local ZIP import: ZIP never leaves this browser. */
-  var RD_ZIP_DB='kinQuestionZipV1', RD_ZIP_STORE='audio', rdZipAudio=null, rdZipUrl='', rdZipPdfUrl='', rdPdfDoc=null, rdPdfDocKey='', rdPdfRenderSeq=0, rdPdfScale=1.15, rdPdfTextCache={};
-  function rdZipDb(){return new Promise(function(ok,no){var r=indexedDB.open(RD_ZIP_DB,1);r.onupgradeneeded=function(){if(!r.result.objectStoreNames.contains(RD_ZIP_STORE))r.result.createObjectStore(RD_ZIP_STORE);};r.onsuccess=function(){ok(r.result)};r.onerror=function(){no(r.error||new Error('IndexedDB 無法開啟'))};});}
-  async function rdZipPut(k,b){var d=await rdZipDb();return new Promise(function(ok,no){var t=d.transaction(RD_ZIP_STORE,'readwrite');t.objectStore(RD_ZIP_STORE).put(b,k);t.oncomplete=function(){d.close();ok()};t.onerror=function(){d.close();no(t.error)}});}
-  async function rdZipGet(k){var d=await rdZipDb();return new Promise(function(ok,no){var r=d.transaction(RD_ZIP_STORE).objectStore(RD_ZIP_STORE).get(k);r.onsuccess=function(){d.close();ok(r.result)};r.onerror=function(){d.close();no(r.error)}});}
-  function rdZipBase(p){return String(p||'').split('/').pop();}
-  function rdZipAudioInfo(path){var f=rdZipBase(path),m=f.match(/^(\d+)_T([123])_(\d+)(?:-(\d+))?\.mp3$/i);return m?{test:+m[2],from:+m[3],to:+(m[4]||m[3]),path:path}:null;}
-  function rdZipClean(x){return String(x||'').replace(/[\u00a0\u2000-\u200b]/g,' ').replace(/[ \t]+/g,' ').replace(/\s+([,.;:?!])/g,'$1').trim();}
-  function rdZipTestNo(path,fallback){var x=String(path||'');var m=x.match(/(?:^|[^A-Z0-9])T(?:EST)?[ _-]*([123])(?:[^0-9]|$)/i)||x.match(/(?:模試|模擬|第)[ _-]*([一二三123])/);if(!m)return fallback||1;var v=m[1];return v==='一'?1:v==='二'?2:v==='三'?3:+v;}
-  function rdZipChoiceParts(block){
-    var mark=/(?:\(|（)?([A-D])(?:\)|）|[.．、:：])\s*/g,hits=[],m;
-    while((m=mark.exec(block)))hits.push({letter:m[1],at:m.index,end:mark.lastIndex});
-    if(hits.length<3)return null;
-    var options=[];for(var i=0;i<hits.length&&i<4;i++){var stop=(i+1<hits.length?hits[i+1].at:block.length);options.push(rdZipClean(block.slice(hits[i].end,stop)));}
-    return {first:hits[0].at,options:options};
-  }
-  function rdZipParseQuestions(pages,testHint){var out=[],seen={};
-    pages.forEach(function(raw){
-      var text=String(raw||'').replace(/\r/g,'\n').replace(/\n{3,}/g,'\n\n');
-      var re=/(?:^|\n|\s)(\d{1,3})(?:\s*[.．、:]|\s{1,3})([\s\S]+?)(?=(?:\n|\s)\d{1,3}(?:\s*[.．、:]|\s{1,3})|$)/g,m;
-      while((m=re.exec(text))){var n=+m[1],b=m[2];if(n<1||n>200||seen[n])continue;var cp=rdZipChoiceParts(b);if(!cp)continue;var q=rdZipClean(b.slice(0,cp.first));if(!q||q.length<2)continue;seen[n]=1;out.push({q:q,options:cp.options,answer:-1,zh:'',tip:'',number:n,test:testHint,audioKey:''});}
-    });out.sort(function(a,b){return a.number-b.number;});return out;}
-  var RD_SHIKO_PROFILE={
-    1:{start:21,end:61,parts:[{p:1,a:1,b:6,page:22},{p:2,a:7,b:31,page:25},{p:3,a:32,b:70,page:26},{p:4,a:71,b:100,page:30},{p:5,a:101,b:130,page:33},{p:6,a:131,b:146,page:36},{p:7,a:147,b:200,page:40}]},
-    2:{start:63,end:105,parts:[{p:1,a:1,b:6,page:64},{p:2,a:7,b:31,page:67},{p:3,a:32,b:70,page:68},{p:4,a:71,b:100,page:72},{p:5,a:101,b:130,page:75},{p:6,a:131,b:146,page:78},{p:7,a:147,b:200,page:82}]},
-    3:{start:107,end:154,parts:[{p:1,a:1,b:6,page:108},{p:2,a:7,b:31,page:111},{p:3,a:32,b:70,page:112},{p:4,a:71,b:100,page:116},{p:5,a:101,b:130,page:119},{p:6,a:131,b:146,page:122},{p:7,a:147,b:200,page:126}]}
-  };
-  function rdQuestionPart(q){return q<=6?1:q<=31?2:q<=70?3:q<=100?4:q<=130?5:q<=146?6:7;}
-  function rdSeedPageMap(){var map={1:{},2:{},3:{}};[1,2,3].forEach(function(t){RD_SHIKO_PROFILE[t].parts.forEach(function(x){for(var q=x.a;q<=x.b;q++)map[t][q]=x.page;});});return map;}
-  function rdBuildPageMap(pages){var map=rdSeedPageMap();[1,2,3].forEach(function(t){var r=RD_SHIKO_PROFILE[t];for(var page=r.start;page<=Math.min(r.end,pages.length);page++){var text=String(pages[page-1]||''),re=/(?:^|\s)(\d{1,3})[.．]\s/g,m;while((m=re.exec(text))){var q=+m[1];if(q>=1&&q<=200)map[t][q]=page;}}});return map;}
-  function rdDefaultProfile(){return {pageMap:rdSeedPageMap(),ranges:RD_SHIKO_PROFILE};}
-  function rdFindTrack(test,q){var a=(test&&test.audioTracks)||[];for(var i=0;i<a.length;i++){if(q>=a[i].from&&q<=a[i].to)return a[i];}return null;}
-  function rdAnswerKey(it,t){var u='default';try{if(window.KIN_USER&&KIN_USER.id)u=KIN_USER.id();}catch(e){}return 'kinPdfAnswers:'+u+':'+it.id+':T'+t;}
-  function rdLoadAnswers(it,t){try{return JSON.parse(localStorage.getItem(rdAnswerKey(it,t))||'{}')||{};}catch(e){return {};}}
-  function rdSaveAnswer(it,t,q,v){var a=rdLoadAnswers(it,t);a[q]=v;try{localStorage.setItem(rdAnswerKey(it,t),JSON.stringify(a));}catch(e){}return a;}
-  function rdCurrentBank(){return load().filter(function(x){return x.id===openId;})[0]||null;}
-  async function rdZipPdfModule(){try{return await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs');}catch(e){throw new Error('PDF 解析元件載入失敗，請確認網路連線後重試');}}
-  async function rdZipPdfPages(entry){var lib=await rdZipPdfModule();lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';var ab=await entry.async('arraybuffer'),doc=await lib.getDocument({data:ab}).promise,p=[];
-    for(var i=1;i<=doc.numPages;i++){msg('正在讀取 '+rdZipBase(entry.name)+'：'+i+' / '+doc.numPages+' 頁');var pg=await doc.getPage(i),tc=await pg.getTextContent(),rows={};
-      tc.items.forEach(function(v){var y=Math.round((v.transform&&v.transform[5])||0);(rows[y]||(rows[y]=[])).push(v);});
-      var lines=Object.keys(rows).map(Number).sort(function(a,b){return b-a}).map(function(y){return rows[y].sort(function(a,b){return ((a.transform&&a.transform[4])||0)-((b.transform&&b.transform[4])||0)}).map(function(v){return v.str||''}).join(' ')});
-      p.push(lines.join('\n'));if(i%5===0)await new Promise(function(r){setTimeout(r,0)});
-    }return p;}
-  window.rdImportZip=function(){var x=document.getElementById('rdZipFile');if(x)x.click();};
-  window.rdPlayZipAudio=async function(key,btn){try{var b=await rdZipGet(key);if(!b)throw new Error('找不到已儲存的音檔，請重新匯入 ZIP');if(rdZipAudio)rdZipAudio.pause();if(rdZipUrl)URL.revokeObjectURL(rdZipUrl);rdZipUrl=URL.createObjectURL(b);rdZipAudio=new Audio(rdZipUrl);if(btn)btn.textContent='播放中…';rdZipAudio.onended=function(){if(btn)btn.textContent='播放音檔'};await rdZipAudio.play();}catch(e){msg('播放失敗：'+e.message,true);}};
-  async function rdPdfPageText(pageNo){var it=rdCurrentBank();if(!it)return '';var ck=it.id+':'+pageNo;if(rdPdfTextCache[ck])return rdPdfTextCache[ck];var doc=await rdPdfLoad(it.pdfKey),pg=await doc.getPage(pageNo),tc=await pg.getTextContent(),rows={};tc.items.forEach(function(v){var y=Math.round((v.transform&&v.transform[5])||0);(rows[y]||(rows[y]=[])).push(v);});var text=Object.keys(rows).map(Number).sort(function(a,b){return b-a}).map(function(y){return rows[y].sort(function(a,b){return ((a.transform&&a.transform[4])||0)-((b.transform&&b.transform[4])||0)}).map(function(v){return v.str||''}).join(' ')}).join('\n');rdPdfTextCache[ck]=text;return text;}
-  function rdExtractQuestion(text,q){var clean=String(text||'').replace(/[\u00a0\u2000-\u200b]/g,' ').replace(/[ \t]+/g,' '),re=new RegExp('(?:^|\\n|\\s)'+q+'[.．]\\s*([\\s\\S]*?)(?=(?:\\n|\\s)'+(q+1)+'[.．]\\s|$)','i'),m=clean.match(re);if(!m)return null;var b=m[1],hits=[],r=/(?:\(|（)([A-D])(?:\)|）)\s*/g,x;while((x=r.exec(b)))hits.push({l:x[1],at:x.index,end:r.lastIndex});if(hits.length<3)return null;var opts=[];for(var i=0;i<Math.min(4,hits.length);i++){var stop=i+1<hits.length?hits[i+1].at:b.length;opts.push({key:hits[i].l,text:b.slice(hits[i].end,stop).replace(/\s+/g,' ').trim()});}return {stem:b.slice(0,hits[0].at).replace(/\s+/g,' ').trim(),options:opts};}
-  async function rdRenderQuestionContent(it,t,q,page){var box=document.getElementById('rdQuestionContent');if(!box)return;box.innerHTML='<div class="rd-loading">正在載入題目…</div>';try{var data=rdExtractQuestion(await rdPdfPageText(page),q);if(data&&data.stem){box.innerHTML='<div class="rd-stem">'+esc(data.stem)+'</div><div class="rd-inline-options">'+data.options.map(function(o){return '<div><b>'+o.key+'</b><span>'+esc(o.text)+'</span></div>'}).join('')+'</div>';}else{box.innerHTML='<div class="rd-scan-note">此題包含圖片、表格或跨頁內容，請點「查看原頁」。</div>';}}catch(e){box.innerHTML='<div class="rd-scan-note">無法擷取單題文字，請點「查看原頁」。</div>';}}
-  window.rdOpenOriginalPage=function(){document.body.classList.add('rd-pdf-open');var n=document.getElementById('rdPdfPageNo');rdPdfRender(n&&n.value?n.value:1,true);};
-  window.rdCloseOriginalPage=function(){document.body.classList.remove('rd-pdf-open');};
-  async function rdPdfLoad(key){if(rdPdfDoc&&rdPdfDocKey===key)return rdPdfDoc;var blob=await rdZipGet(key);if(!blob)throw new Error('找不到 PDF，請重新匯入 ZIP');var lib=await rdZipPdfModule();lib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';rdPdfDoc=await lib.getDocument({data:await blob.arrayBuffer()}).promise;rdPdfDocKey=key;return rdPdfDoc;}
-  window.rdPdfRender=async function(pageNo,fit){var it=rdCurrentBank();if(!it||!it.pdfKey)return;var seq=++rdPdfRenderSeq;try{var doc=await rdPdfLoad(it.pdfKey);pageNo=Math.max(1,Math.min(doc.numPages,+pageNo||1));var page=await doc.getPage(pageNo),base=page.getViewport({scale:1}),wrap=document.getElementById('rdPdfCanvasWrap');if(fit&&wrap)rdPdfScale=Math.max(.45,Math.min(2.5,(wrap.clientWidth-12)/base.width));var vp=page.getViewport({scale:rdPdfScale}),canvas=document.getElementById('rdPdfCanvas');if(!canvas||seq!==rdPdfRenderSeq)return;var dpr=Math.min(2,window.devicePixelRatio||1),ctx=canvas.getContext('2d');canvas.width=Math.floor(vp.width*dpr);canvas.height=Math.floor(vp.height*dpr);canvas.style.width=Math.floor(vp.width)+'px';canvas.style.height=Math.floor(vp.height)+'px';ctx.setTransform(dpr,0,0,dpr,0,0);await page.render({canvasContext:ctx,viewport:vp}).promise;if(seq!==rdPdfRenderSeq)return;sessionStorage.setItem('rdPdfPage',String(pageNo));var n=document.getElementById('rdPdfPageNo');if(n)n.value=pageNo;var total=document.getElementById('rdPdfTotal');if(total)total.textContent='/ '+doc.numPages;var st=document.getElementById('rdPdfStatus');if(st)st.textContent='第 '+pageNo+' 頁';}catch(e){msg('PDF 顯示失敗：'+e.message,true);}};
-  window.rdPdfPrev=function(){var n=document.getElementById('rdPdfPageNo');rdPdfRender(Math.max(1,(+n.value||1)-1),false);};
-  window.rdPdfNext=function(){var n=document.getElementById('rdPdfPageNo');rdPdfRender((+n.value||1)+1,false);};
-  window.rdPdfGo=function(n){rdPdfRender(+n.value||1,false);};
-  window.rdPdfZoom=function(d){rdPdfScale=Math.max(.45,Math.min(2.5,rdPdfScale+d));var n=document.getElementById('rdPdfPageNo');rdPdfRender(+n.value||1,false);};
-  window.rdPdfFit=function(){var n=document.getElementById('rdPdfPageNo');rdPdfRender(+n.value||1,true);};
-  window.rdZipSetTest=function(n){sessionStorage.setItem('rdZipActiveTest',String(n));sessionStorage.setItem('rdZipQuestion','1');render();window.scrollTo(0,0);};
-  window.rdSetQuestion=function(q){var it=rdCurrentBank();if(!it)return;var t=+(sessionStorage.getItem('rdZipActiveTest')||1);q=Math.max(1,Math.min(200,+q||1));sessionStorage.setItem('rdZipQuestion',String(q));var profile=it.profile||rdDefaultProfile(),page=(profile.pageMap&&profile.pageMap[t]&&profile.pageMap[t][q])||(RD_SHIKO_PROFILE[t]&&RD_SHIKO_PROFILE[t].start)||1;var inp=document.getElementById('rdQuestionNo');if(inp)inp.value=q;var pp=document.getElementById('rdPdfPageNo');if(pp)pp.value=page;var meta=document.getElementById('rdQuestionMeta');if(meta)meta.textContent='TEST '+t+' · Part '+rdQuestionPart(q)+' · '+q+' / 200';rdRenderQuestionContent(it,t,q,page);rdRenderAnswerPanel(it,t,q);rdSelectTrackForQuestion(it,t,q);};
-  window.rdPrevQuestion=function(){rdSetQuestion(+(sessionStorage.getItem('rdZipQuestion')||1)-1);};
-  window.rdNextQuestion=function(){rdSetQuestion(+(sessionStorage.getItem('rdZipQuestion')||1)+1);};
-  function rdSelectTrackForQuestion(it,t,q){var test=(it.tests||[]).filter(function(x){return x.test===t;})[0],track=rdFindTrack(test,q),sel=document.getElementById('rdZipTrackSel');if(sel&&track){for(var i=0;i<sel.options.length;i++)if(sel.options[i].value===track.key){sel.selectedIndex=i;break;}}var lab=document.getElementById('rdCurrentTrack');if(lab)lab.textContent=track?track.label:(q>100?'Reading 題目沒有 MP3':'找不到對應 MP3');}
-  function rdRenderAnswerPanel(it,t,q){var box=document.getElementById('rdAnswerPanel');if(!box)return;var test=(it.tests||[]).filter(function(x){return x.test===t;})[0],track=rdFindTrack(test,q),from=track?track.from:q,to=track?track.to:q,answers=rdLoadAnswers(it,t),html='<div class="rd-answer-head"><b>Part '+rdQuestionPart(q)+'</b><span>第 '+from+(to!==from?(' - '+to):'')+' 題</span></div>';for(var n=from;n<=to;n++){html+='<div class="rd-answer-row"><strong>'+n+'</strong>'+['A','B','C','D'].map(function(x){return '<button type="button" class="'+(answers[n]===x?'on':'')+'" onclick="rdChooseAnswer('+n+',\''+x+'\')">'+x+'</button>';}).join('')+'</div>';}box.innerHTML=html;}
-  window.rdChooseAnswer=function(q,v){var it=rdCurrentBank(),t=+(sessionStorage.getItem('rdZipActiveTest')||1);if(!it)return;rdSaveAnswer(it,t,q,v);rdRenderAnswerPanel(it,t,+(sessionStorage.getItem('rdZipQuestion')||q));};
-  window.rdZipTrackChanged=function(sel){var it=rdCurrentBank(),t=+(sessionStorage.getItem('rdZipActiveTest')||1),test=(it.tests||[]).filter(function(x){return x.test===t;})[0],tracks=(test&&test.audioTracks)||[],tr=tracks[sel.selectedIndex];if(tr){sessionStorage.setItem('rdZipQuestion',String(tr.from));rdSetQuestion(tr.from);}};
-  window.rdZipPlayCurrent=function(){var sel=document.getElementById('rdZipTrackSel');if(!sel||!sel.value){msg('此 TEST 沒有可播放的音檔。',true);return;}rdPlayZipAudio(sel.value,document.getElementById('rdZipTrackBtn'));};
-  window.rdZipPrevTrack=function(){var s=document.getElementById('rdZipTrackSel');if(!s||!s.options.length)return;s.selectedIndex=Math.max(0,s.selectedIndex-1);rdZipTrackChanged(s);rdZipPlayCurrent();};
-  window.rdZipNextTrack=function(){var s=document.getElementById('rdZipTrackSel');if(!s||!s.options.length)return;s.selectedIndex=Math.min(s.options.length-1,s.selectedIndex+1);rdZipTrackChanged(s);rdZipPlayCurrent();};
-  window.rdReadZip=async function(inp){var file=inp.files&&inp.files[0];if(!file)return;try{
-      if(!window.JSZip)throw new Error('ZIP 元件尚未載入，請保持網路連線並重新整理後再試');msg('正在本機解壓 ZIP…');
-      var z=await JSZip.loadAsync(file),all=Object.keys(z.files).map(function(k){return z.files[k]}).filter(function(e){return !e.dir});
-      var mp3=all.filter(function(e){return /\.mp3$/i.test(e.name)}),pdf=all.filter(function(e){return /\.pdf$/i.test(e.name)&&!/解答|解説|答案|答題|answer/i.test(e.name)});
-      if(!pdf.length)throw new Error('ZIP 裡找不到試題 PDF');
-      var amap={1:{},2:{},3:{}},saved=0;
-      for(var i=0;i<mp3.length;i++){var inf=rdZipAudioInfo(mp3[i].name);if(!inf)continue;var key='zip:'+file.name+':'+inf.path;await rdZipPut(key,await mp3[i].async('blob'));for(var n=inf.from;n<=inf.to;n++)amap[inf.test][n]=key;saved++;if(saved%8===0)msg('正在儲存音檔：'+saved+' 個');}
-      var byTest={1:[],2:[],3:[]},pageCount=0,textChars=0,pdfSaved=[],mainPages=null;
-      for(var pi=0;pi<pdf.length;pi++){
-        var hint=rdZipTestNo(pdf[pi].name,Math.min(3,pi+1)),pdfKey='pdf:'+file.name+':'+pdf[pi].name;
-        await rdZipPut(pdfKey,await pdf[pi].async('blob'));pdfSaved.push({key:pdfKey,name:rdZipBase(pdf[pi].name),test:hint});
-        var pages=await rdZipPdfPages(pdf[pi]);if(!/答題|答题|answer.?sheet/i.test(pdf[pi].name)&&(!mainPages||pages.length>mainPages.length))mainPages=pages;pageCount+=pages.length;pages.forEach(function(x){textChars+=x.replace(/\s/g,'').length});var got=rdZipParseQuestions(pages,hint);byTest[hint]=byTest[hint].concat(got);
-      }
-      var banks=[],stamp=Date.now();[1,2,3].forEach(function(t){var seen={},items=byTest[t].filter(function(q){if(seen[q.number])return false;seen[q.number]=1;return true}).sort(function(a,b){return a.number-b.number});items.forEach(function(q){q.audioKey=amap[t][q.number]||''});if(items.length)banks.push({id:'ZIP-'+stamp+'-T'+t,kind:'quiz',title:'ZIP 題庫 TEST '+t,scene:'本機 ZIP',items:items,used:[],article:'',at:new Date().toISOString(),imported:true});});
-      var fallback=false;
-      if(!banks.length){
-        fallback=true;
-        var mainPdf=pdfSaved.filter(function(x){return !/答題|答题|answer.?sheet/i.test(x.name)})[0]||pdfSaved[0];
-        var tests=[1,2,3].map(function(t){var tracks=[];mp3.forEach(function(e){var inf=rdZipAudioInfo(e.name);if(inf&&inf.test===t)tracks.push({label:rdZipBase(e.name),key:'zip:'+file.name+':'+inf.path,from:inf.from,to:inf.to});});tracks.sort(function(a,b){return a.from-b.from});return {test:t,title:'TEST '+t,audioTracks:tracks};});
-        banks.push({id:'PDF-'+stamp,kind:'pdfbank3',title:'至高600問',scene:mainPdf?mainPdf.name:'原始試題 PDF',pdfKey:mainPdf&&mainPdf.key,tests:tests,profile:{pageMap:rdBuildPageMap(mainPages||[]),ranges:RD_SHIKO_PROFILE},items:[],used:[],article:'',at:new Date().toISOString(),imported:true});
-      }
-      var a=load();for(var j=banks.length-1;j>=0;j--)a.unshift(banks[j]);save(a);var total=banks.reduce(function(v,b){return v+(b.items||[]).length},0),linked=banks.reduce(function(v,b){return v+(b.items||[]).filter(function(q){return q.audioKey}).length},0);
-      msg(fallback?('已建立 3 套題目：TEST 1、TEST 2、TEST 3；共 '+saved+' 個音檔。試題 PDF 已掛載。'):('匯入完成：'+total+' 題、'+saved+' 個音檔；'+linked+' 題已配對音檔。'));view='list';openId='';render();window.scrollTo(0,0);
-    }catch(e){msg('ZIP 匯入失敗：'+e.message,true);}finally{inp.value='';}};
   window.KIN_BANK_SCHEMA={title:'題庫名稱',source:'來源',article:'選填文章',questions:[{q:'題目',options:['A','B','C','D'],answer:0,zh:'選填翻譯',explain:'解析'}]};
 
   window.rdGenPassage = function(){
@@ -7992,7 +7897,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(!it) return;
     if(typeof window.__kinRdStop === 'function') window.__kinRdStop();
     rdIdx = 0; rdA = rdB = null;
-    openId = id; view = (it.kind === 'pdfbank3') ? 'pdfbank3' : ((it.kind === 'quiz') ? 'quiz' : 'doc');
+    openId = id; view = (it.kind === 'quiz') ? 'quiz' : 'doc';
     render(); window.scrollTo(0,0);
   };
 
@@ -8008,14 +7913,17 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     var q = it.items[qi];
     var box = document.querySelector('.rd-q[data-q="' + qi + '"]');
     if(!box) return;
-    var graded=(typeof q.answer==='number'&&q.answer>=0&&q.answer<(q.options||[]).length);
     Array.prototype.forEach.call(box.querySelectorAll('.op'), function(b, i){
-      if(!graded&&i===oi)b.classList.add('ok');
-      else if(graded&&i===q.answer)b.classList.add('ok');
-      else if(graded&&i===oi)b.classList.add('no');
+      if(i === q.answer) b.classList.add('ok');
+      else if(i === oi) b.classList.add('no');
     });
     var ex = box.querySelector('.ex');
-    if(ex) ex.classList.add('show');
+    if(ex){
+      if(window.KIN_QUIZ_EXPLAIN){
+        ex.innerHTML = window.KIN_QUIZ_EXPLAIN.renderImported(q, oi);
+      }
+      ex.classList.add('show');
+    }
 
     if(Object.keys(answers).length !== it.items.length) return;
 
@@ -8063,18 +7971,18 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         '<button type="button" class="go" onclick="rdGenPassage()">生成閱讀／聽力情境</button>' +
         '<button type="button" class="go alt" onclick="rdGenQuiz()">生成 TOEIC 模擬測驗</button>' +
         '<button type="button" class="go alt" onclick="rdImportBank()">匯入 JSON 題庫</button><input id="rdBankFile" type="file" accept=".json,application/json" style="display:none" onchange="rdReadBank(this)">' +
-        '<button type="button" class="go alt" onclick="rdImportZip()">匯入 ZIP 題庫</button><input id="rdZipFile" type="file" accept=".zip,application/zip,application/x-zip-compressed" style="display:none" onchange="rdReadZip(this)">' +
-        '<div class="rd-note">ZIP 只在這台裝置的瀏覽器內解壓與儲存，不會上傳。首次匯入請保持網路連線，以載入 ZIP／PDF 解析元件。</div>' +
         '<div class="rd-msg" id="rdMsg"></div>' +
         '<div class="rd-note">目前收藏 ' + n + ' 個單字。系統會優先挑還沒複習過、或曾經答錯的字。短文裡的英文一樣可以點，發音或再加入閃卡。</div>' +
         '</div>' +
         (all.length
           ? all.map(function(it){
               var d = new Date(it.at), dt = (d.getMonth()+1) + '/' + d.getDate();
-              var pv = it.kind === 'pdfbank3' ? '3 套題目｜TEST 1、TEST 2、TEST 3' : (it.kind === 'quiz' ? ((it.items && it.items[0] && it.items[0].q) || '') : (it.en || ''));
+              var pv = it.kind === 'quiz'
+                ? ((it.items && it.items[0] && it.items[0].q) || '')
+                : (it.en || '');
               return '<button type="button" class="rd-item" onclick="rdView(\'' + it.id + '\')">' +
                 '<div class="hd"><span class="kind' + (it.kind === 'quiz' ? ' q' : '') + '">' +
-                (it.kind === 'pdfbank3' ? '正式題庫' : (it.kind === 'quiz' ? '測驗' : '短文')) + '</span><span class="dt">' + dt + '</span></div>' +
+                (it.kind === 'quiz' ? '測驗' : '短文') + '</span><span class="dt">' + dt + '</span></div>' +
                 '<div class="ti">' + esc(it.title) + '</div>' +
                 '<div class="pv">' + esc(pv) + '</div>' +
                 '<div class="wc">' + ((it.used||[]).length) + ' 個單字</div></button>';
@@ -8085,18 +7993,6 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
     var it = all.filter(function(x){ return x.id === openId; })[0];
     if(!it){ view = 'list'; render(); return; }
-
-    if(view === 'pdfbank3'){
-      if(title) title.textContent='至高600問';
-      var tests=it.tests||[],activeTest=+(sessionStorage.getItem('rdZipActiveTest')||1),test=tests.filter(function(x){return x.test===activeTest;})[0]||tests[0]||{test:1,audioTracks:[]},q=+(sessionStorage.getItem('rdZipQuestion')||1),tracks=test.audioTracks||[],page=((it.profile||rdDefaultProfile()).pageMap[activeTest]||{})[q]||RD_SHIKO_PROFILE[activeTest].start;
-      body.innerHTML='<div class="rd-app-head"><button onclick="rdBack()">‹</button><div><b>至高600問</b><small id="rdQuestionMeta">TEST '+activeTest+' · Part '+rdQuestionPart(q)+' · '+q+' / 200</small></div><button onclick="rdOpenOriginalPage()">原頁</button></div>'+
-        '<div class="rd-test-tabs">'+tests.map(function(x){return '<button class="'+(x.test===activeTest?'on':'')+'" onclick="rdZipSetTest('+x.test+')">TEST '+x.test+'</button>'}).join('')+'</div>'+
-        '<main class="rd-study-card"><div id="rdQuestionContent" class="rd-question-content"></div><div id="rdAnswerPanel" class="rd-answer-panel"></div></main>'+
-        '<div class="rd-audio-card"><div class="rd-audio-top"><span id="rdCurrentTrack">音檔</span><select id="rdZipTrackSel" onchange="rdZipTrackChanged(this)">'+tracks.map(function(t){return '<option value="'+esc(t.key)+'">'+esc(t.label)+'｜'+t.from+(t.to!==t.from?('–'+t.to):'')+'</option>';}).join('')+'</select></div><div class="rd-audio-actions"><button onclick="rdZipPrevTrack()">上一音軌</button><button id="rdZipTrackBtn" class="play" onclick="rdZipPlayCurrent()">播放／暫停</button><button onclick="rdZipNextTrack()">下一音軌</button></div></div>'+
-        '<div class="rd-bottom-nav"><button onclick="rdPrevQuestion()">上一題</button><label>第 <input id="rdQuestionNo" type="number" min="1" max="200" value="'+q+'" onchange="rdSetQuestion(this.value)"> 題</label><button class="next" onclick="rdNextQuestion()">下一題</button></div>'+
-        '<div id="rdPdfModal" class="rd-pdf-modal"><div class="rd-pdf-modal-head"><b>原始 PDF</b><button onclick="rdCloseOriginalPage()">×</button></div><div class="rd-pdf-toolbar"><button onclick="rdPdfPrev()">上一頁</button><input id="rdPdfPageNo" type="number" min="1" value="'+page+'" onchange="rdPdfGo(this)"><span id="rdPdfTotal">/ -</span><button onclick="rdPdfNext()">下一頁</button><button onclick="rdPdfZoom(-.15)">縮小</button><button onclick="rdPdfFit()">適合寬度</button><button onclick="rdPdfZoom(.15)">放大</button><span id="rdPdfStatus"></span></div><div id="rdPdfCanvasWrap" class="rd-pdf-wrap"><canvas id="rdPdfCanvas"></canvas></div></div>';
-      setTimeout(function(){rdSetQuestion(q);},40);return;
-    }
 
     if(view === 'doc'){
       if(title) title.textContent = '短文';
@@ -8148,7 +8044,6 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       (it.items||[]).map(function(q, i){
         return '<div class="rd-q" data-q="' + i + '">' +
           '<div class="qn">第 ' + (i+1) + ' 題 / ' + it.items.length + '</div>' +
-          (q.audioKey ? ('<button type="button" class="go alt" style="width:auto;margin:0 0 10px;padding:8px 12px" onclick="rdPlayZipAudio(\'' + esc(q.audioKey) + '\',this)">播放音檔</button>') : '') +
           '<div class="qt">' + esc(q.q || '') + '</div>' +
           (q.options||[]).map(function(o, oi){
             return '<button type="button" class="op" onclick="rdAnswer(' + i + ',' + oi + ')">' +
@@ -8173,7 +8068,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     if(sc) sc.classList.add('show');
 
     openId = id;
-    view = (it.kind === 'pdfbank3') ? 'pdfbank3' : ((it.kind === 'quiz') ? 'quiz' : 'doc');
+    view = (it.kind === 'quiz') ? 'quiz' : 'doc';
     rdA = rdB = null;
     rdIdx = (si != null && si >= 0) ? si : 0;
     render();
@@ -10317,6 +10212,7 @@ window.UX = window.UX || {};
     if(Q.answered) return;
     var q=Q.qs[Q.i], x=q.opts[i], correct=(x.id===q.e.id);
     q.userAnswer=q.mode==='zh2en'?String(x.word||''):meanText(x);
+    q.selected=x;
     Q.answered=true;
     qsa('#uxQzChoices button').forEach(function(b,j){
       b.disabled=true;
@@ -10374,17 +10270,18 @@ window.UX = window.UX || {};
     var q=Q.qs[Q.i], e=q.e;
     if(correct) Q.ok++; else { Q.ng++; Q.wrong.push(e.id); }
     var ca=q.mode==='zh2en'?String(e.word||''):((q.mode==='spell'||q.mode==='cloze')?answerOf(q):meanText(e));
-    Q.history.push({n:Q.i+1,id:e.id,word:e.word||'',correct:!!correct,user:String(q.userAnswer||''),answer:String(ca||''),mean:meanText(e)});
+    var qxData=window.KIN_QUIZ_EXPLAIN ? window.KIN_QUIZ_EXPLAIN.build({mode:q.mode,entry:e,question:q,correct:correct,userAnswer:q.userAnswer,answer:ca,selected:q.selected}) : null;
+    Q.history.push({n:Q.i+1,id:e.id,word:e.word||'',correct:!!correct,user:String(q.userAnswer||''),answer:String(ca||''),mean:meanText(e),explanation:qxData?qxData.plain:''});
     if(applyResult(e, correct)) Q.graded++;
     haptic(correct?8:[20,40,20]);
     if(q.mode==='listen'){ var w=$('uxQzListenW'); if(w) w.textContent=e.word; }
     if(q.mode==='cloze'){ var bl=$('uxQzBlank'); if(bl) bl.textContent=q.cz.ans; }
     var fb=$('uxQzFb'); fb.className='ux-fb show';
     var note=String(e.note||''); if(note.length>90) note=note.slice(0,90)+'…';
+    var qxHtml=window.KIN_QUIZ_EXPLAIN ? window.KIN_QUIZ_EXPLAIN.render({mode:q.mode,entry:e,question:q,correct:correct,userAnswer:q.userAnswer,answer:ca,selected:q.selected}) : (note?'<div class="nt">◎ '+esc(note)+'</div>':'');
     fb.innerHTML='<div class="t '+(correct?'ok':'ng')+'">'+(correct?'✓ 正確':'✗ 答錯了')+' '+esc(extra||'')+'</div>'+
       '<div class="ex"><b>'+esc(e.word)+'</b>'+(e.phon?' <span style="color:#999;font-size:12px;font-family:Consolas,monospace">'+esc(e.phon)+'</span>':'')+'　'+meanHtml(e)+'</div>'+
-      (e.en && q.mode!=='cloze' ? '<div class="ex" style="margin-top:6px">'+esc(e.en)+'</div><div class="exz">'+esc(e.ja||'')+'</div>' : (q.mode==='cloze'?'<div class="exz" style="margin-top:6px">'+esc(e.en)+'</div>':''))+
-      (note?'<div class="nt">◎ '+esc(note)+'</div>':'')+
+      qxHtml+
       '<div class="row"><button type="button" id="uxQzSpk2">🔊 發音</button><button type="button" id="uxQzDetail">解說</button><button type="button" class="pri" id="uxQzNext">'+(Q.i+1>=Q.qs.length?'看結果':'下一題 →')+'</button></div>';
     $('uxQzSpk2').addEventListener('click', function(){ speak(e); });
     $('uxQzDetail').addEventListener('click', function(){ openQuizDetail(e.id,'uxQzPlay'); });
@@ -10443,7 +10340,7 @@ window.UX = window.UX || {};
   function renderReview(onlyWrong){
     var list=(Q&&Q.history||[]).filter(function(r){return !onlyWrong||!r.correct;});
     $('uxQzReviewCount').textContent='共 '+(Q&&Q.history?Q.history.length:0)+' 題';
-    $('uxQzReview').innerHTML=list.map(function(r){return '<div style="border:1px solid #e3ddd5;border-left:4px solid '+(r.correct?'#3a9d5d':'#d64b4b')+';border-radius:9px;padding:9px;margin:8px 0"><b>第 '+r.n+' 題　'+esc(r.word)+'　'+(r.correct?'✓':'✗')+'</b><div>你的答案：'+esc(r.user||'（未作答）')+'</div><div>正確答案：'+esc(r.answer)+'</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><button type="button" class="ux-btn qrd" data-id="'+esc(r.id)+'">查看解說</button><button type="button" class="ux-btn qrtry" data-id="'+esc(r.id)+'">重做此題</button><button type="button" class="ux-btn qweak" data-id="'+esc(r.id)+'">加入弱點</button></div></div>';}).join('')||'<div>沒有符合的題目。</div>';
+    $('uxQzReview').innerHTML=list.map(function(r){return '<div style="border:1px solid #e3ddd5;border-left:4px solid '+(r.correct?'#3a9d5d':'#d64b4b')+';border-radius:9px;padding:9px;margin:8px 0"><b>第 '+r.n+' 題　'+esc(r.word)+'　'+(r.correct?'✓':'✗')+'</b><div>你的答案：'+esc(r.user||'（未作答）')+'</div><div>正確答案：'+esc(r.answer)+'</div>'+(r.explanation?'<div class="kin-qx-review"><b>答案解析</b><br>'+esc(r.explanation)+'</div>':'')+'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><button type="button" class="ux-btn qrd" data-id="'+esc(r.id)+'">查看解說</button><button type="button" class="ux-btn qrtry" data-id="'+esc(r.id)+'">重做此題</button><button type="button" class="ux-btn qweak" data-id="'+esc(r.id)+'">加入弱點</button></div></div>';}).join('')||'<div>沒有符合的題目。</div>';
     qsa('.qrd',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){openQuizDetail(b.getAttribute('data-id'),'uxQzResult');});});
     qsa('.qrtry',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id'),m=Q.mode;preset={ids:[id],label:'重做此題'};sel.mode=m;sel.n=0;start();});});
     qsa('.qweak',$('uxQzReview')).forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-id');statusMap[id]='review';try{saveStatus();updateStats();}catch(x){}b.textContent='已加入弱點';b.disabled=true;UX.toast('已加入弱點清單');});});
@@ -12331,7 +12228,7 @@ setInterval(paintReturn,500);
 }
 </style>
 <div id="ixTop"><div class="ix-title" id="ixPageTitle">學習首頁</div><div class="ix-tabs" id="ixModeTabs"></div><div class="ix-context" id="ixContextLabel">首頁</div></div>
-<div id="ixMobileMask" onclick="tpxMobileMenuClose()"></div><aside id="ixLeft"><div class="ix-brand"><b>TPX1000</b><button type="button" class="ix-mobile-close" onclick="tpxMobileMenuClose()" aria-label="關閉選單">×</button><small>TOEIC Vocabulary System</small></div><div id="ixLeftBody"></div><div class="ix-bottom"><button class="ix-action" onclick="IX.openSettings()"><span class="ix-mark"></span>介面與設定</button></div></aside>
+<aside id="ixLeft"><div class="ix-brand"><b>TPX1000</b><small>TOEIC Vocabulary System</small></div><div id="ixLeftBody"></div><div class="ix-bottom"><button class="ix-action" onclick="IX.openSettings()"><span class="ix-mark"></span>介面與設定</button></div></aside>
 <aside id="ixRight"><div class="ix-brand"><b id="ixRightTitle">學習工具</b><small id="ixRightSub">依目前工作內容更新</small></div><div id="ixRightBody"></div></aside>
 <script>
 (function(){
@@ -12371,7 +12268,7 @@ function ixOpenModeRaw(c){
   if(c==='home'){if(typeof setListMode==='function')setListMode('study');if(typeof showList==='function')showList()}
   else if(c==='word'){if(typeof setListMode==='function')setListMode('browse');if(typeof showList==='function')showList()}
   else if(c==='article'||c==='coach'){ixSetMode('article');if(typeof window.rdOpen==='function')window.rdOpen();ixSetMode('article')}
-  else if(c==='bank'){ixSetMode('article');if(typeof window.rdOpen==='function')window.rdOpen();ixSetMode('article');setTimeout(function(){try{if(typeof window.rdOpen==='function')window.rdOpen()}catch(e){}},120)}
+  else if(c==='bank'){ixSetMode('article');if(typeof window.rdOpen==='function')window.rdOpen();ixSetMode('article');setTimeout(function(){try{if(typeof window.rdImportBank==='function')window.rdImportBank()}catch(e){}},120)}
   else if(c==='exam'){ixSetMode('exam');if(window.UX&&typeof window.UX.openQuiz==='function')window.UX.openQuiz();ixSetMode('exam')}
   else if(c==='flash'){ixSetMode('flash');if(typeof window.deckOpen==='function')window.deckOpen();ixSetMode('flash')}
   else if(c==='weak'){if(window.IX_PAGES)window.IX_PAGES.weak()}
@@ -12577,7 +12474,7 @@ function text(j){var p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content
 window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);put(KEY_STORE,a);try{if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}},cooling:function(){return 0},models:FALLBACK,discoverModels:discover,clearModelCache:function(){try{localStorage.removeItem(CACHE)}catch(e){}},routeLog:function(){return get(LOG,[])}};
 function modelPanel(){var route=document.getElementById('gmRoutePanel');if(!route||document.getElementById('gmrModels'))return;var e=document.createElement('div');e.id='gmrModels';e.className='gmr-models';e.innerHTML='<b>動態模型探索</b><span id="gmrModelsText">尚未讀取模型清單</span><button type="button" onclick="gmDiscoverModels(true)">立即重新抓取模型</button>';route.insertBefore(e,route.querySelector('.gmr-list'))}
 window.gmDiscoverModels=function(force){modelPanel();var t=document.getElementById('gmrModelsText');if(t)t.textContent='正在向 Gemini models.list 查詢…';discover(!!force).then(function(c){if(t)t.textContent='目前排序：'+c.models.join(' → ');if(typeof gmRouteLogRefresh==='function')gmRouteLogRefresh()},function(e){if(t)t.textContent='模型探索失敗：'+e.message})};
-function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')})}
+function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')},function(e){var t=document.getElementById('gmrModelsText');if(t)t.textContent='尚未設定 Gemini 金鑰';})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(hook,100)});else setTimeout(hook,100);
 })();
 </script>
@@ -13098,111 +12995,5 @@ body.theme-dark #screen-detail .detail-actions{
 })();
 </script>
 
-
-<style id="tpxResponsiveHeaderFix">
-/* Square menu button: CSS lines only, no emoji. */
-#mobileMenuBtn{display:none;width:38px;height:38px;flex:0 0 38px;padding:0;border:1px solid #cfcfcf;border-radius:8px;background:#fff;align-items:center;justify-content:center;flex-direction:column;gap:4px;box-sizing:border-box}
-#mobileMenuBtn span{display:block;width:17px;height:2px;border-radius:2px;background:#272727}
-body.theme-dark #mobileMenuBtn{background:#171719;border-color:#3a3a3c}
-body.theme-dark #mobileMenuBtn span{background:#f1efeb}
-#settingsCloudSyncBtn{width:100%;display:flex;align-items:center;gap:11px;padding:12px;margin:0 0 14px;border:1px solid #ddd;border-radius:11px;background:#fff;color:#222;text-align:left;box-sizing:border-box}
-#settingsCloudSyncBtn .cloudIcon{width:28px;height:20px;position:relative;flex:0 0 28px;border:2px solid #c45c1a;border-radius:12px;box-sizing:border-box}
-#settingsCloudSyncBtn .cloudIcon:before,#settingsCloudSyncBtn .cloudIcon:after{content:"";position:absolute;background:#fff;border:2px solid #c45c1a;border-bottom:0;border-radius:50% 50% 0 0}
-#settingsCloudSyncBtn .cloudIcon:before{width:12px;height:9px;left:3px;top:-8px}
-#settingsCloudSyncBtn .cloudIcon:after{width:9px;height:7px;right:2px;top:-5px}
-#settingsCloudSyncBtn span:nth-child(2){min-width:0;flex:1}
-#settingsCloudSyncBtn b,#settingsCloudSyncBtn small{display:block}
-#settingsCloudSyncBtn b{font-size:14px}.settingsCloudSyncBtn small{font-size:11px}
-#settingsCloudSyncBtn small{font-size:11px;color:#888;margin-top:2px}
-#settingsCloudSyncBtn i{font-style:normal;font-size:22px;color:#999}
-body.theme-dark #settingsCloudSyncBtn{background:#111113;border-color:#303034;color:#eee}
-body.theme-dark #settingsCloudSyncBtn .cloudIcon:before,body.theme-dark #settingsCloudSyncBtn .cloudIcon:after{background:#111113}
-#ixMobileMask,.ix-mobile-close{display:none}
-@media (min-width:1024px){
-  /* Fixed desktop header is 54px high. Keep the native Sync/User/Range bar below it. */
-  body.ix-enabled #screen-list,body.ix-enabled #screen-detail{padding-top:54px!important;box-sizing:border-box!important}
-  body.ix-enabled #screen-list>.topbar,body.ix-enabled #screen-detail>.topbar{top:54px!important}
-}
-@media (max-width:767px){
-  #mobileMenuBtn{display:flex}
-  #ixTop,#ixRight{display:none!important}
-  #ixLeft{display:flex!important;position:fixed!important;left:0!important;top:0!important;bottom:0!important;width:min(84vw,320px)!important;z-index:13020!important;background:#0d0d0d!important;border-right:1px solid #303030!important;color:#f4f4f4!important;flex-direction:column!important;overflow-y:auto!important;transform:translateX(-102%)!important;transition:transform .2s ease!important;box-sizing:border-box!important}
-  body.ix-mobile-menu-open #ixLeft{transform:translateX(0)!important}
-  #ixMobileMask{display:block;position:fixed;inset:0;z-index:13010;background:rgba(0,0,0,.5);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease}
-  body.ix-mobile-menu-open #ixMobileMask{opacity:1;visibility:visible;pointer-events:auto}
-  #ixLeft .ix-brand{position:relative;padding-right:56px}
-  .ix-mobile-close{display:flex;position:absolute;right:12px;top:12px;width:34px;height:34px;border:1px solid #444;border-radius:8px;background:#171717;color:#fff;font-size:22px;align-items:center;justify-content:center}
-  body.ix-mobile-menu-open{overflow:hidden}
-}
-</style>
-<script>
-(function(){
-  window.tpxMobileMenuOpen=function(){document.body.classList.add('ix-mobile-menu-open');};
-  window.tpxMobileMenuClose=function(){document.body.classList.remove('ix-mobile-menu-open');};
-  document.addEventListener('click',function(ev){
-    var b=ev.target&&ev.target.closest&&ev.target.closest('#ixLeft .ix-item,#ixLeft .ix-action');
-    if(b&&window.innerWidth<768)setTimeout(window.tpxMobileMenuClose,60);
-  });
-  document.addEventListener('keydown',function(ev){if(ev.key==='Escape')window.tpxMobileMenuClose();});
-})();
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&document.body.classList.contains('rd-pdf-open'))rdCloseOriginalPage();});
-</script>
-
-
-<style id="tpxMobileMenuV2">
-/* 1. Left entry uses one plain outlined square, not a hamburger or emoji. */
-#mobileMenuBtn span{display:none!important}
-#mobileMenuBtn .squareMark{display:block!important;width:14px!important;height:14px!important;border:2px solid #fff!important;border-radius:2px!important;background:transparent!important;box-sizing:border-box!important}
-/* Cloud sync now exists only inside Settings/User panel. */
-#gsFab{display:none!important}
-@media (max-width:767px){
-  /* 2. Compact mobile header. */
-  #screen-list>.topbar,#screen-detail>.topbar{min-height:52px!important;padding:7px 10px!important;gap:6px!important;box-sizing:border-box!important}
-  #mobileMenuBtn{display:flex!important;width:34px!important;height:34px!important;flex-basis:34px!important;border-radius:7px!important}
-  #userChip{height:34px!important;min-height:34px!important;padding:3px 9px 3px 4px!important}
-  #userChip .av{width:27px!important;height:27px!important;font-size:13px!important}
-  #userChip .nm{font-size:12px!important}
-  .book-switch,.book-head-btn,#bookHeadBtn{min-height:34px!important;height:34px!important}
-
-  /* 3. Complete mobile drawer styling. Desktop styles were scoped to >=1024px,
-     which is why Safari showed default blue link/button text. */
-  #ixLeft{font-family:inherit!important;color:#f3f3f3!important;text-align:left!important}
-  #ixLeft *{box-sizing:border-box}
-  #ixLeft .ix-brand{display:block!important;padding:18px 52px 14px 16px!important;border-bottom:1px solid #2c2c2c!important;background:#0d0d0d!important}
-  #ixLeft .ix-brand b{display:block!important;margin:0!important;color:#fff!important;font-size:18px!important;line-height:1.2!important;letter-spacing:.6px!important}
-  #ixLeft .ix-brand small{display:block!important;margin-top:4px!important;color:#8e8e93!important;font-size:11px!important;line-height:1.4!important}
-  #ixLeftBody{display:block!important;padding:10px 10px 0!important}
-  #ixLeft .ix-section{display:block!important;padding:8px 4px 4px!important}
-  #ixLeft .ix-section h3{display:block!important;margin:0 6px 8px!important;color:#8e8e93!important;font-size:11px!important;line-height:1.3!important;font-weight:700!important;letter-spacing:.08em!important;text-transform:none!important}
-  #ixLeft .ix-item,#ixLeft .ix-action{appearance:none!important;-webkit-appearance:none!important;display:flex!important;align-items:center!important;gap:10px!important;width:100%!important;min-height:42px!important;margin:0 0 5px!important;padding:9px 10px!important;border:1px solid transparent!important;border-radius:9px!important;background:transparent!important;color:#ededed!important;text-decoration:none!important;font:600 13px/1.35 inherit!important;text-align:left!important;white-space:normal!important}
-  #ixLeft .ix-item:link,#ixLeft .ix-item:visited,#ixLeft .ix-action:link,#ixLeft .ix-action:visited{color:#ededed!important}
-  #ixLeft .ix-item.active,#ixLeft .ix-action.primary{border-color:#8d410d!important;background:#211208!important;color:#fff!important}
-  #ixLeft .ix-mark{display:block!important;width:9px!important;height:9px!important;flex:0 0 9px!important;border:1px solid #8e8e93!important;border-radius:2px!important;background:transparent!important}
-  #ixLeft .ix-item.active .ix-mark{border-color:#f47b20!important;background:#f47b20!important}
-  #ixLeft .ix-card{display:block!important;margin:0 0 9px!important;padding:11px!important;border:1px solid #2c2c2e!important;border-radius:10px!important;background:#171719!important;color:#ededed!important}
-  #ixLeft .ix-card h4{margin:0 0 7px!important;color:#ededed!important;font-size:13px!important}
-  #ixLeft .ix-card p,#ixLeft .ix-card small{margin:0!important;color:#98989d!important;font-size:11px!important;line-height:1.55!important}
-  #ixLeft .ix-num{color:#fff!important;font-size:25px!important;font-weight:800!important}
-  #ixLeft .ix-row{display:flex!important;justify-content:space-between!important;gap:8px!important;padding:7px 0!important;border-bottom:1px solid #29292b!important;color:#ddd!important;font-size:12px!important}
-  #ixLeft .ix-row:last-child{border-bottom:0!important}
-  #ixLeft .ix-progress{height:6px!important;margin-top:8px!important;overflow:hidden!important;border-radius:6px!important;background:#2b2b2d!important}
-  #ixLeft .ix-progress i{display:block!important;height:100%!important;background:#f47b20!important}
-  #ixLeft .ix-bottom{display:block!important;margin-top:auto!important;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px))!important;border-top:1px solid #2c2c2c!important;background:#0d0d0d!important}
-  #ixLeft .ix-orange{color:#ff9142!important}
-  #ixLeft .ix-mobile-close{display:flex!important;color:#fff!important}
-}
-</style>
-
-<style id="rdBank3Css">
-.rd-bank3 .rd-pick{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important;margin:12px 0!important}.rd-bank-summary{display:flex;justify-content:space-between;align-items:center;margin:12px 0;padding:12px;border:1px solid #3a3a3c;border-radius:10px;background:#151517}.rd-bank-summary b{color:#ff9142}.rd-bank-summary span{color:#aaa}.rd-bank-nav{display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:center}.rd-bank-nav button,.rd-bank-nav select{min-height:42px;border:1px solid #555;border-radius:8px;background:#111;color:#fff;padding:8px;font:inherit}.rd-bank-nav select{min-width:0;width:100%}@media(max-width:600px){.rd-bank-nav{grid-template-columns:1fr 1fr}.rd-bank-nav select{grid-column:1/-1;grid-row:1}.rd-bank-nav button{grid-row:2}}
-</style>
-
-<style id="rdPdfCanvasCss">
-.rd-qnav{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin:12px 0}.rd-qnav button,.rd-qnav label{min-height:42px;border:1px solid #555;border-radius:8px;background:#111;color:#fff;padding:8px;text-align:center}.rd-qnav input{width:72px;background:#050505;color:#fff;border:1px solid #666;border-radius:6px;padding:5px;text-align:center}.rd-answer-panel{margin:12px 0;padding:12px;border:1px solid #3a3a3c;border-radius:12px;background:#101012}.rd-answer-head{display:flex;justify-content:space-between;color:#ff9142;margin-bottom:9px}.rd-answer-row{display:grid;grid-template-columns:42px repeat(4,1fr);gap:7px;align-items:center;margin:7px 0}.rd-answer-row strong{text-align:center;color:#ddd}.rd-answer-row button{min-height:40px;border:1px solid #555;border-radius:8px;background:#1b1b1d;color:#fff;font-weight:800}.rd-answer-row button.on{border-color:#ff831d;background:#4a2309;color:#fff}.rd-pdf-toolbar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:9px;background:rgba(10,10,10,.94);border:1px solid #333;border-radius:10px;margin:10px 0}.rd-pdf-toolbar button,.rd-pdf-toolbar input{min-height:36px;border:1px solid #555;border-radius:7px;background:#171719;color:#fff;padding:6px 9px}.rd-pdf-toolbar input{width:62px;text-align:center}.rd-pdf-toolbar span{color:#aaa;font-size:12px}.rd-pdf-wrap{width:100%;min-height:480px;overflow:auto;text-align:center;background:#2b2b2d;border:1px solid #444;border-radius:10px;padding:6px;box-sizing:border-box}.rd-pdf-wrap canvas{display:block;margin:0 auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.45)}@media(max-width:600px){.rd-qnav{grid-template-columns:1fr 1fr}.rd-qnav label{grid-column:1/-1;grid-row:1}.rd-pdf-toolbar{top:52px}.rd-pdf-wrap{min-height:420px}.rd-answer-row{grid-template-columns:34px repeat(4,1fr)}}
-</style>
-
-<style id="rdAbceedV64Css">
-.rd-app-head{position:sticky;top:0;z-index:8;display:grid;grid-template-columns:48px 1fr 64px;align-items:center;gap:10px;padding:10px 12px;background:#0b0b0c;border-bottom:1px solid #29292b}.rd-app-head button{height:42px;border:1px solid #454549;border-radius:10px;background:#18181a;color:#fff;font-weight:800}.rd-app-head b,.rd-app-head small{display:block}.rd-app-head b{font-size:17px}.rd-app-head small{margin-top:3px;color:#9b9ba0;font-size:11px}.rd-test-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;background:#0b0b0c}.rd-test-tabs button{height:40px;border:1px solid #454549;border-radius:9px;background:#18181a;color:#ddd;font-weight:800}.rd-test-tabs button.on{border-color:#ff831d;background:#3a1b08;color:#ff9a4a}.rd-study-card{margin:10px 12px;padding:18px 16px 14px;border:1px solid #353539;border-radius:14px;background:#111113;min-height:330px}.rd-question-content{font-size:17px;line-height:1.65;color:#f2f2f2}.rd-stem{font-weight:700;margin-bottom:18px}.rd-inline-options{display:grid;gap:9px}.rd-inline-options>div{display:grid;grid-template-columns:38px 1fr;gap:8px;align-items:start;color:#d5d5d8}.rd-inline-options b{color:#ff9142}.rd-scan-note,.rd-loading{padding:28px 12px;text-align:center;color:#aaa;line-height:1.7}.rd-answer-panel{margin:24px 0 0!important;padding:14px 0 0!important;border:0!important;border-top:1px solid #303034!important;border-radius:0!important;background:transparent!important}.rd-answer-head{color:#a7a7ac!important}.rd-answer-row{grid-template-columns:46px repeat(4,1fr)!important;gap:9px!important}.rd-answer-row button{height:50px!important;font-size:17px!important;border-radius:10px!important}.rd-answer-row button.on{background:#ff831d!important;border-color:#ff9c52!important;color:#111!important}.rd-audio-card{margin:10px 12px;padding:12px;border:1px solid #353539;border-radius:14px;background:#111113}.rd-audio-top{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center}.rd-audio-top span{color:#aaa;font-size:11px}.rd-audio-top select{min-width:0;width:100%;height:38px;border:1px solid #49494d;border-radius:8px;background:#19191b;color:#fff;padding:0 8px}.rd-audio-actions{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:7px;margin-top:9px}.rd-audio-actions button{height:42px;border:1px solid #49494d;border-radius:9px;background:#19191b;color:#fff;font-weight:700}.rd-audio-actions .play{border-color:#ff831d;color:#ff9a4a}.rd-bottom-nav{position:sticky;bottom:0;z-index:7;display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:rgba(10,10,11,.96);border-top:1px solid #303034}.rd-bottom-nav button,.rd-bottom-nav label{min-height:46px;border:1px solid #454549;border-radius:10px;background:#18181a;color:#fff;padding:10px;text-align:center;font-weight:800}.rd-bottom-nav .next{background:#ff831d;border-color:#ff9a4a;color:#111}.rd-bottom-nav input{width:58px;background:#050505;color:#fff;border:1px solid #555;border-radius:6px;padding:5px;text-align:center}.rd-pdf-modal{display:none;position:fixed;inset:0;z-index:14000;background:#0b0b0c;overflow:auto;padding:0 10px 20px}.rd-pdf-open .rd-pdf-modal{display:block}.rd-pdf-modal-head{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;height:54px;background:#0b0b0c;border-bottom:1px solid #333}.rd-pdf-modal-head button{width:38px;height:38px;border:1px solid #555;border-radius:9px;background:#18181a;color:#fff;font-size:24px}.rd-pdf-modal .rd-pdf-toolbar{top:54px}.rd-pdf-modal .rd-pdf-wrap{min-height:calc(100vh - 130px)}@media(min-width:1024px){.rd-study-card,.rd-audio-card,.rd-bottom-nav,.rd-test-tabs{max-width:720px;margin-left:auto;margin-right:auto}.rd-app-head{padding-left:max(12px,calc((100% - 720px)/2));padding-right:max(12px,calc((100% - 720px)/2))}.rd-pdf-modal{left:220px;right:270px}}@media(max-width:600px){.rd-study-card{margin:8px;padding:16px 13px;min-height:360px}.rd-audio-card{margin:8px}.rd-bottom-nav{padding-left:8px;padding-right:8px}.rd-bottom-nav label{font-size:12px}.rd-answer-row{grid-template-columns:34px repeat(4,1fr)!important}.rd-app-head{grid-template-columns:42px 1fr 58px}}
-</style>
 </body>
 </html>
