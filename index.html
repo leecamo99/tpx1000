@@ -25242,16 +25242,117 @@ function listOne(key,force){var catalog=get(CACHE,{}),id=fp(key),old=catalog[id]
 function discover(force){var ks=keys();if(!ks.length)return Promise.reject(new Error('尚未設定 Gemini 金鑰'));return Promise.all(ks.map(function(k){return listOne(k,force).then(function(ms){return{key:k,models:ms}},function(e){addLog('模型探索 '+tail(k)+' 失敗 '+e.message);var old=get(CACHE,{})[fp(k)];return{key:k,models:old&&old.models&&old.models.length?old.models:FALLBACK.slice(),error:e.message}})})).then(function(perKey){var union=[],seen={};perKey.forEach(function(x){x.models.forEach(function(m){if(!seen[m]){seen[m]=1;union.push(m)}})});union.sort(function(a,b){return score(b)-score(a)});return{perKey:perKey,models:union.length?union:FALLBACK.slice(),at:now()}})}
 function parseRetry(j){var d=j&&j.error&&j.error.details||[];for(var i=0;i<d.length;i++){var s=d[i]&&d[i].retryDelay;if(s){var m=String(s).match(/([0-9.]+)s/);if(m)return Math.ceil(parseFloat(m[1])*1000)}}return 0}
 function request(model,key,payload){var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},15000),url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent?key='+encodeURIComponent(key);return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:ctl.signal}).then(function(r){clearTimeout(timer);return r.text().then(function(t){var j={};try{j=JSON.parse(t)}catch(e){}if(r.ok)return j;var x=new Error(j&&j.error&&j.error.message||('HTTP '+r.status));x.status=r.status;x.retry=parseRetry(j);throw x})},function(e){clearTimeout(timer);var x=new Error(e&&e.name==='AbortError'?'Gemini 連線逾時':(e.message||'網路錯誤'));x.net=true;throw x})}
-function execute(payload,opts,catalog,refreshed){opts=opts||{};var ks=keys(),keyCool=get(KEY_COOL,{}),modelCool=get(MODEL_COOL,{}),start=parseInt(localStorage.getItem(CURSOR)||'0',10)||0,routes=[];catalog.perKey.forEach(function(entry){var ki=ks.indexOf(entry.key);entry.models.forEach(function(model){if(!active(keyCool,entry.key)&&!active(modelCool,model))routes.push({key:entry.key,ki:ki,model:model})})});routes.sort(function(a,b){var ak=(a.ki-start+ks.length)%ks.length,bk=(b.ki-start+ks.length)%ks.length;return score(b.model)-score(a.model)||ak-bk});var i=0,notes=[];
- function run(){if(i>=routes.length){if(!refreshed&&notes.some(function(n){return / 404 /.test(n)}))return discover(true).then(function(fresh){return execute(payload,opts,fresh,true)});var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+'\n若多支 Key 同屬一個 Google Project，配額仍會共享。');e.routeLog=notes;throw e}var r=routes[i++];return request(r.model,r.key,payload).then(function(j){try{localStorage.setItem(CURSOR,String((r.ki+1)%ks.length))}catch(e){}try{localStorage.setItem('tpxGmSticky',JSON.stringify({model:r.model,at:Date.now()}))}catch(e){}addLog(r.model+' '+tail(r.key)+' 成功');return j}).catch(function(e){var line=r.model+' '+tail(r.key)+' '+(e.status||'NET')+' '+e.message;notes.push(line);addLog(line);if(e.status===404){modelCool[r.model]=now()+10*60*1000;put(MODEL_COOL,modelCool);return run()}if(e.status===429){keyCool[r.key]=now()+Math.min(Math.max(e.retry||60000,60000),15*60*1000);put(KEY_COOL,keyCool);return run()}if(e.status===401||e.status===403){keyCool[r.key]=now()+24*60*60*1000;put(KEY_COOL,keyCool);return run()}if(e.net||e.status===408||e.status>=500)return sleep(900+Math.random()*500).then(function(){return request(r.model,r.key,payload)}).catch(function(e2){notes.push(r.model+' '+tail(r.key)+' 重試失敗 '+e2.message);return run()});return run()})}return run()}
-/* 黏著最近成功的模型：30 分鐘內直接用它，省掉整輪嘗試。
-   短輸出關掉 thinking，flash 系列上差距明顯。 */
+/* ===== v5.1 修正版路由 =====
+   舊版三個問題讓「換金鑰」實際上沒生效：
+   1. sticky 直達只會用 ks[0]，永遠打第一支金鑰，其他四支形同虛設。
+   2. 429 直接把「整支金鑰」冷卻 60 秒以上；但 Google 的配額訊息是
+      limit: 5, model: gemini-3.7-flash —— 那是「金鑰 × 模型」的 RPM，
+      換個模型同一支金鑰還能用，卻被整支封鎖，很快就全部冷卻。
+   3. sticky 直達失敗時沒有寫入任何冷卻，下一次又撞同一面牆。
+   4. 沒有併發閘門，一次噴十幾發，免費層 5 RPM 立刻爆。
+   修正：冷卻改成 key|model 配對、sticky 記住 key、失敗一律登記冷卻、
+        全域序列化 + 最小間隔。 */
+var PAIR_COOL='kinGeminiPairCoolV51';
+function pairId(k,m){return String(k).slice(-8)+'|'+m}
+function coolPair(k,m,ms){var p=get(PAIR_COOL,{});p[pairId(k,m)]=now()+ms;
+  // 順手清掉過期項目，避免 localStorage 越長越大
+  for(var x in p){if(+p[x]<=now())delete p[x]}
+  put(PAIR_COOL,p)}
+function pairCooling(k,m){var p=get(PAIR_COOL,{});return +(p[pairId(k,m)]||0)>now()}
+
+function execute(payload,opts,catalog,refreshed){
+  opts=opts||{};
+  var ks=keys(),keyCool=get(KEY_COOL,{}),modelCool=get(MODEL_COOL,{}),
+      start=parseInt(localStorage.getItem(CURSOR)||'0',10)||0,routes=[];
+  catalog.perKey.forEach(function(entry){
+    var ki=ks.indexOf(entry.key);
+    entry.models.forEach(function(model){
+      if(active(keyCool,entry.key))return;          // 401/403 才會整支冷卻
+      if(active(modelCool,model))return;            // 404 才會整個模型冷卻
+      if(pairCooling(entry.key,model))return;       // 429 只冷卻這個配對
+      routes.push({key:entry.key,ki:ki<0?0:ki,model:model});
+    });
+  });
+  // 排序：先輪金鑰（從游標開始），同一輪內才比模型分數。
+  // 舊版是先比模型分數，等於五支金鑰一起去撞同一個最新模型，一起 429。
+  routes.sort(function(a,b){
+    var ak=(a.ki-start+ks.length)%ks.length,bk=(b.ki-start+ks.length)%ks.length;
+    return ak-bk||score(b.model)-score(a.model);
+  });
+  // 全部都在冷卻：挑最快解凍的那一條硬上，總比直接報錯好
+  if(!routes.length){
+    var p=get(PAIR_COOL,{}),best=null,bestAt=Infinity;
+    catalog.perKey.forEach(function(entry){entry.models.forEach(function(m){
+      var at=+(p[pairId(entry.key,m)]||0);
+      if(at<bestAt){bestAt=at;best={key:entry.key,ki:Math.max(0,ks.indexOf(entry.key)),model:m}}
+    })});
+    if(best)routes=[best];
+  }
+  var i=0,notes=[];
+  function run(){
+    if(i>=routes.length){
+      if(!refreshed&&notes.some(function(n){return / 404 /.test(n)}))
+        return discover(true).then(function(fresh){return execute(payload,opts,fresh,true)});
+      var e=new Error('Gemini 路由全部失敗：\n'+notes.slice(-8).join('\n')+
+        '\n若多支 Key 同屬一個 Google Project，配額仍會共享。');
+      e.routeLog=notes;throw e;
+    }
+    var r=routes[i++];
+    // 不論成敗都推進游標，下一次請求換下一支金鑰起跳
+    try{localStorage.setItem(CURSOR,String(((r.ki+1)%Math.max(1,ks.length))))}catch(e){}
+    return request(r.model,r.key,payload).then(function(j){
+      stickySet(r.model,r.key);
+      addLog(r.model+' '+tail(r.key)+' 成功');
+      return j;
+    }).catch(function(e){
+      var line=r.model+' '+tail(r.key)+' '+(e.status||'NET')+' '+e.message;
+      notes.push(line);addLog(line);
+      if(e.status===404){modelCool[r.model]=now()+10*60*1000;put(MODEL_COOL,modelCool);return run()}
+      if(e.status===429){
+        // 只冷卻這個 金鑰×模型 配對，並尊重 retryDelay
+        coolPair(r.key,r.model,Math.min(Math.max(e.retry||45000,30000),15*60*1000));
+        return run();
+      }
+      if(e.status===401||e.status===403){keyCool[r.key]=now()+24*60*60*1000;put(KEY_COOL,keyCool);return run()}
+      if(e.net||e.status===408||e.status>=500){
+        // 503／逾時：同配對短暫冷卻 20 秒，直接換下一條，不原地重試浪費時間
+        coolPair(r.key,r.model,20000);
+        return run();
+      }
+      return run();
+    });
+  }
+  return run();
+}
+
+/* 黏著最近成功的「模型 + 金鑰」：30 分鐘內直接用它，省掉整輪嘗試。
+   舊版只記模型、金鑰寫死 ks[0]，這就是「切換沒用」的主因。 */
 var STICKY='tpxGmSticky', STICKY_MS=30*60*1000;
-function stickyGet(){try{var s=JSON.parse(localStorage.getItem(STICKY)||'null');if(s&&s.at&&Date.now()-s.at<STICKY_MS)return s.model}catch(e){}return ''}
-function stickySet(m){try{localStorage.setItem(STICKY,JSON.stringify({model:m,at:Date.now()}))}catch(e){}}
+function stickyGet(){try{var s=JSON.parse(localStorage.getItem(STICKY)||'null');
+  if(s&&s.at&&Date.now()-s.at<STICKY_MS&&s.model)return s}catch(e){}return null}
+function stickySet(m,k){try{localStorage.setItem(STICKY,JSON.stringify({model:m,key:k||'',at:Date.now()}))}catch(e){}}
 function stickyClear(){try{localStorage.removeItem(STICKY)}catch(e){}}
-window.tpxGmReset=function(){stickyClear();console.log('[Gemini] 已清除模型偏好')};
-window.tpxGmStatus=function(){console.table({'目前偏好模型':stickyGet()||'（無）','逾時':'15 秒','備援清單':FALLBACK.join(' → ')})};
+window.tpxGmReset=function(){stickyClear();try{localStorage.removeItem(PAIR_COOL);localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}console.log('[Gemini] 已清除模型偏好與全部冷卻')};
+window.tpxGmStatus=function(){var s=stickyGet(),p=get(PAIR_COOL,{}),rows={};
+  for(var x in p){if(+p[x]>now())rows[x]=Math.ceil((+p[x]-now())/1000)+' 秒後解凍'}
+  console.table({'偏好模型':(s&&s.model)||'（無）','偏好金鑰':(s&&s.key)?tail(s.key):'（無）','金鑰數':keys().length});
+  console.table(rows)};
+
+/* ===== 併發閘門 =====
+   免費層是 5 RPM；同時噴十幾發一定 429。全域序列化，
+   並在兩次請求之間留最小間隔。 */
+var gate=Promise.resolve(), lastAt=0, MIN_GAP=1200;
+function queued(fn){
+  var p=gate.then(function(){
+    var wait=Math.max(0,MIN_GAP-(now()-lastAt));
+    return (wait?sleep(wait):Promise.resolve()).then(function(){lastAt=now();return fn()});
+  },function(){
+    var wait=Math.max(0,MIN_GAP-(now()-lastAt));
+    return (wait?sleep(wait):Promise.resolve()).then(function(){lastAt=now();return fn()});
+  });
+  gate=p.catch(function(){});
+  return p;
+}
 
 function call(payload,opts){
   // 短輸出關 thinking
@@ -25260,23 +25361,30 @@ function call(payload,opts){
       payload.generationConfig.thinkingConfig={thinkingBudget:0};
   }catch(e){}
 
-  var pinned=stickyGet(), ks=keys();
-  // 有偏好模型就先單獨試一次，成功即回，失敗才走完整路由
-  if(pinned&&ks.length){
-    var t0=Date.now();
-    return request(pinned,ks[0],payload).then(function(j){
-      console.log('[Gemini] '+pinned+' 直達 '+(Date.now()-t0)+'ms');
-      return j;
-    },function(err){
-      stickyClear();
-      console.log('[Gemini] 偏好模型失敗（'+(err.status||'net')+'），改走完整路由');
-      return discover(false).then(function(c){return execute(payload,opts,c,false)});
-    });
-  }
-  return discover(false).then(function(c){return execute(payload,opts,c,false)});
+  return queued(function(){
+    var s=stickyGet(), ks=keys();
+    if(!ks.length)return Promise.reject(new Error('尚未設定 Gemini 金鑰'));
+    // 有偏好組合就先單獨試一次（用記住的那支金鑰，不再寫死 ks[0]）
+    if(s&&s.model&&s.key&&ks.indexOf(s.key)>=0&&!pairCooling(s.key,s.model)){
+      var t0=Date.now();
+      return request(s.model,s.key,payload).then(function(j){
+        addLog(s.model+' '+tail(s.key)+' 直達 '+(Date.now()-t0)+'ms');
+        return j;
+      },function(err){
+        // 直達失敗也要登記冷卻，否則下次還是撞同一面牆
+        if(err.status===429)coolPair(s.key,s.model,Math.min(Math.max(err.retry||45000,30000),15*60*1000));
+        else coolPair(s.key,s.model,20000);
+        addLog(s.model+' '+tail(s.key)+' 直達失敗 '+(err.status||'NET')+'，改走完整路由');
+        stickyClear();
+        return discover(false).then(function(c){return execute(payload,opts,c,false)});
+      });
+    }
+    return discover(false).then(function(c){return execute(payload,opts,c,false)});
+  });
 }
+
 function text(j){var p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[];for(var i=0;i<p.length;i++)if(p[i].text)return p[i].text;return''}
-window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);put(KEY_STORE,a);try{if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL)}catch(e){}},cooling:function(){return 0},models:FALLBACK,discoverModels:discover,clearModelCache:function(){try{localStorage.removeItem(CACHE)}catch(e){}},routeLog:function(){return get(LOG,[])}};
+window.KIN_GM={call:call,text:text,keys:keys,saveKeys:function(a){a=(a||[]).map(function(k){return String(k||'').trim()}).filter(Boolean);put(KEY_STORE,a);try{if(a[0])localStorage.setItem(OLD_KEY,a[0])}catch(e){}return a},clearCool:function(){try{localStorage.removeItem(KEY_COOL);localStorage.removeItem(MODEL_COOL);localStorage.removeItem(PAIR_COOL);localStorage.removeItem(STICKY)}catch(e){}},cooling:function(){return 0},models:FALLBACK,discoverModels:discover,clearModelCache:function(){try{localStorage.removeItem(CACHE)}catch(e){}},routeLog:function(){return get(LOG,[])}};
 function modelPanel(){var route=document.getElementById('gmRoutePanel');if(!route||document.getElementById('gmrModels'))return;var e=document.createElement('div');e.id='gmrModels';e.className='gmr-models';e.innerHTML='<b>動態模型探索</b><span id="gmrModelsText">尚未讀取模型清單</span><button type="button" onclick="gmDiscoverModels(true)">立即重新抓取模型</button>';route.insertBefore(e,route.querySelector('.gmr-list'))}
 window.gmDiscoverModels=function(force){modelPanel();var t=document.getElementById('gmrModelsText');if(t)t.textContent='正在向 Gemini models.list 查詢…';discover(!!force).then(function(c){if(t)t.textContent='目前排序：'+c.models.join(' → ');if(typeof gmRouteLogRefresh==='function')gmRouteLogRefresh()},function(e){if(t)t.textContent='模型探索失敗：'+e.message})};
 function hook(){modelPanel();discover(false).then(function(c){var t=document.getElementById('gmrModelsText');if(t)t.textContent='目前排序：'+c.models.join(' → ')},function(e){var t=document.getElementById('gmrModelsText');if(t)t.textContent=e&&e.message?e.message:'尚未設定 Gemini 金鑰'})}
@@ -25706,6 +25814,42 @@ body.theme-dark #screen-detail .detail-actions{
   z-index: 10002 !important;
   pointer-events: auto !important;
 }
+
+/* ===== 修正：解說頁操作列偶發消失 =====
+   操作列是 position:fixed，但寫在 #screen-detail 裡面。
+   只要任何一個全螢幕流程沒把 body class 清乾淨、或切換單字時
+   #screen-detail 短暫被重繪，這條列就會被連帶藏掉或被推出可視範圍。
+   這裡用一條優先權最高的規則把它釘回來，並由下面的守門員 JS
+   在每次切換後強制檢查一次。 */
+body.tpx-act-force #screen-detail .detail-actions{
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  bottom: calc(var(--tpx-nav-h) + var(--tpx-player-h) + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 9990 !important;
+}
+/* 播放列被藏起來時（例如短文模式）操作列同步下移，不留空洞 */
+body.tpx-act-force.tpx-player-hidden #screen-detail .detail-actions{
+  bottom: calc(var(--tpx-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* ===== 修正：短文閱讀模式的播放介面被底部導覽列蓋住 =====
+   .rd-player 是 position:sticky; bottom:0; z-index:6，
+   而上面那段把 .bottom-nav 拉到 z-index:10002，
+   於是「連續播放／設A／雲端音」整排被導覽列壓在下面按不到。
+   改成貼齊導覽列上緣，並把層級抬到導覽列之上。 */
+body.rd-open #screen-read{
+  padding-bottom: calc(var(--tpx-nav-h) + env(safe-area-inset-bottom, 0px) + 8px) !important;
+}
+.rd-player{
+  bottom: calc(var(--tpx-nav-h) + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 10003 !important;
+  margin-bottom: 0 !important;
+  pointer-events: auto !important;
+}
+body.rd-open .rd-player{
+  box-shadow: 0 -2px 12px rgba(0,0,0,.18);
+}
 </style>
 
 <script>
@@ -26064,6 +26208,106 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 
+
+
+<script>
+/* ===========================================================
+   操作列守門員：解說頁只要是前景，就保證
+   「上一個／未學習／習得／要複習／下一個」看得到也按得到。
+   會消失的原因是 body 上的全螢幕 class 沒被清乾淨
+   （rd-open / books-open / ux-quiz-open / mode-srs / ix-center-*），
+   或播放列高度暫時量到 0 把它推出畫面。
+   =========================================================== */
+(function(){
+  'use strict';
+  var OVERLAY = ['mode-srs','rd-open','books-open','ux-quiz-open','tpx-history-open',
+                 'ix-center-article','ix-center-exam','ix-center-weak','ix-center-daily'];
+
+  function overlayVisible(){
+    // 真的有全螢幕畫面在前景才算數，只看 body class 會被殘留值騙到
+    var read = document.getElementById('screen-read');
+    var books= document.getElementById('screen-books');
+    var quiz = document.getElementById('uxQuiz');
+    var hist = document.getElementById('tpxHistoryView');
+    function on(el){ return !!(el && (el.classList.contains('show') || el.classList.contains('active'))
+                               && getComputedStyle(el).display !== 'none'); }
+    if(on(read) || on(books) || on(quiz) || on(hist)) return true;
+    if(document.body.classList.contains('mode-srs')) return true;
+    for(var i=0;i<4;i++){
+      var c = ['ix-center-article','ix-center-exam','ix-center-weak','ix-center-daily'][i];
+      if(document.body.classList.contains(c)) return true;
+    }
+    return false;
+  }
+
+  function stale(){
+    // body 上掛著 overlay class，但畫面上根本沒有那個 overlay → 殘留，清掉
+    var read = document.getElementById('screen-read');
+    if(document.body.classList.contains('rd-open') &&
+       !(read && read.classList.contains('show'))) document.body.classList.remove('rd-open');
+    var books = document.getElementById('screen-books');
+    if(document.body.classList.contains('books-open') &&
+       !(books && (books.classList.contains('show')||books.classList.contains('active'))))
+      document.body.classList.remove('books-open');
+    var quiz = document.getElementById('uxQuiz');
+    if(document.body.classList.contains('ux-quiz-open') &&
+       !(quiz && quiz.classList.contains('show'))) document.body.classList.remove('ux-quiz-open');
+    var hist = document.getElementById('tpxHistoryView');
+    if(document.body.classList.contains('tpx-history-open') &&
+       !(hist && hist.classList.contains('show'))) document.body.classList.remove('tpx-history-open');
+  }
+
+  function guard(){
+    var sd  = document.getElementById('screen-detail');
+    var act = document.querySelector('#screen-detail .detail-actions');
+    if(!sd || !act) return;
+    stale();
+    var onDetail = sd.classList.contains('active') && getComputedStyle(sd).display !== 'none';
+    if(onDetail && !overlayVisible()){
+      document.body.classList.add('tpx-act-force');
+      // 播放列若暫時量不到高度，先用上次的值撐住，避免整條被推到畫面外
+      var pl = document.getElementById('playerBar');
+      var plOn = pl && getComputedStyle(pl).display !== 'none';
+      document.body.classList.toggle('tpx-player-hidden', !plOn);
+      if(typeof window.tpxActionBarRemeasure === 'function'){
+        try{ window.tpxActionBarRemeasure(); }catch(e){}
+      }
+    }else{
+      document.body.classList.remove('tpx-act-force');
+    }
+  }
+  window.tpxActionBarGuard = guard;
+
+  ['showDetail','prevItem','nextItem','showList','rdClose','openDetail','openStudyDetail']
+    .forEach(function(name){
+      var t = 0;
+      var iv = setInterval(function(){
+        if(++t > 60){ clearInterval(iv); return; }
+        if(typeof window[name] !== 'function') return;
+        clearInterval(iv);
+        var orig = window[name];
+        window[name] = function(){
+          var r = orig.apply(this, arguments);
+          setTimeout(guard, 0); setTimeout(guard, 160);
+          return r;
+        };
+      }, 120);
+    });
+
+  ['resize','orientationchange','pageshow','focus'].forEach(function(ev){
+    window.addEventListener(ev, guard, { passive:true });
+  });
+  document.addEventListener('visibilitychange', guard);
+  if(window.MutationObserver){
+    new MutationObserver(function(){ guard(); })
+      .observe(document.body, { attributes:true, attributeFilter:['class'] });
+  }
+  setInterval(guard, 1500);   // 最後一道保險
+  if(document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(guard, 200); });
+  else setTimeout(guard, 200);
+})();
+</script>
 
 </body>
 </html>
