@@ -2,7 +2,7 @@
   "version": 1,
   "userId": "paul",
   "userName": "Paul",
-  "updatedAt": "2026-09-19T07:15:53.314Z",
+  "updatedAt": "2026-09-19T07:47:27.526Z",
   "deviceId": "dev-4zl46m",
   "keys": {
     "book:kin1000:paul:status": "{\"024\":\"review\",\"003\":\"ok\",\"005\":\"ok\",\"002\":\"ok\",\"012\":\"ok\",\"013\":\"ok\",\"014\":\"ok\",\"011\":\"ok\",\"015\":\"ok\",\"010\":\"review\",\"009\":\"ok\",\"016\":\"ok\",\"017\":\"review\",\"001\":\"ok\",\"004\":\"ok\",\"006\":\"ok\",\"007\":\"ok\",\"008\":\"ok\",\"018\":\"review\",\"019\":\"ok\",\"020\":\"ok\",\"021\":\"ok\",\"022\":\"review\",\"023\":\"ok\",\"025\":\"ok\",\"026\":\"ok\",\"027\":\"ok\",\"028\":\"ok\",\"029\":\"review\",\"030\":\"ok\",\"031\":\"ok\"}",
@@ -18,6 +18,6 @@
     "kinPlayMode": "once",
     "kinSpeed": "1.5",
     "kin_phrase_times": "2",
-    "kinReturnContext": "{\"id\":\"010\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789801003823}"
+    "kinReturnContext": "{\"id\":\"010\",\"levels\":[\"all\"],\"mode\":\"browse\",\"studyQueue\":false,\"at\":1789804042732}"
   }
 }
