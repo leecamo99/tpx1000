@@ -24176,13 +24176,45 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function mnAll(){
     try{ return JSON.parse(localStorage.getItem(mnKey()) || '{}') || {}; }catch(e){ return {}; }
   }
-  function mnGet(id){ return mnAll()[bookId() + '/' + id] || null; }
+  function mnIdentity(e){
+    return {book:String(bookId()), id:String(e && e.id != null ? e.id : ''),
+      word:String(e && e.word || '').trim().toLowerCase()};
+  }
+  function mnMatches(obj, identity){
+    var x=obj && obj.identity;
+    return !!(x && identity && identity.book && identity.id && identity.word &&
+      String(x.book)===identity.book && String(x.id)===identity.id &&
+      String(x.word || '').trim().toLowerCase()===identity.word);
+  }
+  function mnCurrentIdentity(id){
+    var e=currentEntry();
+    return e && String(e.id)===String(id) ? mnIdentity(e) : null;
+  }
+  function mnGet(id){
+    var identity=mnCurrentIdentity(id);
+    if(!identity) return null;
+    var obj=mnAll()[identity.book + '/' + identity.id] || null;
+    return mnMatches(obj, identity) ? obj : null;
+  }
+  function mnBoxMatches(box, identity){
+    var now=mnCurrentIdentity(identity && identity.id);
+    return !!(now && box && box.isConnected &&
+      box.getAttribute('data-book')===identity.book &&
+      box.getAttribute('data-id')===identity.id &&
+      box.getAttribute('data-word')===identity.word &&
+      now.book===identity.book && now.id===identity.id && now.word===identity.word);
+  }
   function mnSet(id, obj){
     var all = mnAll(), k = bookId() + '/' + id;
-    if(obj) all[k] = obj; else delete all[k];
+    if(obj){
+      // Never stamp an old or cross-card record with the current word's identity.
+      var identity=mnCurrentIdentity(id);
+      if(!identity || !mnMatches(obj, identity)) return;
+      all[k] = obj;
+    }else delete all[k];
     try{ localStorage.setItem(mnKey(), JSON.stringify(all)); }catch(e){}
   }
-  window.KIN_MNEMO = { get: mnGet, set: mnSet, all: mnAll, key: mnKey };
+  window.KIN_MNEMO = { get: mnGet, set: mnSet, all: mnAll, key: mnKey, matches: mnMatches, identity: mnIdentity };
 
   /* ---------- Gemini 呼叫 ---------- */
   function callGemini(prompt, temp){
@@ -24241,6 +24273,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     wrap.querySelectorAll('.mn-b').forEach(function(b){
       b.addEventListener('click', function(ev){
         ev.preventDefault(); ev.stopPropagation();
+        if(!mnBoxMatches(box, mnCurrentIdentity(id))) return;
         var act = b.getAttribute('data-act');
         if(act === 'del'){
           if(!confirm('確定刪除這個字的 AI 助記嗎？\n你自己寫的筆記不會被刪除。')) return;
@@ -24283,15 +24316,20 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
   function gen(id, box, force){
     var e = currentEntry();
-    if(!e || e.id !== id) return;
+    var identity=mnCurrentIdentity(id);
+    if(!identity || !mnBoxMatches(box, identity)) return;
     if(!gmKey()){ setMsg(box, '請先到使用者專區設定 Gemini 金鑰', true); return; }
     var cached = mnGet(id);
     if(cached && !force){ renderMnemo(id, cached, box); return; }
     var btn = box.querySelector('.mn-go');
     if(btn){ btn.disabled = true; btn.textContent = '產生中…'; }
     setMsg(box, '');
+    var requestId=String(Date.now())+':'+Math.random();
+    box.setAttribute('data-request', requestId);
     callGemini(buildPrompt(e), 0.6).then(function(g){
+      if(!mnBoxMatches(box, identity) || box.getAttribute('data-request')!==requestId) return;
       var data = {
+        identity: identity,
         root: g.root || '',
         association: g.association || '',
         confusable: Array.isArray(g.confusable) ? g.confusable.slice(0, 2).map(function(c){
@@ -24318,7 +24356,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
         setMsg(box, '助記已產生，圖片生成中…');
         KIN_MNEMO_IMG.gen(data.image_prompt).then(function(src){
-          var cur = mnGet(id) || data;
+          if(!mnBoxMatches(box, identity) || box.getAttribute('data-request')!==requestId) return;
+          var cur = mnGet(id);
+          if(!cur || !mnMatches(cur, identity) || cur !== data && cur.at !== data.at) return;
           cur.img = src;
           mnSet(id, cur);
           renderMnemo(id, cur, box);
@@ -24328,9 +24368,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         });
       })();
     }).catch(function(err){
-      setMsg(box, '產生失敗：' + err.message, true);
+      if(mnBoxMatches(box, identity) && box.getAttribute('data-request')===requestId)
+        setMsg(box, '產生失敗：' + err.message, true);
     }).then(function(){
-      if(btn){ btn.disabled = false; btn.textContent = mnGet(id) ? '重新生成助記' : 'AI 記憶輔助'; }
+      if(btn && mnBoxMatches(box, identity) && box.getAttribute('data-request')===requestId){
+        btn.disabled = false; btn.textContent = mnGet(id) ? '重新生成助記' : 'AI 記憶輔助';
+      }
     });
   }
 
@@ -24348,14 +24391,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     var e = currentEntry();
     if(!e) return;
     var old = $('uxMnemo');
-    if(old && old.getAttribute('data-id') === String(e.id)) return;
+    var identity=mnIdentity(e);
+    if(old && mnBoxMatches(old, identity)) return;
     if(old) old.parentNode.removeChild(old);
 
     var has = !!mnGet(e.id);
     var box = document.createElement('div');
     box.id = 'uxMnemo';
     box.className = 'ux-mnemo';
-    box.setAttribute('data-id', String(e.id));
+    box.setAttribute('data-id', identity.id);
+    box.setAttribute('data-book', identity.book);
+    box.setAttribute('data-word', identity.word);
     box.innerHTML =
       '<div class="mn-hd">'
       + '<span>✦ AI 記憶輔助</span>'
@@ -24381,7 +24427,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       return r;
     };
   }
-  setInterval(function(){ if($('uxNote') && !$('uxMnemo')) attach(); }, 700);
+  setInterval(function(){
+    var e=currentEntry(), box=$('uxMnemo');
+    if($('uxNote') && e && (!box || !mnBoxMatches(box, mnIdentity(e)))) attach();
+  }, 700);
 })();
 </script>
 <style>
@@ -24513,6 +24562,9 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
     var act = body && body.querySelector('.mn-act');
     if(!act || act.querySelector('[data-act="img"]')) return;
 
+    var identity=window.KIN_MNEMO && KIN_MNEMO.identity ? KIN_MNEMO.identity(e) : null;
+    if(!identity || box.getAttribute('data-book')!==identity.book ||
+       box.getAttribute('data-id')!==identity.id || box.getAttribute('data-word')!==identity.word) return;
     var data = window.KIN_MNEMO && KIN_MNEMO.get ? KIN_MNEMO.get(e.id) : null;
     if(!data || !data.image_prompt) return;
     paint(box, e.id, data);
@@ -24530,6 +24582,14 @@ body.theme-dark .ux-mnemo .mn-img img{border-color:#2a2a2c}
       if(!cur || !cur.image_prompt){ msg(box, '沒有圖像描述', true); return; }
       b.disabled = true; b.textContent = '生成中…';
       genImage(cur.image_prompt).then(function(src){
+        var now=entry(), latest=KIN_MNEMO.get(e.id);
+        if(!box.isConnected || !now || !KIN_MNEMO.matches(latest, identity) ||
+           KIN_MNEMO.identity(now).book!==identity.book ||
+           String(now.id)!==identity.id || String(now.word||'').trim().toLowerCase()!==identity.word ||
+           box.getAttribute('data-book')!==identity.book ||
+           box.getAttribute('data-id')!==identity.id || box.getAttribute('data-word')!==identity.word ||
+           latest.image_prompt!==cur.image_prompt || latest.at!==cur.at) return;
+        cur=latest;
         cur.img = src;
         KIN_MNEMO.set(e.id, cur);
         paint(box, e.id, cur);
