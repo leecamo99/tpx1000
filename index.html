@@ -3961,6 +3961,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       'book:' + bookId() + ':' + userId() + ':status',   // 習得／要複習狀態
       'book:' + bookId() + ':' + userId() + ':srs',      // SM-2 複習排程
       'kinCollect:' + userId(),                          // 收藏字卡，跨書共用
+      'kinRead:' + userId(),                             // AI 教練文章與題庫
+      'kinMnemo:' + userId(),                            // 手動生成的助記
       'kinNotes:' + userId(),                            // 個人筆記（UX 模組）
       'kinQuizLog:' + userId(),                          // 測驗紀錄（UX 模組）
       'kinAch:' + userId(),                              // 成就徽章（UX 模組）
@@ -3968,14 +3970,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       'kinGoalDays:' + userId(),
       'kinSense:' + userId(),                            // 詞義級 SRS（多義字逐個意思）                         // 每日目標達成日（UX 模組）
       'kinLevels:' + bookId(),'kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
-    ];
+    ].concat(Object.keys(localStorage).filter(function(k){
+      return k.indexOf('book:')===0 && k.indexOf(':'+userId()+':')>0 &&
+             /:(status|srs)$/.test(k);
+    }));
   }
   // 同步狀態依「使用者 + 書籍」分開記錄，切換後不會誤判新舊。
   function metaKey(){ return META_KEY + ':' + userId() + ':' + bookId(); }
   function getMeta(){ return readJSON(metaKey()) || {}; }
   function setMeta(m){ writeJSON(metaKey(), m); }
 
-  var cfg=readJSON(CFG_KEY)||{}, timer=null, busy=false;
+  var cfg=readJSON(CFG_KEY)||{}, timer=null, busy=false, pending=false;
+  var PERIOD=3*60*1000;
 
   function readJSON(k){ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }
   function writeJSON(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
@@ -4039,13 +4045,20 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
 
   async function push(silent){
-    if(!configured()||busy) return false;
+    if(!configured()) return false;
+    if(busy){ pending=true; return false; }
     busy=true; setState('busy');
     try{
       var head=await fetch(getURL(),{headers:headers(),cache:'no-store'});
       var sha=null;
-      if(head.ok){ sha=(await head.json()).sha; }
-      var body={message:'Update '+filePath()+' from '+(cfg.deviceId||'device'),content:enc(JSON.stringify(collect(),null,2)),branch:cfg.branch||'main'};
+      var remote=null;
+      if(head.ok){ var old=await head.json(); sha=old.sha;
+        try{ remote=JSON.parse(dec(old.content)); }catch(e){ throw new Error('雲端資料無法解析，已停止上傳以避免覆蓋'); }
+      }else if(head.status!==404){ throw new Error('讀取雲端失敗 HTTP '+head.status+'，已停止上傳以避免覆蓋'); }
+      var snapshot=collect(), localData=JSON.stringify(snapshot.keys);
+      // 雲端既有鍵保留；本機現有鍵優先，避免新版漏掉舊版的其他書籍資料。
+      if(remote && remote.keys) snapshot.keys=Object.assign({},remote.keys,snapshot.keys);
+      var body={message:'Update '+filePath()+' from '+(cfg.deviceId||'device'),content:enc(JSON.stringify(snapshot,null,2)),branch:cfg.branch||'main'};
       if(sha) body.sha=sha;
       var res=await fetch(putURL(),{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},headers()),body:JSON.stringify(body)});
       if(!res.ok){ throw new Error('HTTP '+res.status+' '+(await res.text()).slice(0,120)); }
@@ -4053,19 +4066,25 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       var m2=getMeta();
       m2.sha=out.content&&out.content.sha;
       m2.lastSync=new Date().toISOString();
+      m2.lastData=localData;
+      m2.pending=localData!==JSON.stringify(collect().keys);
+      if(m2.pending) pending=true;
       setMeta(m2);
       setState('ok'); if(!silent) msg('已同步到 GitHub。','ok');
       renderStat();
       return true;
     }catch(err){
-      setState('err'); if(!silent) msg('上傳失敗：'+err.message,'err');
+      var failed=getMeta();failed.pending=true;failed.lastError=err.message;setMeta(failed);
+      setState('err'); msg('上傳失敗，將自動重試：'+err.message,'err');
       return false;
-    }finally{ busy=false; }
+    }finally{ busy=false; if(pending){pending=false;clearTimeout(timer);timer=setTimeout(function(){push(true);},15000);} }
   }
 
   function markDirty(){
     if(!configured()) return;
     setState('dirty');
+    var m=getMeta();m.pending=true;setMeta(m);
+    if(busy) pending=true;
     clearTimeout(timer);
     timer=setTimeout(function(){ push(true); },DEBOUNCE);
   }
@@ -4077,7 +4096,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='hidden'){ clearTimeout(timer); push(true); }
   });
-  window.addEventListener('online',function(){ if(configured()) push(true); });
+  window.addEventListener('online',function(){ if(configured() && getMeta().pending) push(true); });
+  // 頁面保持開啟時每三分鐘檢查，失敗保留待同步狀態並於下一輪重試。
+  setInterval(function(){
+    if(!configured() || document.visibilityState==='hidden') return;
+    var m=getMeta();
+    if(m.pending || (Object.keys(collect().keys).length && m.lastData!==JSON.stringify(collect().keys))) push(true);
+  },PERIOD);
+  setTimeout(function(){
+    if(!configured()) return;
+    var m=getMeta();
+    if(m.pending || (Object.keys(collect().keys).length && m.lastData!==JSON.stringify(collect().keys))) push(true);
+  },12000);
 
   function renderStat(){
     var box=$('gsStat'); if(!box) return;
@@ -4085,7 +4115,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     box.innerHTML='使用者：<b>'+userName()+'</b>（'+userId()+'）<br>'+
       '檔案：<b>'+(configured()?filePath():'未設定')+'</b><br>'+
       'Token：<b>'+(cfg.token?('••••'+cfg.token.slice(-4)):'未設定')+'</b><br>'+
-      '最後同步：<b>'+(m.lastSync?new Date(m.lastSync).toLocaleString():'尚未同步')+'</b>';
+      '最後同步：<b>'+(m.lastSync?new Date(m.lastSync).toLocaleString():'尚未同步')+'</b><br>'+
+      '狀態：<b>'+(m.pending?'待上傳（每 3 分鐘重試）':'已完成或尚無本機變更')+'</b>'; 
   }
 
   window.gsOpen=function(){
@@ -5685,7 +5716,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     list.push(card);
     save(list);
-    // 收藏當下立刻用 Gemini 補齊資料與 AI 記憶輔助（函式宣告已提升，可在此呼叫）
+    // 收藏時只用 Gemini 補齊字卡資料；AI 記憶輔助保留手動操作。
     try{ setTimeout(function(){ autoEnrich(card); }, 150); }catch(e){}
     return true;
   }
@@ -5708,9 +5739,8 @@ body.theme-dark #nwBox .note{color:#6a6661}
   window.KIN_COLLECT = { load:load, save:save, find:find, add:add, remove:remove, update:update, key:key };
 
   /* ========== 收藏當下自動補資料 ==========
-     加入收藏時立刻用 Gemini 補齊詞性、中文意思、音標與例句，
-     並同步產生 AI 記憶輔助（字根、聯想、易混字、圖像描述）。
-     兩件事並行送出，互不等待；失敗只記錄在主控台，不打擾使用者。 */
+     加入收藏時只用 Gemini 補齊詞性、中文意思、音標與例句。
+     AI 記憶輔助不自動產生，須由使用者另外手動觸發。 */
   var autoBusy = {};
 
   function autoKey(){
@@ -5754,13 +5784,19 @@ body.theme-dark #nwBox .note{color:#6a6661}
   function fillCardGm(card){
     if(card.gm && card.gm.at) return Promise.resolve(null);   // 已補過就略過
 
+    var fromExample = !!(card.srcWord && String(card.srcWord).trim().toLowerCase() !== String(card.word).trim().toLowerCase());
     var p = '你是 TOEIC 單字教學助手。針對英文「' + card.word + '」，在 TOEIC 商務語境下提供學習資料。'
-      + (card.srcNote ? ('\n來源書上的說明：' + card.srcNote) : '')
+      + (card.srcNote && !fromExample ? ('\n來源書上的說明：' + card.srcNote + '。保留原生註解本意。') : '')
+      + (fromExample ? ('\n此字取自其他單字的例句，不得沿用來源標題字的註解。來源例句：' + (card.srcEx || '') + '；來源翻譯：' + (card.srcExZh || '') + '。請依語境解釋此字。') : '')
       + (card.mean ? ('\n書上的中文定義：' + card.mean + '，請以此語意為準。') : '')
       + '\n只回覆 JSON，不要加說明文字。欄位如下，除英文例句外一律使用繁體中文：'
       + '\nphon：音標，含方括號'
       + '\npos：詞性，用一個中文字，例如 動 名 形 副'
       + '\nmean：語意，以 TOEIC 商務語境優先，20 字內'
+      + '\nnote：只寫這個字自己的繁體中文（台灣用語）TOEIC 單字書註解。'
+      + '格式為一段短文，不要標題、條列或「註解：」前綴；'
+      + '優先說明來源例句中的用法，再補一個實用的商務搭配或易混點。'
+      + '不得沿用來源標題字的註解，不得捏造考試頻率；60 字內'
       + '\nex：一句簡短的 TOEIC 英文例句，必須自然用到「' + card.word + '」本身。'
       + '長度嚴格限制 5 到 10 個英文單字，最多不得超過 12 個單字，'
       + '只用一個主要子句，不要關係子句、分號、破折號、括號或多餘修飾，'
@@ -5772,10 +5808,16 @@ body.theme-dark #nwBox .note{color:#6a6661}
       + '\ntip：一句使用提醒或易混淆說明，40 字內';
 
     return autoAsk(p).then(function(g){
+      if(fromExample && (!g || typeof g.note !== 'string' ||
+          !/[\u3400-\u9fff]/.test(g.note) || !g.note.trim() ||
+          g.note.trim().length > 60 || /[\r\n]/.test(g.note) ||
+          /^(?:註解|備註|說明)[：:]/.test(g.note.trim()))){
+        throw new Error('例句單字的 Gemini 註解格式不合格，請重試');
+      }
       if(window.__kinTrimEx) g = window.__kinTrimEx(g, card.word);
       var patch = { gm: {
         phon:g.phon||'', pos:g.pos||'', mean:g.mean||'',
-        ex:g.ex||'', exZh:g.exZh||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
+        ex:g.ex||'', exZh:g.exZh||'', note:g.note||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
         at:new Date().toISOString().slice(0,10)
       }};
       // 書上定義優先，只有原本沒有中文時才用 Gemini 補上。
@@ -5850,24 +5892,13 @@ body.theme-dark #nwBox .note{color:#6a6661}
 
     if(typeof window.__kinToast === 'function') window.__kinToast('已收藏，正在補充資料…');
 
-    // 兩件事並行，各自失敗互不影響
-    var okGm = false, okMn = false;
-    var a = fillCardGm(card).then(function(){ okGm = true; })
-              .catch(function(e){ console.warn('[收藏 Gemini 補充] 失敗：', e.message); });
-    var b = fillMnemo(card).then(function(){ okMn = true; })
-              .catch(function(e){ console.warn('[收藏 AI 助記] 失敗：', e.message); });
-
-    Promise.all([a, b]).then(function(){
+    fillCardGm(card).then(function(){
+      if(typeof window.__kinToast === 'function') window.__kinToast('「' + card.word + '」Gemini 補充已完成');
+    }).catch(function(e){
+      console.warn('[收藏 Gemini 補充] 失敗：', e.message);
+      if(typeof window.__kinToast === 'function') window.__kinToast('「' + card.word + '」補充失敗，請檢查 Gemini 金鑰');
+    }).then(function(){
       delete autoBusy[card.id];
-
-      var done = [];
-      if(okGm) done.push('補充');
-      if(okMn) done.push('助記');
-      if(typeof window.__kinToast === 'function'){
-        window.__kinToast(done.length
-          ? ('「' + card.word + '」' + done.join('與') + '已完成')
-          : ('「' + card.word + '」補充失敗，請檢查 Gemini 金鑰'));
-      }
 
       // 收藏清單與解說頁都要吃到新資料
       try{ if(typeof window.__kinReloadCollect === 'function') window.__kinReloadCollect(); }catch(e){}
@@ -6084,7 +6115,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     var src = e ? {
       id:   e.id,
       word: e.word || '',
-      note: e.note || '',
+      note: String(text).trim().toLowerCase() === String(e.word || '').trim().toLowerCase() ? (e.note || '') : '',
       ex:   e.en   || '',
       exZh: e.ja   || '',
       book: (window.CURRENT_BOOK && window.CURRENT_BOOK.id) || ''
@@ -6481,12 +6512,17 @@ body.theme-dark #nwBox .note{color:#6a6661}
     say('');
 
     var prompt = '你是 TOEIC 單字教學助手。針對英文「' + card.word + '」，在 TOEIC 商務語境下提供學習資料。'
-      + (card.srcNote ? ('\n來源書上的說明：' + card.srcNote) : '')
+      + (card.srcNote && (!card.srcWord || String(card.srcWord).trim().toLowerCase() === String(card.word).trim().toLowerCase()) ? ('\n來源書上的說明：' + card.srcNote) : '')
+      + (card.srcWord && String(card.srcWord).trim().toLowerCase() !== String(card.word).trim().toLowerCase() ? ('\n來源例句：' + (card.srcEx || '') + '；來源翻譯：' + (card.srcExZh || '') + '。請勿沿用來源標題字的註解。') : '')
       + (card.mean ? ('\n書上的中文定義：' + card.mean + '，請以此語意為準。') : '')
       + '\n只回覆 JSON，不要加說明文字。欄位如下，除英文例句外一律使用繁體中文：'
       + '\nphon：音標，含方括號'
       + '\npos：詞性，用一個中文字，例如 動 名 形 副'
       + '\nmean：語意，以 TOEIC 商務語境優先，20 字內'
+      + '\nnote：只寫這個字自己的繁體中文（台灣用語）TOEIC 單字書註解。'
+      + '格式為一段短文，不要標題、條列或「註解：」前綴；'
+      + '優先說明來源例句中的用法，再補一個實用的商務搭配或易混點。'
+      + '不得沿用來源標題字的註解，不得捏造考試頻率；60 字內'
       + '\nex：一句簡短的 TOEIC 英文例句，必須自然用到「' + card.word + '」本身。'
       + '長度嚴格限制 5 到 10 個英文單字，最多不得超過 12 個單字，'
       + '只用一個主要子句，不要關係子句、分號、破折號、括號或多餘修飾，'
@@ -6503,10 +6539,19 @@ body.theme-dark #nwBox .note{color:#6a6661}
       var txt = c0 && c0.content && c0.content.parts && c0.content.parts[0] && c0.content.parts[0].text;
       if(!txt) throw new Error('回應沒有內容');
       var g = JSON.parse(txt);
+      var fromExample = !!(card.srcWord &&
+        String(card.srcWord).trim().toLowerCase() !==
+        String(card.word).trim().toLowerCase());
+      if(fromExample && (!g || typeof g.note !== 'string' ||
+          !/[\u3400-\u9fff]/.test(g.note) || !g.note.trim() ||
+          g.note.trim().length > 60 || /[\r\n]/.test(g.note) ||
+          /^(?:註解|備註|說明)[：:]/.test(g.note.trim()))){
+        throw new Error('例句單字的 Gemini 註解格式不合格，請重試');
+      }
       if(window.__kinTrimEx) g = window.__kinTrimEx(g, card.word);
       var patch = { gm: {
         phon:g.phon||'', pos:g.pos||'', mean:g.mean||'',
-        ex:g.ex||'', exZh:g.exZh||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
+        ex:g.ex||'', exZh:g.exZh||'', note:g.note||'', syn:g.syn||'', ant:g.ant||'', tip:g.tip||'',
         at:new Date().toISOString().slice(0,10)
       }};
       // 書上定義優先，只有原本沒有中文時才用 Gemini 補上。
@@ -7401,6 +7446,8 @@ body.theme-dark .rd-fs button.on{background:#2a1c10;border-color:#ff9142;color:#
 .rd-q{background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;margin-bottom:10px}
 .rd-q .qn{font-size:11px;color:#a09a94;font-weight:700;margin-bottom:6px}
 .rd-q .qt{font-size:14.5px;line-height:1.75;color:#222;margin-bottom:11px}
+.rd-vocab-word{border:0;background:transparent;color:inherit;font:inherit;padding:0 1px;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.rd-vocab-add{margin:0 0 7px 6px;border:1px solid #c45c1a;border-radius:7px;background:transparent;color:#c45c1a;padding:5px 9px;font:inherit;font-size:11px;cursor:pointer}
 .rd-q .op{
   display:block;width:100%;text-align:left;padding:10px 12px;margin-bottom:7px;
   border:1.5px solid #e4e0db;border-radius:9px;background:#fff;
@@ -7464,7 +7511,7 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   var GM_KEY = 'kinGeminiKey';
   var MAX_KEEP = 30;
-  var view = 'list', openId = '', pickN = 10, busy = false, answers = {};
+  var view = 'list', openId = '', pickN = 10, passageSource = 'both', busy = false, answers = {};
 
   function uid(){ return (window.KIN_USER && window.KIN_USER.id()) || 'paul'; }
   function key(){ return 'kinRead:' + uid(); }
@@ -7483,19 +7530,35 @@ body.theme-dark .rd-q .qn{color:#6a6661}
   window.KIN_READ = { load:load, save:save };
 
   /* 挑字：沒複習過的最優先，其次是常忘的 */
-  function pickWords(n){
+  function pickWords(n, source){
     var cards = (window.KIN_COLLECT ? window.KIN_COLLECT.load() : []);
     if(!cards.length) return [];
-    var scored = cards.map(function(c){
-      var s = 100;
-      try{
-        var r = (typeof srsMap !== 'undefined') ? srsMap[c.id] : null;
-        if(r) s = 60 - Math.min(50, (+r.ivl || 0)) + (+r.lapses || 0) * 12;
-      }catch(e){}
-      return { c:c, s:s };
+    var review = [], fresh = [], other = [];
+    cards.forEach(function(c){
+      var state = (typeof statusMap !== 'undefined' && statusMap) ? statusMap[c.id] : '';
+      var r = (typeof srsMap !== 'undefined' && srsMap) ? srsMap[c.id] : null;
+      // 已標記「要複習」，或排程已到期的收藏字，均歸入複習。
+      var due = !!(r && r.due && r.due <= new Date().toISOString().slice(0,10));
+      if(state === 'review' || due) review.push({c:c, score:(r ? (+r.lapses || 0)*12 - (+r.ivl || 0) : 0)});
+      else if(!state && !r) fresh.push(c);
+      else other.push(c);
     });
-    scored.sort(function(a,b){ return b.s - a.s; });
-    return scored.slice(0, n).map(function(x){ return x.c; });
+    review.sort(function(a,b){ return b.score - a.score; });
+    fresh.sort(function(a,b){ return String(b.at || '').localeCompare(String(a.at || '')); });
+    var rv = review.map(function(x){return x.c;});
+    if(source === 'review') return rv.slice(0,n);
+    if(source === 'new') return fresh.slice(0,n);
+    if(source === 'both'){
+      // 兩邊都有字時交錯取用，避免新收藏的字吃掉所有名額。
+      var mixed = [];
+      while(mixed.length < n && (rv.length || fresh.length)){
+        if(rv.length) mixed.push(rv.shift());
+        if(mixed.length < n && fresh.length) mixed.push(fresh.shift());
+      }
+      return mixed;
+    }
+    // 測驗維持原本可使用全部收藏字的行為。
+    return fresh.concat(rv,other).slice(0,n);
   }
 
   function msg(t, err){
@@ -7533,8 +7596,17 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   window.rdSetN = function(n){
     pickN = n;
-    Array.prototype.forEach.call(document.querySelectorAll('.rd-pick button'), function(b){
+    Array.prototype.forEach.call(document.querySelectorAll('.rd-pick button[data-n]'), function(b){
       b.classList.toggle('on', +b.getAttribute('data-n') === n);
+    });
+  };
+
+  window.rdSetSource = function(source){
+    if(['review','new','both'].indexOf(source) < 0) return;
+    passageSource = source;
+    Array.prototype.forEach.call(document.querySelectorAll('.rd-source button'), function(b){
+      var on = b.getAttribute('data-source') === source;
+      b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on));
     });
   };
 
@@ -7556,8 +7628,8 @@ body.theme-dark .rd-q .qn{color:#6a6661}
 
   window.rdGenPassage = function(){
     if(busy) return;
-    var words = pickWords(pickN);
-    if(!words.length){ msg('還沒有收藏任何單字，先到解說頁用收藏模式加幾個。', true); return; }
+    var words = pickWords(pickN, passageSource);
+    if(!words.length){ msg(passageSource === 'review' ? '目前沒有要複習的收藏字。' : passageSource === 'new' ? '目前沒有新收藏、尚未學習的字。' : '目前沒有要複習或新收藏的字。', true); return; }
     lock(true);
     msg('正在用 ' + words.length + ' 個單字生成短文\u2026');
 
@@ -8160,6 +8232,46 @@ body.theme-dark .rd-q .qn{color:#6a6661}
     try{ if(typeof srsBadge === 'function') srsBadge(); }catch(e){}
   };
 
+  function quizWords(text){
+    return String(text).split(/([A-Za-z]+(?:[-'][A-Za-z]+)*)/g).map(function(part){
+      if(!/^[A-Za-z]+(?:[-'][A-Za-z]+)*$/.test(part)) return esc(part);
+      return '<button type="button" class="rd-vocab-word" onclick="rdQuizCollectWord(\'' +
+        encodeURIComponent(part).replace(/'/g,'%27') + '\')" title="收藏這個字">' + esc(part) + '</button>';
+    }).join('');
+  }
+  window.rdQuizCollect = function(qi, oi){
+    var it=load().filter(function(x){return x.id===openId;})[0];
+    var option=it && it.items && it.items[qi] && it.items[qi].options[oi];
+    if(!option) return;
+    var word=String(option).replace(/^[A-D][.)]\s*/i,'').trim();
+    if(!/^[A-Za-z]+(?:[-'][A-Za-z]+)*$/.test(word)){
+      var chosen=prompt('此選項不是單一單字，請輸入要收藏的英文單字：',word);
+      if(!chosen) return;
+      word=chosen.trim();
+    }
+    window.rdQuizCollectWord(encodeURIComponent(word));
+  };
+  window.rdQuizCollectWord = function(encoded){
+    var word;try{word=decodeURIComponent(encoded).trim();}catch(e){return;}
+    if(!/^[A-Za-z]+(?:[-'][A-Za-z]+)*$/.test(word)){msg('請選擇一個英文單字。',true);return;}
+    if(!window.KIN_COLLECT){msg('收藏功能尚未載入。',true);return;}
+    var found=window.__kinFindInBooks && window.__kinFindInBooks(word);
+    var added=KIN_COLLECT.add(word,'題庫',{
+      book:'quiz',note:'題庫：'+((load().filter(function(x){return x.id===openId;})[0]||{}).title||'測驗')
+    });
+    var line=added?'已收藏「'+word+'」':'「'+word+'」已在收藏中';
+    if(found){
+      var jump=confirm(line+'。在《'+found.title+'》找到對應單字（編號 '+found.id+'）。要前往單字書查看嗎？');
+      if(jump){
+        if(typeof window.rdClose==='function')window.rdClose();
+        if(window.CURRENT_BOOK && window.CURRENT_BOOK.id===found.book && typeof window.openDetail==='function') window.openDetail(found.id);
+        else if(typeof window.loadBookById==='function'){
+          window.__kinPendingOpen=found.id;window.loadBookById(found.book);
+        }
+      }
+    }else msg(line+'；目前已建立索引的單字書中沒有完全相同的條目。');
+  };
+
   function render(){
     var body = $('rdBody'), title = $('rdTitle');
     if(!body) return;
@@ -8176,11 +8288,18 @@ body.theme-dark .rd-q .qn{color:#6a6661}
         '<div class="rd-gen">' +
         '<h3>V4.0 AI TOEIC 實戰教練</h3><div class="rd-note">可生成閱讀短文、以 TTS 朗讀成聽力情境，或建立 TOEIC 模擬題。</div>' +
         '<div class="rd-pick">' + opts + '</div>' +
+        '<h3>文章用字來源</h3>' +
+        '<div class="rd-pick rd-source" role="group" aria-label="文章用字來源">' +
+        [['review','要複習的字'],['new','新收藏的字'],['both','都要']].map(function(o){
+          var on = o[0] === passageSource;
+          return '<button type="button" data-source="' + o[0] + '" class="' + (on ? 'on' : '') +
+                 '" aria-pressed="' + on + '" onclick="rdSetSource(\'' + o[0] + '\')">' + o[1] + '</button>';
+        }).join('') + '</div>' +
         '<button type="button" class="go" onclick="rdGenPassage()">生成閱讀／聽力情境</button>' +
         '<button type="button" class="go alt" onclick="rdGenQuiz()">生成 TOEIC 模擬測驗</button>' +
         '<button type="button" class="go alt" onclick="rdImportBank()">匯入 JSON 題庫</button><input id="rdBankFile" type="file" accept=".json,application/json" style="display:none" onchange="rdReadBank(this)">' +
         '<div class="rd-msg" id="rdMsg"></div>' +
-        '<div class="rd-note">目前收藏 ' + n + ' 個單字。系統會優先挑還沒複習過、或曾經答錯的字。短文裡的英文一樣可以點，發音或再加入閃卡。</div>' +
+        '<div class="rd-note">目前收藏 ' + n + ' 個單字。文章依上方選擇取字；模擬測驗仍可使用全部收藏字。短文中的英文可點選發音或收藏。</div>' +
         '</div>' +
         (all.length
           ? all.map(function(it){
@@ -8252,10 +8371,11 @@ body.theme-dark .rd-q .qn{color:#6a6661}
       (it.items||[]).map(function(q, i){
         return '<div class="rd-q" data-q="' + i + '">' +
           '<div class="qn">第 ' + (i+1) + ' 題 / ' + it.items.length + '</div>' +
-          '<div class="qt">' + esc(q.q || '') + '</div>' +
+          '<div class="qt">' + quizWords(q.q || '') + '</div>' +
           (q.options||[]).map(function(o, oi){
             return '<button type="button" class="op" onclick="rdAnswer(' + i + ',' + oi + ')">' +
-              String.fromCharCode(65+oi) + '.\u3000' + esc(o) + '</button>';
+              String.fromCharCode(65+oi) + '.\u3000' + esc(o) + '</button>' +
+              '<button type="button" class="rd-vocab-add" onclick="rdQuizCollect(' + i + ',' + oi + ')" aria-label="收藏選項單字">＋收藏</button>'; 
           }).join('') +
           '<div class="ex">' + esc(q.zh || '') + (q.tip ? ('<br>' + esc(q.tip)) : '') + '</div></div>';
       }).join('') +
@@ -21128,7 +21248,8 @@ window.registerBook({
           pos:  g.pos  || '',
           phon: g.phon || '',
           level:'CUSTOM', level_label:'我的收藏',
-          note: c.srcNote || '',
+          note: (c.srcWord && String(c.srcWord).trim().toLowerCase() !== String(c.word).trim().toLowerCase())
+            ? (g.note || '') : (c.srcNote || g.note || ''),
           // 只放這個字自己的例句，播放才不會唸到不含該字的來源句。
           en:   g.ex   || '',
           ja:   g.exZh || ''
