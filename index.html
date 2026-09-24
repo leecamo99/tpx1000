@@ -1669,7 +1669,7 @@ function hardStopAllPlayback(){
    強制沿用既有 Cloud TTS API Key 與音訊播放器，中文使用台灣國語 WaveNet。 */
 (function(){
   'use strict';
-  var noteSpeaking = false;
+  var noteSpeaking = false, noteRequest = 0;
   var ICON_SPEAK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.2L12 5.5v13L7.2 14.5H4z" fill="currentColor"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6M18 6.8a7.4 7.4 0 0 1 0 10.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
   var ICON_STOP  = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor"/></svg>';
   function syncBtn(){
@@ -1681,6 +1681,7 @@ function hardStopAllPlayback(){
   window.__kinNoteTtsSyncBtn=syncBtn;
   function stopNoteTts(){
     if(!noteSpeaking)return;
+    noteRequest++;
     noteSpeaking=false;
     try{if(typeof window.__kinTtsStop==='function')window.__kinTtsStop()}catch(e){}
     try{window.speechSynthesis&&window.speechSynthesis.cancel()}catch(e){}
@@ -1695,8 +1696,8 @@ function hardStopAllPlayback(){
     if(!note){if(typeof window.__kinToast==='function')window.__kinToast('這筆沒有可播放的註解');return}
     if(typeof window.kinSpeakNoteCloud!=='function'){if(typeof window.__kinToast==='function')window.__kinToast('Cloud TTS 尚未就緒');return}
     try{hardStopAllPlayback()}catch(err){}
-    var done=false;
-    function finish(){if(done)return;done=true;noteSpeaking=false;syncBtn()}
+    var done=false, request=++noteRequest;
+    function finish(){if(done||request!==noteRequest)return;done=true;noteSpeaking=false;syncBtn()}
     noteSpeaking=true;syncBtn();
     var handled=window.kinSpeakNoteCloud(note,finish);
     if(!handled)finish();
@@ -4571,7 +4572,7 @@ body.theme-dark .rm-msg{color:#8a8680}
         <option value="cloud">雲端語音　音質自然，短文為句子級跟讀</option>
         <option value="system">系統語音　機器音，短文可逐字跟讀</option>
       </select>
-      <label class="tts-lb">音色</label>
+      <label class="tts-lb">英文音色（註解中的英文也使用此音色）</label>
       <select id="ttsVoice" onchange="ttsSetVoice()">
         <option value="en-US-Neural2-C">美式女聲　Neural2-C</option>
         <option value="en-US-Neural2-D">美式男聲　Neural2-D</option>
@@ -4580,6 +4581,12 @@ body.theme-dark .rm-msg{color:#8a8680}
         <option value="en-GB-Neural2-A">英式女聲　Neural2-A</option>
         <option value="en-GB-Neural2-B">英式男聲　Neural2-B</option>
         <option value="en-US-Standard-C">美式女聲　Standard-C</option>
+      </select>
+      <label class="tts-lb">註解中文音色（Google Cloud TTS）</label>
+      <select id="ttsNoteZhVoice" onchange="ttsSetNoteZhVoice()">
+        <option value="cmn-TW-Wavenet-A">台灣華語 WaveNet-A</option>
+        <option value="cmn-TW-Wavenet-B">台灣華語 WaveNet-B</option>
+        <option value="cmn-TW-Standard-A">台灣華語 Standard-A</option>
       </select>
       <div class="tts-btns">
         <button type="button" class="pri" onclick="ttsSave()">儲存並測試</button>
@@ -7123,30 +7130,77 @@ body.theme-dark #nwBox .note{color:#6a6661}
     return true;
   };
 
-  /* 註解專用 Cloud TTS：沿用相同 API Key、IndexedDB 快取與持久 audio 元素。 */
+  /* 註解中英雙語 Cloud TTS v2：英文詞組和繁中片段分別合成，逐段播放。
+     新快取前綴與舊整段中文音色快取隔離，切換音色也會重新合成。 */
+  function noteZhVoice(){
+    try{ return localStorage.getItem('kinTtsNoteZhVoice') || 'cmn-TW-Wavenet-A'; }
+    catch(e){ return 'cmn-TW-Wavenet-A'; }
+  }
+  function noteParts(text){
+    var parts=[], re=/[A-Za-z][A-Za-z0-9'’.-]*(?:\s+[A-Za-z][A-Za-z0-9'’.-]*)*/g, last=0, m;
+    function add(lang,chunk){
+      chunk=chunk.replace(/\s+/g,' ').trim();
+      if(!chunk || !/[A-Za-z\u3400-\u9fff0-9]/.test(chunk))return;
+      parts.push({lang:lang,text:chunk});
+    }
+    while((m=re.exec(text))){
+      add('zh',text.slice(last,m.index));
+      add('en',m[0]);
+      last=re.lastIndex;
+    }
+    add('zh',text.slice(last));
+    return parts;
+  }
   window.kinSpeakNoteCloud=function(text,onend){
-    text=String(text||'').trim();
+    text=String(text||'').replace(/\s+/g,' ').trim();
     if(!text)return false;
     var key=ttsKey();
-    if(!key){if(typeof window.__kinToast==='function')window.__kinToast('請先到使用者專區設定 Cloud TTS API Key');return false}
-    var voiceName='cmn-TW-Wavenet-A';
-    var dbKey=voiceName+'|'+text.toLowerCase();
+    if(!key){if(typeof window.__kinToast==='function')window.__kinToast('請先設定 Cloud TTS API Key');return false;}
+    var parts=noteParts(text), pos=0, finished=false;
+    if(!parts.length)return false;
     ttsStop();
     var myGen=ttsGen;
-    function stale(){return myGen!==ttsGen}
-    function release(){if(typeof onend==='function')onend()}
-    TTSDB.get(dbKey).then(function(rec){
-      if(stale()){release();return}
-      if(rec&&rec.b64){TTSDB.put(dbKey,{b64:rec.b64,at:Date.now(),text:text,voice:voiceName});ttsPlayB64(rec.b64,onend);return}
-      fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key),{
-        method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({input:{text:text},voice:{languageCode:'cmn-TW',name:voiceName},audioConfig:{audioEncoding:'MP3',speakingRate:1.0}})
-      })
-      .then(function(r){return r.ok?r.json():r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t.slice(0,120))})})
-      .then(function(j){if(!j.audioContent)throw new Error('回應沒有音訊內容');TTSDB.put(dbKey,{b64:j.audioContent,at:Date.now(),text:text,voice:voiceName});if(stale()){release();return}ttsPlayB64(j.audioContent,onend)})
-      .catch(function(err){if(stale()){release();return}console.warn('註解 Cloud TTS 失敗：',err.message);if(typeof window.__kinToast==='function')window.__kinToast('註解 Cloud TTS 失敗');release()});
-    });
+    function stale(){return myGen!==ttsGen;}
+    function finish(){if(finished)return;finished=true;if(typeof onend==='function')onend();}
+    function playNext(){
+      if(stale()){finish();return;}
+      if(pos>=parts.length){finish();return;}
+      var p=parts[pos++], voice=p.lang==='en'?ttsVoice():noteZhVoice();
+      var dbKey='note-bilingual-v2|'+voice+'|'+p.text;
+      function play(b64){
+        if(stale()){finish();return;}
+        ttsPlayB64(b64,function(){
+          if(stale()){finish();return;}
+          playNext();
+        });
+        myGen=ttsGen; // ttsPlayB64 自身會遞增播放世代
+      }
+      TTSDB.get(dbKey).then(function(rec){
+        if(stale()){finish();return;}
+        if(rec&&rec.b64){play(rec.b64);return;}
+        return fetch('https://texttospeech.googleapis.com/v1/text:synthesize?key='+encodeURIComponent(key),{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({input:{text:p.text},voice:{languageCode:voice.slice(0,5),name:voice},audioConfig:{audioEncoding:'MP3',speakingRate:1.0}})
+        }).then(function(r){return r.ok?r.json():r.text().then(function(t){throw new Error('HTTP '+r.status+' '+t.slice(0,160));});})
+          .then(function(j){
+            if(!j.audioContent)throw new Error('回應沒有音訊內容');
+            TTSDB.put(dbKey,{b64:j.audioContent,at:Date.now(),text:p.text,voice:voice});
+            play(j.audioContent);
+          });
+      }).catch(function(err){
+        if(stale()){finish();return;}
+        console.warn('註解 Cloud TTS 失敗：',err);
+        if(typeof window.__kinToast==='function')window.__kinToast('註解 Cloud TTS 失敗：'+err.message);
+        finish(); // 不退回 Web TTS，也不把失敗段跳過
+      });
+    }
+    playNext();
     return true;
+  };
+  window.ttsSetNoteZhVoice=function(){
+    var el=document.getElementById('ttsNoteZhVoice');if(!el)return;
+    try{localStorage.setItem('kinTtsNoteZhVoice',el.value);}catch(e){}
+    ttsMsg('註解中文音色已切換，下一次播放會使用新音色。','ok');
   };
 
   /* ---------- 語音設定介面 ---------- */
@@ -7166,6 +7220,7 @@ body.theme-dark #nwBox .note{color:#6a6661}
     }
     var i = document.getElementById('ttsKey');   if(i) i.value = k;
     var v = document.getElementById('ttsVoice'); if(v) v.value = ttsVoice();
+    var zv = document.getElementById('ttsNoteZhVoice'); if(zv) zv.value = noteZhVoice();
     var sr = document.getElementById('ttsSrc');  if(sr) sr.value = ttsSrc();
     if(typeof window.__kinRdPaintVoice === 'function') window.__kinRdPaintVoice();
   }
