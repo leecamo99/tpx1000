@@ -4003,7 +4003,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 (function(){
   'use strict';
 
-  var CFG_KEY='gsConfig', META_KEY='gsMeta', DEBOUNCE=10000;
+  var CFG_KEY='gsConfig', META_KEY='gsMeta', TS_KEY='gsFieldTs', DEBOUNCE=10000;
 
   // 對齊本 App 實際使用的 localStorage 鍵名。
   // 隨目前書籍動態組出要同步的鍵。
@@ -4030,7 +4030,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       'kinGoalDays:' + userId(),
       'kinSense:' + userId(),                            // 詞義級 SRS（多義字逐個意思）                         // 每日目標達成日（UX 模組）
       'kinLevels:' + bookId(),'kinLastPosition:' + userId() + ':' + bookId(),
-      'kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext'
+      'kinPlayMode','kinSpeed','kin_phrase_times','kinReturnContext',
+      TS_KEY + ':' + userId() + ':' + bookId()          // 逐筆合併用的時間戳
     ].concat(Object.keys(localStorage).filter(function(k){
       return k.indexOf('book:')===0 && k.indexOf(':'+userId()+':')>0 &&
              /:(status|srs)$/.test(k);
@@ -4076,6 +4077,214 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     });
     return true;
   }
+  /** 下載後與本機逐筆合併（不覆蓋）。自動同步用這個。 */
+  function applyMerge(payload){
+    if(!payload||!payload.keys) return false;
+    var rTsKey = TS_KEY + ':' + userId() + ':' + bookId();
+    var rTsAll = null;
+    try{ rTsAll = JSON.parse(payload.keys[rTsKey] || 'null'); }catch(e){ rTsAll = null; }
+    mergeTsMaps(rTsAll);
+    var local = {};
+    syncKeys().forEach(function(k){ var v=localStorage.getItem(k); if(v!==null) local[k]=v; });
+    var merged = mergeSnapshot(local, payload.keys, rTsAll);
+    merged[rTsKey] = JSON.stringify(getTs());
+    return applyMerged(merged);
+  }
+
+  /* ======================================================================
+     逐筆合併（Anki 式）—— 2026-09 修正
+     -----------------------------------------------------------------
+     舊版 push() 以「整把鑰匙」為單位合併：
+         snapshot.keys = Object.assign({}, remote.keys, snapshot.keys)
+     每個 key 的值是一整包 JSON 字串（例如 1817 個單字的狀態），
+     只要本機那包比較舊或是空的，雲端整包就被蓋掉。
+     新裝置第一次開啟時本機是空的，12 秒後自動上傳 → 雲端進度全毀。
+
+     新版改為逐筆比對：
+       - 每個欄位（單字 id、收藏卡 id…）各自帶時間戳
+       - 兩邊都有 → 時間新的勝出
+       - 只有一邊有 → 保留，不會因為另一邊沒有就刪掉
+       - srs 的每日計數 log → 取兩邊較大值
+     時間戳記在 gsFieldTs，本身也會同步，所以跨裝置比對才有依據。
+     ====================================================================== */
+
+  function tsKey(){ return TS_KEY + ':' + userId() + ':' + bookId(); }
+  function getTs(){ return readJSON(tsKey()) || {}; }
+  function setTs(t){ writeJSON(tsKey(), t); }
+
+  /** 判斷一包資料該用哪種合併策略。 */
+  function shapeOf(key, parsed){
+    if(/:srs$/.test(key)) return 'srs';
+    if(Array.isArray(parsed)) return 'list';
+    if(parsed && typeof parsed === 'object') return 'map';
+    return 'scalar';
+  }
+
+  /** 取出可逐筆比對的欄位；回傳 id -> 序列化字串。 */
+  function fieldsOf(key, str){
+    var out = {};
+    if(str == null) return out;
+    var p;
+    try{ p = JSON.parse(str); }catch(e){ out.__all = str; return out; }
+    var shape = shapeOf(key, p);
+    if(shape === 'srs'){
+      var cards = (p && p.cards) || {};
+      for(var id in cards) out[id] = JSON.stringify(cards[id]);
+    }else if(shape === 'list'){
+      for(var i = 0; i < p.length; i++){
+        var it = p[i], k = it && (it.id != null ? String(it.id) : null);
+        if(k != null) out[k] = JSON.stringify(it);
+      }
+    }else if(shape === 'map'){
+      for(var m in p) out[m] = JSON.stringify(p[m]);
+    }else{
+      out.__all = str;
+    }
+    return out;
+  }
+
+  /**
+   * 本機寫入時記錄異動時間。
+   * 掛在 localStorage.setItem 上，所以 saveStatus()／srsSave() 等
+   * 原有程式完全不用改，時間戳自動產生。
+   */
+  function stampChanges(key, prevStr, nextStr){
+    if(prevStr === nextStr) return;
+    try{
+      var before = fieldsOf(key, prevStr), after = fieldsOf(key, nextStr);
+      var all = getTs(), mine = all[key] || {}, now = Date.now(), dirty = false, f;
+      for(f in after){ if(before[f] !== after[f]){ mine[f] = now; dirty = true; } }
+      for(f in before){ if(!(f in after)){ mine[f] = now; dirty = true; } }
+      if(dirty){ all[key] = mine; setTs(all); }
+    }catch(e){}
+  }
+
+  /** 兩個時間戳相同或都沒有時的後備判斷：寧可保留內容較豐富的一方。 */
+  function richer(a, b){
+    var la = a == null ? -1 : String(a).length;
+    var lb = b == null ? -1 : String(b).length;
+    return la >= lb ? a : b;
+  }
+
+  function mergeFields(lf, rf, lt, rt){
+    var out = {}, seen = {}, f;
+    for(f in lf) seen[f] = 1;
+    for(f in rf) seen[f] = 1;
+    for(f in seen){
+      var hasL = (f in lf), hasR = (f in rf);
+      var tl = lt[f] || 0, tr = rt[f] || 0;
+      if(hasL && !hasR){
+        if(tr > tl) continue;      // 雲端曾刪除且較新 → 跟著刪
+        out[f] = lf[f];
+      }else if(!hasL && hasR){
+        if(tl > tr) continue;      // 本機刪除且較新 → 跟著刪
+        out[f] = rf[f];
+      }else{
+        if(tl > tr) out[f] = lf[f];
+        else if(tr > tl) out[f] = rf[f];
+        else out[f] = richer(lf[f], rf[f]);
+      }
+    }
+    return out;
+  }
+
+  function rebuild(key, sample, fields){
+    var shape = shapeOf(key, sample), f;
+    if(shape === 'srs'){
+      var cards = {};
+      for(f in fields){ try{ cards[f] = JSON.parse(fields[f]); }catch(e){} }
+      return {cards: cards, log: {}, v: 1};
+    }
+    if(shape === 'list'){
+      var arr = [];
+      for(f in fields){ try{ arr.push(JSON.parse(fields[f])); }catch(e){} }
+      return arr;
+    }
+    var obj = {};
+    for(f in fields){ try{ obj[f] = JSON.parse(fields[f]); }catch(e){} }
+    return obj;
+  }
+
+  /** srs 的每日學習計數：同一天取較大值，避免統計倒退。 */
+  function mergeLog(a, b){
+    var out = {}, d;
+    a = a || {}; b = b || {};
+    for(d in a) out[d] = a[d];
+    for(d in b) out[d] = Math.max(out[d] || 0, b[d] || 0);
+    return out;
+  }
+
+  /** 合併單一 key 的兩份字串，回傳合併後的字串。 */
+  function mergeKeyValue(key, localStr, remoteStr, localTs, remoteTs){
+    if(localStr == null) return remoteStr;
+    if(remoteStr == null) return localStr;
+    if(localStr === remoteStr) return localStr;
+
+    var L, R;
+    try{ L = JSON.parse(localStr); }catch(e){ L = null; }
+    try{ R = JSON.parse(remoteStr); }catch(e){ R = null; }
+
+    // 不是 JSON（例如 kinPlayMode、kinSpeed）→ 整把比時間
+    if(L === null || R === null){
+      var tl0 = (localTs.__all || 0), tr0 = (remoteTs.__all || 0);
+      if(tl0 > tr0) return localStr;
+      if(tr0 > tl0) return remoteStr;
+      return localStr;
+    }
+
+    var merged = mergeFields(
+      fieldsOf(key, localStr), fieldsOf(key, remoteStr), localTs, remoteTs);
+
+    if('__all' in merged) return merged.__all;
+
+    var rebuilt = rebuild(key, L, merged);
+    if(/:srs$/.test(key)){
+      rebuilt.log = mergeLog(L && L.log, R && R.log);
+    }
+    return JSON.stringify(rebuilt);
+  }
+
+  /** 把雲端整包與本機整包逐鍵、逐筆合併。 */
+  function mergeSnapshot(localKeys, remoteKeys, remoteTsAll){
+    var out = {}, localTsAll = getTs(), k, seen = {};
+    for(k in localKeys) seen[k] = 1;
+    for(k in remoteKeys) seen[k] = 1;
+    for(k in seen){
+      out[k] = mergeKeyValue(
+        k, localKeys[k], remoteKeys[k],
+        (localTsAll[k] || {}), ((remoteTsAll && remoteTsAll[k]) || {}));
+    }
+    return out;
+  }
+
+  /** 合併後的時間戳也要保存，下次比對才有依據。 */
+  function mergeTsMaps(remoteTsAll){
+    var mine = getTs(), k, f;
+    if(!remoteTsAll) return mine;
+    for(k in remoteTsAll){
+      mine[k] = mine[k] || {};
+      for(f in remoteTsAll[k]){
+        if((remoteTsAll[k][f] || 0) > (mine[k][f] || 0)) mine[k][f] = remoteTsAll[k][f];
+      }
+    }
+    setTs(mine);
+    return mine;
+  }
+
+  /** 把合併結果寫回本機，並讓畫面重新讀取。 */
+  function applyMerged(mergedKeys){
+    var changed = false;
+    Object.keys(mergedKeys).forEach(function(k){
+      if(syncKeys().indexOf(k) < 0) return;
+      var cur = localStorage.getItem(k);
+      if(cur === mergedKeys[k]) return;
+      try{ _setItem.call(localStorage, k, mergedKeys[k]); changed = true; }catch(e){}
+    });
+    if(changed){
+      try{ if(typeof repaint === 'function') repaint(); }catch(e){}
+    }
+    return changed;
+  }
 
   function enc(str){
     var b=new TextEncoder().encode(str), s='';
@@ -4117,8 +4326,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         try{ remote=JSON.parse(dec(old.content)); }catch(e){ throw new Error('雲端資料無法解析，已停止上傳以避免覆蓋'); }
       }else if(head.status!==404){ throw new Error('讀取雲端失敗 HTTP '+head.status+'，已停止上傳以避免覆蓋'); }
       var snapshot=collect(), localData=JSON.stringify(snapshot.keys);
-      // 雲端既有鍵保留；本機現有鍵優先，避免新版漏掉舊版的其他書籍資料。
-      if(remote && remote.keys) snapshot.keys=Object.assign({},remote.keys,snapshot.keys);
+      // 逐筆合併，而非整把覆蓋。
+      // 舊版用 Object.assign 讓本機整包勝出，新裝置（本機空的）會把雲端進度洗掉。
+      if(remote && remote.keys){
+        var rTsKey = TS_KEY + ':' + userId() + ':' + bookId();
+        var rTsAll = null;
+        try{ rTsAll = JSON.parse(remote.keys[rTsKey] || 'null'); }catch(e){ rTsAll = null; }
+        mergeTsMaps(rTsAll);
+        snapshot.keys = mergeSnapshot(snapshot.keys, remote.keys, rTsAll);
+        applyMerged(snapshot.keys);          // 合併結果同時寫回本機，兩邊立刻一致
+        snapshot.keys[rTsKey] = JSON.stringify(getTs());
+        localData = JSON.stringify(snapshot.keys);
+      }
       var body={message:'Update '+filePath()+' from '+(cfg.deviceId||'device'),content:enc(JSON.stringify(snapshot,null,2)),branch:cfg.branch||'main'};
       if(sha) body.sha=sha;
       var res=await fetch(putURL(),{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},headers()),body:JSON.stringify(body)});
@@ -4141,6 +4360,23 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }finally{ busy=false; if(pending){pending=false;clearTimeout(timer);timer=setTimeout(function(){push(true);},15000);} }
   }
 
+  /**
+   * 完整同步週期：先下載合併，再上傳。
+   *
+   * 舊版只有 push，從不主動下載，所以另一台裝置的進度永遠不會下來；
+   * 加上整把覆蓋，等於後上傳的那台會把對方的紀錄洗掉。
+   */
+  async function syncCycle(silent){
+    if(!configured()) return false;
+    if(busy){ pending=true; return false; }
+    var got = await pull(true);
+    if(got && got.payload){
+      try{ applyMerge(got.payload); }catch(e){}
+    }
+    return push(silent);
+  }
+  window.gsSyncCycle = syncCycle;
+
   function markDirty(){
     if(!configured()) return;
     setState('dirty');
@@ -4151,8 +4387,16 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   }
   var _setItem=localStorage.setItem;
   localStorage.setItem=function(k,v){
+    var tracked = syncKeys().indexOf(k)>=0;
+    var tsk = TS_KEY + ':' + userId() + ':' + bookId();
+    var prev = null;
+    // 時間戳本身不要再記時間戳，否則會無限遞迴
+    if(tracked && k !== tsk){ try{ prev = localStorage.getItem(k); }catch(e){} }
     _setItem.apply(localStorage,arguments);
-    if(syncKeys().indexOf(k)>=0) markDirty();
+    if(tracked){
+      if(k !== tsk){ stampChanges(k, prev, v); }
+      markDirty();
+    }
   };
   document.addEventListener('visibilitychange',function(){
     if(document.visibilityState==='hidden'){ clearTimeout(timer); push(true); }
@@ -4162,12 +4406,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   setInterval(function(){
     if(!configured() || document.visibilityState==='hidden') return;
     var m=getMeta();
-    if(m.pending || (Object.keys(collect().keys).length && m.lastData!==JSON.stringify(collect().keys))) push(true);
+    if(m.pending || (Object.keys(collect().keys).length && m.lastData!==JSON.stringify(collect().keys))){
+      syncCycle(true);                 // 有本機變更 → 下載合併後上傳
+    }else{
+      pull(true).then(function(r){     // 沒有變更也定期拉，接收另一台的進度
+        if(r && r.payload) try{ applyMerge(r.payload); }catch(e){}
+      });
+    }
   },PERIOD);
+  // 開啟 App 後先做一次完整同步：務必先下載合併，再上傳。
+  // 舊版這裡直接 push()，新裝置（本機空的）會在 12 秒後把雲端進度覆蓋掉。
   setTimeout(function(){
     if(!configured()) return;
-    var m=getMeta();
-    if(m.pending || (Object.keys(collect().keys).length && m.lastData!==JSON.stringify(collect().keys))) push(true);
+    syncCycle(true);
   },12000);
 
   function renderStat(){
@@ -4205,7 +4456,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     renderStat();
   };
 
-  window.gsSyncNow=function(){ return push(false); };
+  window.gsSyncNow=function(){ return syncCycle(false); };
 
   window.gsPullNow=async function(){
     if(!confirm('確定要用 GitHub 上的紀錄覆蓋這台裝置的本機紀錄嗎？此動作無法復原。')) return;
