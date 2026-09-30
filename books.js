@@ -22,5 +22,12 @@ window.BOOKS = [
     imageBase: 'images/shiko600/',
     unit: '題',
     count: 600
+  },
+  {
+    id: 'sentences100',
+    title: '英語雙語對照讀本',
+    subtitle: '日常生活、假設與思辨 100 句',
+    file: 'books/sentences_100.js',
+    count: 100
   }
 ];
